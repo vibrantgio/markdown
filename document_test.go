@@ -110,6 +110,36 @@ func measureDoc(shaper *text.Shaper, style markdown.Style, blocks []markdown.Blo
 	return markdown.NewDocument(blocks).Layout(gtx, shaper, style)
 }
 
+// TestLayoutColumnNaturalHeight verifies LayoutColumn takes exactly its
+// content's height — no viewport filling, no internal scrolling: more blocks
+// lay out strictly taller, and the height is independent of the vertical
+// constraint.
+func TestLayoutColumnNaturalHeight(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	one := markdown.Parse([]byte("alpha\n"))
+	three := markdown.Parse([]byte("alpha\n\nbravo\n\n```\ncode\n```\n"))
+
+	column := func(blocks []markdown.Block, size image.Point) layout.Dimensions {
+		var ops op.Ops
+		gtx := layout.Context{
+			Metric:      unit.Metric{PxPerDp: 1, PxPerSp: 1},
+			Constraints: layout.Constraints{Max: size},
+			Ops:         &ops,
+		}
+		return markdown.NewDocument(blocks).LayoutColumn(gtx, shaper, style)
+	}
+
+	oneH := column(one, image.Pt(560, 10_000)).Size.Y
+	threeH := column(three, image.Pt(560, 10_000)).Size.Y
+	if oneH == 0 || threeH <= oneH {
+		t.Errorf("column heights one=%d three=%d; want 0 < one < three (natural content height)", oneH, threeH)
+	}
+	if short := column(three, image.Pt(560, 40)).Size.Y; short != threeH {
+		t.Errorf("column height %d under a short constraint != unconstrained height %d; LayoutColumn must not fit a viewport", short, threeH)
+	}
+}
+
 // TestCodeBlockOverflowScrolls verifies a code block never wraps or exceeds
 // its constraint: an over-wide line keeps the block inside the narrow width,
 // and the height matches the wide layout (same line count — the overflow

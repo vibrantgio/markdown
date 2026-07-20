@@ -69,6 +69,16 @@ func NewDocumentAt(blocks []Block, first int) *Document {
 // Blocks returns the document's top-level blocks.
 func (d *Document) Blocks() []Block { return d.blocks }
 
+// LayoutColumn lays out every block in a natural-height vertical column with
+// no internal scrolling: the document takes exactly the height its content
+// needs. Intended for embedding a document inside a context that scrolls
+// already — a chat message row, a card — where [Layout]'s own viewport would
+// fight the outer one. It is O(len(blocks)) per frame, so it suits the short
+// documents such contexts hold.
+func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
+	return d.column(gtx, shaper, style, d.blocks)
+}
+
 // Layout lays out the document's visible blocks in a vertical scrolling list.
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	return list.Layout(gtx, d.list, d.blocks, func(gtx layout.Context, b Block) layout.Dimensions {
