@@ -3,6 +3,7 @@ package markdown
 import (
 	"fmt"
 	"image"
+	"strings"
 
 	"gioui.org/f32"
 	"gioui.org/font"
@@ -34,6 +35,9 @@ type Document struct {
 	text map[any]*richtext.State
 	// code holds per-code-block horizontal scroll state.
 	code map[*CodeBlock]*layout.List
+	// tables holds per-table horizontal scroll state, used when even the
+	// min-content column widths overflow the constraint.
+	tables map[*Table]*layout.List
 	// images holds per-image-block provider results, so the provider and
 	// texture upload run once per block, not per frame.
 	images map[*Image]imageState
@@ -53,6 +57,7 @@ func NewDocument(blocks []Block) *Document {
 		list:   list.NewState(),
 		text:   make(map[any]*richtext.State),
 		code:   make(map[*CodeBlock]*layout.List),
+		tables: make(map[*Table]*layout.List),
 		images: make(map[*Image]imageState),
 	}
 }
@@ -153,6 +158,16 @@ func (d *Document) codeState(b *CodeBlock) *layout.List {
 	return l
 }
 
+// tableState returns the persistent horizontal scroll state for a table.
+func (d *Document) tableState(b *Table) *layout.List {
+	l, ok := d.tables[b]
+	if !ok {
+		l = &layout.List{Axis: layout.Horizontal}
+		d.tables[b] = l
+	}
+	return l
+}
+
 // quoteBarWidth is the width of the bar leading a blockquote.
 const quoteBarWidth = unit.Dp(3)
 
@@ -237,9 +252,13 @@ func cellSpans(style Style, cell *TableCell, header bool) []richtext.SpanStyle {
 
 // table renders a GFM table as a grid: the emphasised header row on the
 // TableHeaderBackground surface above the body rows, ruled by 1 dp
-// TableBorder lines. Each column takes its widest cell's natural width,
-// shrunk proportionally when the grid would overflow the constraint, and
-// cell content honours the column alignment.
+// TableBorder lines. Each column takes its widest cell's natural width;
+// when the grid would overflow the constraint, columns shrink towards —
+// but never below — their min-content width (the widest single word), the
+// deficit removed from the columns' slack in proportion, so prose columns
+// wrap while narrow columns keep their longest word intact. When even the
+// min-content widths overflow, the grid scrolls horizontally like a code
+// block. Cell content honours the column alignment.
 func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t *Table) layout.Dimensions {
 	cols := len(t.Header)
 	if cols == 0 || cols != len(t.Alignments) {
@@ -255,7 +274,7 @@ func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t
 
 	// Measure pass: record each cell at the full content width, discard the
 	// ops, and keep the widest natural width per column.
-	widths := make([]int, cols)
+	naturals := make([]int, cols)
 	mgtx := gtx
 	mgtx.Constraints.Min = image.Point{}
 	mgtx.Constraints.Max.X = avail
@@ -267,17 +286,16 @@ func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t
 			m := op.Record(gtx.Ops)
 			dims := richtext.Render(shaper, style.Text, cellSpans(style, cell, ri == 0), richtext.Idle())(mgtx)
 			m.Stop()
-			widths[ci] = max(widths[ci], dims.Size.X)
+			naturals[ci] = max(naturals[ci], dims.Size.X)
 		}
 	}
+	widths := naturals
 	total := 0
-	for _, w := range widths {
+	for _, w := range naturals {
 		total += w
 	}
-	if total > avail && total > 0 {
-		for i, w := range widths {
-			widths[i] = w * avail / total
-		}
+	if total > avail {
+		widths = distributeWidths(naturals, minColumnWidths(gtx, shaper, style, rows, cols, naturals), avail)
 		total = 0
 		for _, w := range widths {
 			total += w
@@ -285,8 +303,105 @@ func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t
 	}
 	tableW := total + (cols+1)*border + cols*2*pad
 
-	// Layout pass: rows top to bottom, one horizontal rule above each and one
-	// below the last; vertical rules span the finished height at the end.
+	if tableW <= gtx.Constraints.Max.X {
+		return d.tableGrid(gtx, shaper, style, t, rows, widths)
+	}
+	// Even the min-content widths overflow: scroll the grid horizontally,
+	// clipped to the viewport, like an over-wide code block.
+	return d.tableState(t).Layout(gtx, 1, func(gtx layout.Context, _ int) layout.Dimensions {
+		return d.tableGrid(gtx, shaper, style, t, rows, widths)
+	})
+}
+
+// minColumnWidths measures each column's min-content width: the widest
+// single whitespace-separated word across its cells, in the cell's span
+// styling. Only called when the natural widths overflow, so the fitting
+// fast path pays nothing for it.
+func minColumnWidths(gtx layout.Context, shaper *text.Shaper, style Style, rows [][]*TableCell, cols int, naturals []int) []int {
+	mgtx := gtx
+	mgtx.Constraints.Min = image.Point{}
+	mgtx.Constraints.Max = image.Pt(1e6, 1e6)
+	mins := make([]int, cols)
+	for ri, row := range rows {
+		for ci, cell := range row {
+			if ci >= cols {
+				break
+			}
+			for _, sp := range cellSpans(style, cell, ri == 0) {
+				for _, word := range strings.Fields(sp.Content) {
+					w := sp
+					w.Content = word
+					m := op.Record(gtx.Ops)
+					dims := richtext.Render(shaper, style.Text, []richtext.SpanStyle{w}, richtext.Idle())(mgtx)
+					m.Stop()
+					mins[ci] = max(mins[ci], dims.Size.X)
+				}
+			}
+		}
+	}
+	for i := range mins {
+		mins[i] = min(mins[i], naturals[i])
+	}
+	return mins
+}
+
+// distributeWidths sizes columns for avail total content width: natural
+// widths when they fit, otherwise each column shrunk towards — but never
+// below — its min-content width, the deficit removed from the columns'
+// slack (natural − min) in proportion. When even the minima overflow every
+// column gets its minimum and the caller lets the grid overflow.
+func distributeWidths(naturals, mins []int, avail int) []int {
+	total, totalMin := 0, 0
+	for i := range naturals {
+		total += naturals[i]
+		totalMin += mins[i]
+	}
+	widths := make([]int, len(naturals))
+	switch {
+	case total <= avail:
+		copy(widths, naturals)
+	case totalMin >= avail:
+		copy(widths, mins)
+	default:
+		slack := total - totalMin
+		extra := avail - totalMin
+		rem := avail
+		for i := range widths {
+			widths[i] = mins[i] + (naturals[i]-mins[i])*extra/slack
+			rem -= widths[i]
+		}
+		// Integer division under-fills; hand the remainder to columns that
+		// still have slack.
+		for rem > 0 {
+			grown := false
+			for i := range widths {
+				if rem > 0 && widths[i] < naturals[i] {
+					widths[i]++
+					rem--
+					grown = true
+				}
+			}
+			if !grown {
+				break
+			}
+		}
+	}
+	return widths
+}
+
+// tableGrid lays out the grid at the given column widths.
+func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Style, t *Table, rows [][]*TableCell, widths []int) layout.Dimensions {
+	cols := len(widths)
+	border := max(gtx.Dp(1), 1)
+	pad := gtx.Dp(unit.Dp(tokens.Spacing.S2))
+	total := 0
+	for _, w := range widths {
+		total += w
+	}
+	tableW := total + (cols+1)*border + cols*2*pad
+
+	// Rows top to bottom, one horizontal rule above each and one below the
+	// last; vertical rules span the finished height at the end.
 	y := 0
 	hline := func() {
 		paint.FillShape(gtx.Ops, style.TableBorder, clip.Rect{
@@ -328,9 +443,16 @@ func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t
 			case AlignRight:
 				dx = max(widths[ci]-sizes[ci].X, 0)
 			}
+			// Clip to the padded cell box so degenerate content can never
+			// paint across the rule into the neighbouring column.
+			cl := clip.Rect{
+				Min: image.Pt(x, y),
+				Max: image.Pt(x+2*pad+widths[ci], y+2*pad+rowH),
+			}.Push(gtx.Ops)
 			tr := op.Offset(image.Pt(x+pad+dx, y+pad)).Push(gtx.Ops)
 			calls[ci].Add(gtx.Ops)
 			tr.Pop()
+			cl.Pop()
 			x += widths[ci] + 2*pad + border
 		}
 		y += rowH + 2*pad

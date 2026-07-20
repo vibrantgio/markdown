@@ -87,6 +87,23 @@ func TestTableDocumentGolden(t *testing.T) {
 	}
 }
 
+// TestTableNarrowGolden records or diffs the min-content behaviour under a
+// narrow constraint: the word column keeps its longest word on one line, the
+// prose column absorbs the whole squeeze by wrapping, and nothing paints
+// across a column rule.
+func TestTableNarrowGolden(t *testing.T) {
+	shaper := defaultShaper(t)
+	src := "| Shell | Description |\n" +
+		"|:------|:------------|\n" +
+		"| Compactline | a shell arranging its regions around a compact single line of content |\n" +
+		"| Sidebar | a shell with a leading navigation region and a trailing content region |\n"
+	blocks := markdown.Parse([]byte(src))
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	d := markdown.NewDocument(blocks)
+	golden.Render(t, "table-narrow-light", image.Pt(300, 260),
+		themed(d, shaper, style, tokens.DefaultLight))
+}
+
 // TestScrolledDocumentGolden records or diffs the corpus scrolled to the task
 // list, proving the prism/list viewport renders later blocks.
 func TestScrolledDocumentGolden(t *testing.T) {
@@ -157,6 +174,88 @@ func TestCodeBlockOverflowScrolls(t *testing.T) {
 	}
 	if narrow.Size.Y != wide.Size.Y {
 		t.Errorf("narrow code block height %d != wide height %d; over-wide code must scroll, not wrap", narrow.Size.Y, wide.Size.Y)
+	}
+}
+
+// TestDistributeWidths verifies the table column distribution: natural
+// widths when they fit, slack-proportional shrinking floored at min-content
+// when they don't, and the plain minima when even those overflow.
+func TestDistributeWidths(t *testing.T) {
+	naturals := []int{100, 300}
+	mins := []int{80, 40}
+
+	if got := markdown.DistributeWidths(naturals, mins, 500); !slicesEqual(got, naturals) {
+		t.Errorf("fitting distribution %v; want naturals %v", got, naturals)
+	}
+
+	got := markdown.DistributeWidths(naturals, mins, 200)
+	if sum(got) != 200 {
+		t.Errorf("shrunk widths %v sum to %d; want the full 200", got, sum(got))
+	}
+	for i := range got {
+		if got[i] < mins[i] {
+			t.Errorf("column %d width %d below its min-content %d", i, got[i], mins[i])
+		}
+		if got[i] > naturals[i] {
+			t.Errorf("column %d width %d above its natural %d", i, got[i], naturals[i])
+		}
+	}
+	// The deficit comes out of slack: column 0 (slack 20) must give up far
+	// less than column 1 (slack 260).
+	if lost0, lost1 := naturals[0]-got[0], naturals[1]-got[1]; lost0 >= lost1 {
+		t.Errorf("shrink %v took %d from the low-slack column and %d from the high-slack one; want the slack-rich column to absorb more", got, lost0, lost1)
+	}
+
+	if got := markdown.DistributeWidths(naturals, mins, 60); !slicesEqual(got, mins) {
+		t.Errorf("overflow distribution %v; want minima %v", got, mins)
+	}
+}
+
+func sum(xs []int) int {
+	t := 0
+	for _, x := range xs {
+		t += x
+	}
+	return t
+}
+
+func slicesEqual(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// TestTableNarrowKeepsWords verifies the min-content floor end to end: at a
+// width where the proportional shrink would squeeze the first column below
+// its longest word, the table still fits the constraint (the prose column
+// wraps instead), and only truly impossible widths overflow into the
+// horizontal scroll fallback.
+func TestTableNarrowKeepsWords(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	src := "| Shell | Description |\n" +
+		"|:------|:------------|\n" +
+		"| Compactline | a shell arranging its regions around a compact single line of content |\n" +
+		"| Sidebar | a shell with a leading navigation region and a trailing content region |\n"
+	blocks := markdown.Parse([]byte(src))
+
+	wide := measureDoc(shaper, style, blocks, image.Pt(2000, 2000))
+	narrow := measureDoc(shaper, style, blocks, image.Pt(300, 2000))
+	if narrow.Size.X > 300 {
+		t.Errorf("narrow table width %d exceeds constraint 300; want the prose column to wrap within it", narrow.Size.X)
+	}
+	if narrow.Size.Y <= wide.Size.Y {
+		t.Errorf("narrow table height %d not taller than wide height %d; the prose column should have wrapped", narrow.Size.Y, wide.Size.Y)
+	}
+
+	if tiny := measureDoc(shaper, style, blocks, image.Pt(60, 2000)); tiny.Size.X > 60 {
+		t.Errorf("tiny table reports width %d beyond constraint 60; want the scroll fallback to clip the viewport", tiny.Size.X)
 	}
 }
 
