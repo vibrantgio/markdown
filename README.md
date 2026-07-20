@@ -15,14 +15,20 @@ The package walks a [goldmark](https://github.com/yuin/goldmark) AST (with
 - blockquotes as inset columns with a leading token-coloured bar
 - thematic breaks as rules
 - fenced and indented code blocks as monospace on a surface background with
-  tab expansion and horizontal overflow scrolling
+  tab expansion, horizontal overflow scrolling, and optional syntax
+  highlighting through the `Highlighter` hook on `Style`
+- GFM tables as grids with an emphasised header row, token borders, and
+  per-column alignment
+- images through a caller-supplied `ImageProvider` (the library performs no
+  I/O), rendered with `widget.Image` and falling back to alt text
 
 The document widget lays top-level blocks through `prism/list`, so long
 documents stay O(visible).
 
 This module deliberately quarantines the goldmark dependency away from prism;
 syntax highlighting (chroma) is likewise quarantined in the `highlight`
-subpackage (G6.3) so the core package never imports it.
+subpackage — assign `highlight.New("github")` (or any chroma style name) to
+`Style.Highlight` — so the core package never imports chroma.
 
 ## Why not `gioui.org/x/markdown`?
 

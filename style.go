@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"image"
 	"image/color"
 
 	"gioui.org/font"
@@ -9,6 +10,35 @@ import (
 	"github.com/vibrantgio/prism/richtext"
 	"github.com/vibrantgio/prism/tokens"
 )
+
+// CodeSpan is one coloured run of a highlighted code block, produced by a
+// [Highlighter]. The zero flags describe plain code in [Style].CodeColor.
+type CodeSpan struct {
+	// Text is the run's content.
+	Text string
+	// Color is the run colour; the zero value falls back to Style.CodeColor.
+	Color color.NRGBA
+	// Bold renders the run in the bold monospace weight.
+	Bold bool
+	// Italic renders the run in the italic monospace style.
+	Italic bool
+}
+
+// Highlighter syntax-highlights one code block: given the fence's language
+// and the block's code it returns the code split into coloured runs, in
+// order and concatenating back to the input. Returning nil renders the block
+// plain. The hook is a plain func so implementations — like the chroma-backed
+// one in markdown/highlight — never enter this package's dependency graph.
+type Highlighter func(language, code string) []CodeSpan
+
+// ImageProvider supplies the pixels for a document's [Image] blocks. The
+// library performs no I/O of its own: fetching, decoding, and caching policy
+// belong to the caller. Returning an error (or a nil image) makes the
+// document render the block's alt text instead.
+type ImageProvider interface {
+	// Image returns the decoded image for a markdown destination URL.
+	Image(url string) (image.Image, error)
+}
 
 // Style holds the themed rendering defaults for a document. Derive the
 // token-themed default with [FromTokens], then set Text.OnLinkClick.
@@ -32,6 +62,11 @@ type Style struct {
 	QuoteColor color.NRGBA
 	// RuleColor is the thematic-break line colour.
 	RuleColor color.NRGBA
+	// TableBorder is the table grid line colour.
+	TableBorder color.NRGBA
+	// TableHeaderBackground fills the table header row behind its emphasised
+	// cells.
+	TableHeaderBackground color.NRGBA
 	// CheckboxColor strokes the unchecked task checkbox and, filled, backs
 	// the checked one.
 	CheckboxColor color.NRGBA
@@ -42,12 +77,20 @@ type Style struct {
 	// Indent is the per-level indentation of list items and the inset of
 	// blockquote content.
 	Indent unit.Dp
+	// Highlight, when non-nil, syntax-highlights fenced code blocks.
+	// markdown/highlight provides a chroma-backed implementation.
+	Highlight Highlighter
+	// Images, when non-nil, supplies the pixels for [Image] blocks; without
+	// it every image falls back to its alt text.
+	Images ImageProvider
 }
 
 // FromTokens derives the default document style from colour tokens and the
 // type scale: headings step down HeadlineLarge..TitleSmall, body text follows
 // richtext.FromTokens, code sits on the SurfaceVariant surface, the quote bar
-// is Primary with OnSurfaceVariant text, and rules use Outline.
+// is Primary with OnSurfaceVariant text, rules and table borders use Outline,
+// and the table header row sits on SurfaceVariant. Highlight and Images stay
+// nil — both are opt-in.
 func FromTokens(c tokens.ColorTokens, ts tokens.TypeScale) Style {
 	return Style{
 		Text: richtext.FromTokens(c, ts),
@@ -59,17 +102,19 @@ func FromTokens(c tokens.ColorTokens, ts tokens.TypeScale) Style {
 			unit.Sp(ts.TitleMedium),
 			unit.Sp(ts.TitleSmall),
 		},
-		Mono:           "Go Mono, monospace",
-		CodeSize:       unit.Sp(ts.BodyMedium),
-		CodeColor:      c.OnSurfaceVariant,
-		CodeBackground: c.SurfaceVariant,
-		QuoteBar:       c.Primary,
-		QuoteColor:     c.OnSurfaceVariant,
-		RuleColor:      c.Outline,
-		CheckboxColor:  c.Primary,
-		CheckmarkColor: c.OnPrimary,
-		BlockGap:       unit.Dp(tokens.Spacing.S2),
-		Indent:         unit.Dp(tokens.Spacing.S6),
+		Mono:                  "Go Mono, monospace",
+		CodeSize:              unit.Sp(ts.BodyMedium),
+		CodeColor:             c.OnSurfaceVariant,
+		CodeBackground:        c.SurfaceVariant,
+		QuoteBar:              c.Primary,
+		QuoteColor:            c.OnSurfaceVariant,
+		RuleColor:             c.Outline,
+		TableBorder:           c.Outline,
+		TableHeaderBackground: c.SurfaceVariant,
+		CheckboxColor:         c.Primary,
+		CheckmarkColor:        c.OnPrimary,
+		BlockGap:              unit.Dp(tokens.Spacing.S2),
+		Indent:                unit.Dp(tokens.Spacing.S6),
 	}
 }
 
@@ -81,6 +126,44 @@ func (s Style) heading(level int) richtext.Style {
 		st.Size = s.HeadingSizes[level-1]
 	}
 	return st
+}
+
+// codeSpans maps a code block's content onto richtext spans: highlighted
+// runs when the style's Highlighter recognises the language, one plain run
+// otherwise. Newlines opening a highlighted run (chroma's whitespace tokens
+// lead with them) are moved to the previous run's tail: richtext treats a
+// trailing newline as a clean line end, while a leading one would skew the
+// line's metrics.
+func (s Style) codeSpans(cb *CodeBlock) []richtext.SpanStyle {
+	if s.Highlight != nil {
+		if hl := s.Highlight(cb.Language, cb.Code); len(hl) > 0 {
+			out := make([]richtext.SpanStyle, 0, len(hl))
+			for _, h := range hl {
+				content := h.Text
+				if len(out) > 0 {
+					i := 0
+					for i < len(content) && content[i] == '\n' {
+						i++
+					}
+					out[len(out)-1].Content += content[:i]
+					content = content[i:]
+				}
+				if content == "" {
+					continue
+				}
+				rs := richtext.SpanStyle{Content: content, Color: h.Color, Typeface: s.Mono}
+				if h.Bold {
+					rs.Weight = font.Bold
+				}
+				if h.Italic {
+					rs.Style = font.Italic
+				}
+				out = append(out, rs)
+			}
+			return out
+		}
+	}
+	return []richtext.SpanStyle{{Content: cb.Code, Typeface: s.Mono}}
 }
 
 // spanStyles maps model spans onto richtext spans against the style's

@@ -6,9 +6,13 @@
 // runs. [Document] lays the top-level blocks through prism/list, so long
 // documents stay O(visible), and renders each block with prism widgets:
 // type-scale headings, richtext paragraphs, nested lists with task-list
-// checkboxes, inset blockquotes with a leading token-coloured bar, rules, and
+// checkboxes, inset blockquotes with a leading token-coloured bar, rules,
 // monospace code blocks on a surface background with tab expansion and
-// horizontal overflow scrolling.
+// horizontal overflow scrolling, GFM tables as bordered grids, and images
+// through a caller-supplied [ImageProvider]. Code blocks are optionally
+// syntax-highlighted through the [Highlighter] hook on [Style]; the
+// markdown/highlight subpackage provides a chroma-backed implementation so
+// this package never depends on chroma.
 //
 // This module carries the goldmark dependency so prism does not have to;
 // gioui.org/x/markdown was evaluated (2026-07-20) and rejected as a
@@ -34,8 +38,8 @@ type Span struct {
 }
 
 // Block is one block-level element of a parsed document. The concrete types
-// are *[Heading], *[Paragraph], *[List], *[Blockquote], *[CodeBlock], and
-// *[Rule].
+// are *[Heading], *[Paragraph], *[List], *[Blockquote], *[CodeBlock],
+// *[Rule], *[Table], and *[Image].
 type Block interface{ isBlock() }
 
 // Heading is an ATX or setext heading.
@@ -93,9 +97,54 @@ type CodeBlock struct {
 // Rule is a thematic break.
 type Rule struct{}
 
+// Alignment is a table column's horizontal cell alignment, from the GFM
+// delimiter row. The zero value aligns left.
+type Alignment int
+
+const (
+	// AlignLeft aligns cell content to the left (the GFM default).
+	AlignLeft Alignment = iota
+	// AlignCenter centres cell content.
+	AlignCenter
+	// AlignRight aligns cell content to the right.
+	AlignRight
+)
+
+// Table is a GFM table: an emphasised header row over zero or more body rows,
+// rendered as a grid with token-coloured borders.
+type Table struct {
+	// Alignments is the per-column alignment; its length is the column count.
+	Alignments []Alignment
+	// Header is the header row. Rows are normalised to the column count:
+	// missing cells are empty, extra cells are dropped (per GFM).
+	Header []*TableCell
+	// Rows are the body rows, each normalised like Header.
+	Rows [][]*TableCell
+}
+
+// TableCell is one cell of a [Table].
+type TableCell struct {
+	// Spans is the cell's inline content.
+	Spans []Span
+}
+
+// Image is a block-level image: a paragraph whose sole inline content is one
+// image. Pixels come from the caller's [ImageProvider]; without one (or when
+// it fails) the alt text renders as a paragraph instead. Images mixed into
+// surrounding text fall back to their alt text at parse time.
+type Image struct {
+	// URL is the image destination as written in the source. The library
+	// never fetches it — resolution is the provider's business.
+	URL string
+	// Alt is the image's alternate text, the fallback rendering.
+	Alt string
+}
+
 func (*Heading) isBlock()    {}
 func (*Paragraph) isBlock()  {}
 func (*List) isBlock()       {}
 func (*Blockquote) isBlock() {}
 func (*CodeBlock) isBlock()  {}
 func (*Rule) isBlock()       {}
+func (*Table) isBlock()      {}
+func (*Image) isBlock()      {}

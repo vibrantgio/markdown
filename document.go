@@ -12,6 +12,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
+	"gioui.org/widget"
 
 	"github.com/vibrantgio/prism/list"
 	"github.com/vibrantgio/prism/richtext"
@@ -28,11 +29,21 @@ import (
 type Document struct {
 	blocks []Block
 	list   *list.State
-	// text holds per-heading/paragraph richtext link state, keyed by the
-	// block's pointer identity.
-	text map[Block]*richtext.State
+	// text holds per-paragraph richtext link state, keyed by the pointer
+	// identity of the heading, paragraph, table cell, or image it backs.
+	text map[any]*richtext.State
 	// code holds per-code-block horizontal scroll state.
 	code map[*CodeBlock]*layout.List
+	// images holds per-image-block provider results, so the provider and
+	// texture upload run once per block, not per frame.
+	images map[*Image]imageState
+}
+
+// imageState is a cached ImageProvider result: the uploaded texture, or a
+// recorded failure that pins the alt-text fallback.
+type imageState struct {
+	src paint.ImageOp
+	ok  bool
 }
 
 // NewDocument returns a Document over blocks, scrolled to the top.
@@ -40,8 +51,9 @@ func NewDocument(blocks []Block) *Document {
 	return &Document{
 		blocks: blocks,
 		list:   list.NewState(),
-		text:   make(map[Block]*richtext.State),
+		text:   make(map[any]*richtext.State),
 		code:   make(map[*CodeBlock]*layout.List),
+		images: make(map[*Image]imageState),
 	}
 }
 
@@ -82,6 +94,10 @@ func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b
 		return d.codeBlock(gtx, shaper, style, b)
 	case *Rule:
 		return rule(gtx, style)
+	case *Table:
+		return d.table(gtx, shaper, style, b)
+	case *Image:
+		return d.image(gtx, shaper, style, b)
 	}
 	return layout.Dimensions{}
 }
@@ -106,8 +122,9 @@ func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, 
 	return layout.Dimensions{Size: size}
 }
 
-// textState returns the persistent richtext state for a heading or paragraph.
-func (d *Document) textState(b Block) *richtext.State {
+// textState returns the persistent richtext state for a heading, paragraph,
+// table cell, or image fallback, keyed by pointer identity.
+func (d *Document) textState(b any) *richtext.State {
 	s, ok := d.text[b]
 	if !ok {
 		s = richtext.NewState()
@@ -161,7 +178,7 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	pad := gtx.Dp(unit.Dp(tokens.Spacing.S3))
 	radius := gtx.Dp(unit.Dp(tokens.Radius.Base))
 	codeStyle := richtext.Style{Color: style.CodeColor, Size: style.CodeSize}
-	spans := []richtext.SpanStyle{{Content: cb.Code, Typeface: style.Mono}}
+	spans := style.codeSpans(cb)
 
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
@@ -196,6 +213,161 @@ func rule(gtx layout.Context, style Style) layout.Dimensions {
 		Max: image.Pt(w, pad+th),
 	}.Op())
 	return layout.Dimensions{Size: image.Pt(w, 2*pad+th)}
+}
+
+// cellSpans returns a table cell's richtext spans; header cells are
+// emphasised with the bold run weight.
+func cellSpans(style Style, cell *TableCell, header bool) []richtext.SpanStyle {
+	w := font.Normal
+	if header {
+		w = font.Bold
+	}
+	return style.spanStyles(cell.Spans, w)
+}
+
+// table renders a GFM table as a grid: the emphasised header row on the
+// TableHeaderBackground surface above the body rows, ruled by 1 dp
+// TableBorder lines. Each column takes its widest cell's natural width,
+// shrunk proportionally when the grid would overflow the constraint, and
+// cell content honours the column alignment.
+func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t *Table) layout.Dimensions {
+	cols := len(t.Header)
+	if cols == 0 || cols != len(t.Alignments) {
+		return layout.Dimensions{}
+	}
+	rows := make([][]*TableCell, 0, len(t.Rows)+1)
+	rows = append(rows, t.Header)
+	rows = append(rows, t.Rows...)
+
+	border := max(gtx.Dp(1), 1)
+	pad := gtx.Dp(unit.Dp(tokens.Spacing.S2))
+	avail := max(gtx.Constraints.Max.X-(cols+1)*border-cols*2*pad, 0)
+
+	// Measure pass: record each cell at the full content width, discard the
+	// ops, and keep the widest natural width per column.
+	widths := make([]int, cols)
+	mgtx := gtx
+	mgtx.Constraints.Min = image.Point{}
+	mgtx.Constraints.Max.X = avail
+	for ri, row := range rows {
+		for ci, cell := range row {
+			if ci >= cols {
+				break
+			}
+			m := op.Record(gtx.Ops)
+			dims := richtext.Render(shaper, style.Text, cellSpans(style, cell, ri == 0), richtext.Idle())(mgtx)
+			m.Stop()
+			widths[ci] = max(widths[ci], dims.Size.X)
+		}
+	}
+	total := 0
+	for _, w := range widths {
+		total += w
+	}
+	if total > avail && total > 0 {
+		for i, w := range widths {
+			widths[i] = w * avail / total
+		}
+		total = 0
+		for _, w := range widths {
+			total += w
+		}
+	}
+	tableW := total + (cols+1)*border + cols*2*pad
+
+	// Layout pass: rows top to bottom, one horizontal rule above each and one
+	// below the last; vertical rules span the finished height at the end.
+	y := 0
+	hline := func() {
+		paint.FillShape(gtx.Ops, style.TableBorder, clip.Rect{
+			Min: image.Pt(0, y),
+			Max: image.Pt(tableW, y+border),
+		}.Op())
+		y += border
+	}
+	calls := make([]op.CallOp, cols)
+	sizes := make([]image.Point, cols)
+	for ri, row := range rows {
+		hline()
+		rowH := 0
+		cgtx := gtx
+		cgtx.Constraints.Min = image.Point{}
+		for ci, cell := range row {
+			if ci >= cols {
+				break
+			}
+			cgtx.Constraints.Max.X = widths[ci]
+			m := op.Record(gtx.Ops)
+			dims := richtext.Layout(cgtx, d.textState(cell), shaper, style.Text, cellSpans(style, cell, ri == 0))
+			calls[ci] = m.Stop()
+			sizes[ci] = dims.Size
+			rowH = max(rowH, dims.Size.Y)
+		}
+		if ri == 0 {
+			paint.FillShape(gtx.Ops, style.TableHeaderBackground, clip.Rect{
+				Min: image.Pt(border, y),
+				Max: image.Pt(tableW-border, y+rowH+2*pad),
+			}.Op())
+		}
+		x := border
+		for ci := range min(len(row), cols) {
+			dx := 0
+			switch t.Alignments[ci] {
+			case AlignCenter:
+				dx = max((widths[ci]-sizes[ci].X)/2, 0)
+			case AlignRight:
+				dx = max(widths[ci]-sizes[ci].X, 0)
+			}
+			tr := op.Offset(image.Pt(x+pad+dx, y+pad)).Push(gtx.Ops)
+			calls[ci].Add(gtx.Ops)
+			tr.Pop()
+			x += widths[ci] + 2*pad + border
+		}
+		y += rowH + 2*pad
+	}
+	hline()
+	tableH := y
+
+	x := 0
+	for ci := 0; ci <= cols; ci++ {
+		paint.FillShape(gtx.Ops, style.TableBorder, clip.Rect{
+			Min: image.Pt(x, 0),
+			Max: image.Pt(x+border, tableH),
+		}.Op())
+		if ci < cols {
+			x += border + widths[ci] + 2*pad
+		}
+	}
+	return layout.Dimensions{Size: image.Pt(tableW, tableH)}
+}
+
+// image renders a block image through the style's provider, scaled down (never
+// up) to fit the width constraint. Without a provider, or when it fails, the
+// alt text — or the URL when the alt is empty — renders as an italic
+// paragraph. The provider result is cached per block.
+func (d *Document) image(gtx layout.Context, shaper *text.Shaper, style Style, n *Image) layout.Dimensions {
+	st, cached := d.images[n]
+	if !cached {
+		if style.Images != nil {
+			if img, err := style.Images.Image(n.URL); err == nil && img != nil {
+				st = imageState{src: paint.NewImageOp(img), ok: true}
+			}
+		}
+		d.images[n] = st
+	}
+	if !st.ok {
+		alt := n.Alt
+		if alt == "" {
+			alt = n.URL
+		}
+		spans := []richtext.SpanStyle{{Content: alt, Style: font.Italic}}
+		return richtext.Layout(gtx, d.textState(n), shaper, style.Text, spans)
+	}
+	return widget.Image{
+		Src:      st.src,
+		Fit:      widget.ScaleDown,
+		Position: layout.NW,
+	}.Layout(gtx)
 }
 
 // listBlock renders a list's items as marker-plus-content rows; nested lists

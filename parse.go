@@ -15,7 +15,7 @@ const tabStop = 4
 
 // Parse parses GitHub-flavored markdown into the block model. Markdown has no
 // invalid inputs, so every source yields a document; constructs outside the
-// supported set (raw HTML, and until G6.3 tables and images) are dropped.
+// supported set (raw HTML) are dropped.
 func Parse(source []byte) []Block {
 	p := goldmark.New(goldmark.WithExtensions(gmext.GFM)).Parser()
 	doc := p.Parse(gmtext.NewReader(source))
@@ -30,7 +30,12 @@ func convertBlocks(src []byte, parent ast.Node) []Block {
 		case *ast.Heading:
 			out = append(out, &Heading{Level: n.Level, Spans: inlines(src, n)})
 		case *ast.Paragraph:
-			if spans := inlines(src, n); len(spans) > 0 {
+			if img := soleImage(n); img != nil {
+				out = append(out, &Image{
+					URL: string(img.Destination),
+					Alt: plainText(src, img),
+				})
+			} else if spans := inlines(src, n); len(spans) > 0 {
 				out = append(out, &Paragraph{Spans: spans})
 			}
 		case *ast.TextBlock:
@@ -51,9 +56,82 @@ func convertBlocks(src []byte, parent ast.Node) []Block {
 			out = append(out, &Blockquote{Blocks: convertBlocks(src, n)})
 		case *ast.List:
 			out = append(out, convertList(src, n))
+		case *east.Table:
+			out = append(out, convertTable(src, n))
 		}
 	}
 	return out
+}
+
+// convertTable maps a GFM table: per-column alignments from the delimiter
+// row, the header row, and the body rows, each normalised to the column
+// count.
+func convertTable(src []byte, n *east.Table) *Table {
+	t := &Table{Alignments: make([]Alignment, len(n.Alignments))}
+	for i, a := range n.Alignments {
+		switch a {
+		case east.AlignCenter:
+			t.Alignments[i] = AlignCenter
+		case east.AlignRight:
+			t.Alignments[i] = AlignRight
+		}
+	}
+	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+		switch c.(type) {
+		case *east.TableHeader:
+			t.Header = convertRow(src, c, len(t.Alignments))
+		case *east.TableRow:
+			t.Rows = append(t.Rows, convertRow(src, c, len(t.Alignments)))
+		}
+	}
+	return t
+}
+
+// convertRow maps one table row's cells, padding with empty cells or dropping
+// extras so every row spans exactly cols columns (per GFM).
+func convertRow(src []byte, row ast.Node, cols int) []*TableCell {
+	cells := make([]*TableCell, 0, cols)
+	for c := row.FirstChild(); c != nil && len(cells) < cols; c = c.NextSibling() {
+		if _, ok := c.(*east.TableCell); !ok {
+			continue
+		}
+		cells = append(cells, &TableCell{Spans: inlines(src, c)})
+	}
+	for len(cells) < cols {
+		cells = append(cells, &TableCell{})
+	}
+	return cells
+}
+
+// soleImage returns the paragraph's image when an image is its only inline
+// child — the form promoted to an *[Image] block — and nil otherwise.
+func soleImage(n ast.Node) *ast.Image {
+	img, ok := n.FirstChild().(*ast.Image)
+	if !ok || n.ChildCount() != 1 {
+		return nil
+	}
+	return img
+}
+
+// plainText flattens a node's inline subtree to its literal text — the alt
+// text of an image node.
+func plainText(src []byte, n ast.Node) string {
+	var b strings.Builder
+	var walk func(n ast.Node)
+	walk = func(n ast.Node) {
+		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+			switch c := c.(type) {
+			case *ast.Text:
+				b.Write(c.Segment.Value(src))
+			case *ast.String:
+				b.Write(c.Value)
+			default:
+				walk(c)
+			}
+		}
+	}
+	walk(n)
+	return b.String()
 }
 
 // convertList maps a goldmark list and its items, recording ordering, the
@@ -199,8 +277,12 @@ func inlines(src []byte, parent ast.Node) []Span {
 				add(sp)
 			case *east.TaskCheckBox:
 				// Rendered as a real checkbox by the list-item widget.
-			case *ast.Image, *ast.RawHTML:
-				// Dropped until G6.3 (images) / by design (raw HTML).
+			case *ast.Image:
+				// Only a paragraph-sole image becomes an *Image block; an
+				// image mixed into text falls back to its alt-text runs.
+				walk(c, s)
+			case *ast.RawHTML:
+				// Dropped by design.
 			default:
 				walk(c, s)
 			}

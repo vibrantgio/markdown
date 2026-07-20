@@ -31,6 +31,10 @@ func item(blocks ...markdown.Block) *markdown.ListItem {
 	return &markdown.ListItem{Blocks: blocks}
 }
 
+func cell(spans ...markdown.Span) *markdown.TableCell {
+	return &markdown.TableCell{Spans: spans}
+}
+
 func task(checked bool, blocks ...markdown.Block) *markdown.ListItem {
 	return &markdown.ListItem{Task: true, Checked: checked, Blocks: blocks}
 }
@@ -128,6 +132,52 @@ func TestParseCorpus(t *testing.T) {
 		if !reflect.DeepEqual(got[i], want[i]) {
 			t.Errorf("block %d:\n got  %#v\n want %#v", i, got[i], want[i])
 		}
+	}
+}
+
+// TestParseTable asserts a GFM table maps onto the Table block: delimiter-row
+// alignments, styled header and body cells, and a short row padded with an
+// empty cell to the column count.
+func TestParseTable(t *testing.T) {
+	src := "| Package | Role | Stars |\n" +
+		"|:--------|:----:|------:|\n" +
+		"| `prism` | primitives | 1200 |\n" +
+		"| **markdown** | documents |\n"
+	got := markdown.Parse([]byte(src))
+
+	want := []markdown.Block{&markdown.Table{
+		Alignments: []markdown.Alignment{
+			markdown.AlignLeft, markdown.AlignCenter, markdown.AlignRight,
+		},
+		Header: []*markdown.TableCell{
+			cell(txt("Package")), cell(txt("Role")), cell(txt("Stars")),
+		},
+		Rows: [][]*markdown.TableCell{
+			{cell(code("prism")), cell(txt("primitives")), cell(txt("1200"))},
+			{cell(bold("markdown")), cell(txt("documents")), cell()},
+		},
+	}}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Parse:\n got  %#v\n want %#v", got, want)
+	}
+}
+
+// TestParseImage asserts a paragraph whose sole content is an image becomes
+// an Image block, while an image mixed into text falls back to its alt-text
+// runs inside the paragraph.
+func TestParseImage(t *testing.T) {
+	src := "![prism logo](https://vibrantgio.dev/prism.png)\n\n" +
+		"An inline ![tiny icon](icon.png) stays text.\n"
+	got := markdown.Parse([]byte(src))
+
+	want := []markdown.Block{
+		&markdown.Image{URL: "https://vibrantgio.dev/prism.png", Alt: "prism logo"},
+		para(txt("An inline tiny icon stays text.")),
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Parse:\n got  %#v\n want %#v", got, want)
 	}
 }
 

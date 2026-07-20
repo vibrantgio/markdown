@@ -1,6 +1,7 @@
 package markdown_test
 
 import (
+	"fmt"
 	"image"
 	"testing"
 
@@ -48,6 +49,34 @@ func TestCorpusDocumentGolden(t *testing.T) {
 	}{
 		{"corpus-light", tokens.DefaultLight},
 		{"corpus-dark", tokens.DefaultDark},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypeScale)
+			d := markdown.NewDocument(blocks)
+			golden.Render(t, tc.name, size, themed(d, shaper, style, tc.colors))
+		})
+	}
+}
+
+// TestTableDocumentGolden records or diffs a GFM table — emphasised header
+// row on its surface, token borders, and left/centre/right column alignment —
+// in light and dark token themes.
+func TestTableDocumentGolden(t *testing.T) {
+	shaper := defaultShaper(t)
+	src := "| Package | Role | Stars |\n" +
+		"|:--------|:----:|------:|\n" +
+		"| `prism` | primitives | 1200 |\n" +
+		"| **markdown** | document rendering | 87 |\n" +
+		"| cadence | patterns | 5 |\n"
+	blocks := markdown.Parse([]byte(src))
+	size := image.Pt(560, 180)
+	cases := []struct {
+		name   string
+		colors tokens.ColorTokens
+	}{
+		{"table-light", tokens.DefaultLight},
+		{"table-dark", tokens.DefaultDark},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -115,6 +144,48 @@ func TestNestedListIndents(t *testing.T) {
 	nw := measureDoc(shaper, style, nested, image.Pt(2000, 1000)).Size.X
 	if nw < fw+2*int(style.Indent) {
 		t.Errorf("nested list width %d not at least two indents past flat width %d (indent %d)", nw, fw, int(style.Indent))
+	}
+}
+
+// memProvider is an in-memory ImageProvider serving images by URL.
+type memProvider map[string]image.Image
+
+func (p memProvider) Image(url string) (image.Image, error) {
+	img, ok := p[url]
+	if !ok {
+		return nil, fmt.Errorf("no image for %q", url)
+	}
+	return img, nil
+}
+
+// TestImageProvider lays out image blocks through an in-memory provider: a
+// fitting image takes its natural height, an over-wide image is scaled down
+// to the width constraint, and a URL the provider cannot serve falls back to
+// the alt-text paragraph.
+func TestImageProvider(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style.Images = memProvider{
+		"logo.png": image.NewNRGBA(image.Rect(0, 0, 48, 100)),
+		"wide.png": image.NewNRGBA(image.Rect(0, 0, 2000, 100)),
+	}
+
+	fits := measureDoc(shaper, style, markdown.Parse([]byte("![the logo](logo.png)\n")), image.Pt(560, 400))
+	if fits.Size.Y < 100 {
+		t.Errorf("fitting image document height %d < image height 100", fits.Size.Y)
+	}
+
+	wide := measureDoc(shaper, style, markdown.Parse([]byte("![panorama](wide.png)\n")), image.Pt(560, 400))
+	if wide.Size.Y >= 100 {
+		t.Errorf("over-wide image document height %d not scaled down below 100", wide.Size.Y)
+	}
+
+	missing := measureDoc(shaper, style, markdown.Parse([]byte("![absent art](gone.png)\n")), image.Pt(560, 400))
+	if missing.Size.Y == 0 {
+		t.Error("missing image laid out with zero height; want alt-text fallback")
+	}
+	if missing.Size.Y >= fits.Size.Y {
+		t.Errorf("alt-text fallback height %d not below image height %d", missing.Size.Y, fits.Size.Y)
 	}
 }
 
