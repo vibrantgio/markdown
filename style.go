@@ -5,6 +5,7 @@ import (
 	"image/color"
 
 	"gioui.org/font"
+	"gioui.org/layout"
 	"gioui.org/unit"
 
 	"github.com/vibrantgio/prism/richtext"
@@ -38,6 +39,20 @@ type Highlighter func(language, code string) []CodeSpan
 type ImageProvider interface {
 	// Image returns the decoded image for a markdown destination URL.
 	Image(url string) (image.Image, error)
+}
+
+// WidgetImageProvider is the optional vector extension of [ImageProvider]:
+// an Images value that also implements it can serve an image as a live
+// widget — vector geometry that stays crisp at any scale and pixel density —
+// instead of decoded pixels. The document asks ImageWidget first and falls
+// back to Image, then to alt text. The hook keeps vector formats out of this
+// package's dependency graph the same way [Highlighter] keeps chroma out;
+// markdown/svgimage provides an SVG implementation backed by vibrantgio/svg.
+type WidgetImageProvider interface {
+	// ImageWidget returns a widget rendering the image for a markdown
+	// destination URL. Returning an error (or a nil widget) falls through
+	// to [ImageProvider].Image.
+	ImageWidget(url string) (layout.Widget, error)
 }
 
 // Style holds the themed rendering defaults for a document. Derive the
@@ -81,7 +96,8 @@ type Style struct {
 	// markdown/highlight provides a chroma-backed implementation.
 	Highlight Highlighter
 	// Images, when non-nil, supplies the pixels for [Image] blocks; without
-	// it every image falls back to its alt text.
+	// it every image falls back to its alt text. A value that also
+	// implements [WidgetImageProvider] can serve vector images as widgets.
 	Images ImageProvider
 }
 

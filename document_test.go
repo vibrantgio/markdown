@@ -259,6 +259,56 @@ func TestTableNarrowKeepsWords(t *testing.T) {
 	}
 }
 
+// widgetProvider implements ImageProvider and WidgetImageProvider, counting
+// widget requests and painting a fixed-size rect so layout is observable.
+type widgetProvider struct {
+	calls int
+}
+
+func (p *widgetProvider) Image(string) (image.Image, error) {
+	return nil, fmt.Errorf("no raster")
+}
+
+func (p *widgetProvider) ImageWidget(string) (layout.Widget, error) {
+	p.calls++
+	return func(gtx layout.Context) layout.Dimensions {
+		sz := image.Pt(40, 30)
+		paint.FillShape(gtx.Ops, tokens.DefaultLight.Primary, clip.Rect{Max: sz}.Op())
+		return layout.Dimensions{Size: sz}
+	}, nil
+}
+
+// TestWidgetImageProvider verifies the vector hook: a provider implementing
+// WidgetImageProvider serves the image as a widget (its size shows up in
+// the layout), and the widget is requested once per block, not per frame.
+func TestWidgetImageProvider(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	prov := &widgetProvider{}
+	style.Images = prov
+	blocks := markdown.Parse([]byte("![icon](icon.svg)\n"))
+	d := markdown.NewDocument(blocks)
+
+	layoutOnce := func() layout.Dimensions {
+		var ops op.Ops
+		gtx := layout.Context{
+			Metric:      unit.Metric{PxPerDp: 1, PxPerSp: 1},
+			Constraints: layout.Constraints{Max: image.Pt(560, 560)},
+			Ops:         &ops,
+		}
+		return d.Layout(gtx, shaper, style)
+	}
+
+	dims := layoutOnce()
+	if dims.Size.Y < 30 {
+		t.Errorf("document height %d; want at least the 30 px widget", dims.Size.Y)
+	}
+	layoutOnce()
+	if prov.calls != 1 {
+		t.Errorf("provider asked %d times over two frames; want the per-block cache to ask once", prov.calls)
+	}
+}
+
 // TestNestedListIndents verifies each nesting level shifts content by the
 // Indent column: three levels lay out strictly wider than one when width is
 // unconstrained.

@@ -43,11 +43,13 @@ type Document struct {
 	images map[*Image]imageState
 }
 
-// imageState is a cached ImageProvider result: the uploaded texture, or a
-// recorded failure that pins the alt-text fallback.
+// imageState is a cached provider result: the widget serving a vector
+// image, the uploaded raster texture, or a recorded failure that pins the
+// alt-text fallback.
 type imageState struct {
-	src paint.ImageOp
-	ok  bool
+	widget layout.Widget
+	src    paint.ImageOp
+	ok     bool
 }
 
 // NewDocument returns a Document over blocks, scrolled to the top.
@@ -480,7 +482,12 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 func (d *Document) image(gtx layout.Context, shaper *text.Shaper, style Style, n *Image) layout.Dimensions {
 	st, cached := d.images[n]
 	if !cached {
-		if style.Images != nil {
+		if wp, ok := style.Images.(WidgetImageProvider); ok {
+			if w, err := wp.ImageWidget(n.URL); err == nil && w != nil {
+				st = imageState{widget: w, ok: true}
+			}
+		}
+		if !st.ok && style.Images != nil {
 			if img, err := style.Images.Image(n.URL); err == nil && img != nil {
 				st = imageState{src: paint.NewImageOp(img), ok: true}
 			}
@@ -494,6 +501,9 @@ func (d *Document) image(gtx layout.Context, shaper *text.Shaper, style Style, n
 		}
 		spans := []richtext.SpanStyle{{Content: alt, Style: font.Italic}}
 		return richtext.Layout(gtx, d.textState(n), shaper, style.Text, spans)
+	}
+	if st.widget != nil {
+		return st.widget(gtx)
 	}
 	return widget.Image{
 		Src:      st.src,
