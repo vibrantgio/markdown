@@ -1,6 +1,20 @@
 // Package highlight provides a chroma-backed [markdown.Highlighter]. It is a
 // separate package inside the markdown module so the chroma dependency stays
 // out of the core package's graph: only importers of this package pay for it.
+//
+// Setting one on [markdown.Style].Highlight takes a code block's foreground out
+// of the token theme. Chroma colours every run it emits — measured, all 23 runs
+// of a small Go snippet carried an explicit colour, whitespace and punctuation
+// included — so Style.CodeColor is never reached and only the block's
+// background stays themed. Pass the style name that matches the theme, github
+// against a light one and github-dark against a dark one, and build a new
+// Highlighter when the theme changes: [New] resolves the style once and the
+// returned func closes over it, so it cannot follow a theme observable.
+//
+// An unrecognised style name is not an error. Chroma falls back to a
+// dark-background default whose runs come out near-white, which on the light
+// token theme is near-white text on SurfaceVariant. A typo in the style name
+// fails exactly that way — silently, and only on one of the two themes.
 package highlight
 
 import (

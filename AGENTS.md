@@ -10,10 +10,11 @@ dependency stops in `highlight`, so prism never sees either.
 
 **Layer.** Tier 4 of ADR-001's stack, `mvu → spectrum → prism → pulse →
 cadence → markdown`, alongside cadence. It imports `prism/list`,
-`prism/richtext`, `prism/scrollbar` and `prism/tokens`, plus the support
-libraries svg and `svg/driver/gio`; it does not import mvu, spectrum, pulse
-or cadence at all. Nothing in the design system imports markdown — the
-workbench applications `mindchat` and `sitedocs` are its consumers.
+`prism/richtext` and `prism/tokens`, and the support libraries svg and
+`svg/driver/gio` in the `svgimage` subpackage only; it does not import mvu,
+spectrum, pulse or cadence at all. Nothing in the design system imports
+markdown — the workbench applications `mindchat` and `sitedocs` are its
+consumers.
 
 **Read the canonical guide before you write code against this module.** It is
 the organization's one agent guide — the module inventory with current tags,

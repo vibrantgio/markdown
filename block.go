@@ -1,5 +1,7 @@
-// Package markdown renders markdown documents with prism primitives
-// (DESIGN §Markdown).
+// Package markdown renders markdown documents as Gio widgets built from prism
+// primitives. It is tier 4 of the VibrantGio stack, alongside cadence, and
+// nothing in the design system depends on it: it is a leaf an application
+// reaches for when it has documents to put on screen.
 //
 // [Parse] walks a goldmark AST (with extension.GFM) into a block model — a
 // tree of [Block] values whose inline content is expressed as styled [Span]
@@ -9,14 +11,29 @@
 // checkboxes, inset blockquotes with a leading token-coloured bar, rules,
 // monospace code blocks on a surface background with tab expansion and
 // horizontal overflow scrolling, GFM tables as bordered grids, and images
-// through a caller-supplied [ImageProvider]. Code blocks are optionally
-// syntax-highlighted through the [Highlighter] hook on [Style]; the
-// markdown/highlight subpackage provides a chroma-backed implementation so
-// this package never depends on chroma.
+// through a caller-supplied [ImageProvider].
 //
-// This module carries the goldmark dependency so prism does not have to;
-// gioui.org/x/markdown was evaluated (2026-07-20) and rejected as a
-// dependency — see the README.
+// Two heavy dependencies are deliberately kept out of this package's import
+// graph, each reachable only by importing the subpackage that wants it: code
+// blocks are syntax-highlighted through the [Highlighter] hook on [Style],
+// which markdown/highlight implements with chroma, and vector images are served
+// through [WidgetImageProvider], which markdown/svgimage implements with
+// vibrantgio/svg. Only goldmark stops here rather than one level further out,
+// so prism never sees it; gioui.org/x/markdown was evaluated (2026-07-20) and
+// rejected as a dependency — see the README.
+//
+// # The caller supplies the monospace font
+//
+// [FromTokens] sets Style.Mono to "Go Mono, monospace", and this module ships
+// no font at all. If the shaper's collection holds no "Go Mono" typeface the
+// request resolves to the proportional body face instead, with no error and no
+// warning — measured pixel-identical to leaving Style.Mono empty, so code
+// blocks and inline code simply stop looking like code. Gio matches typeface
+// names literally and has no CSS generic-family fallback: the ", monospace"
+// half of that string resolves nothing on its own, and only the "Go Mono" token
+// does any work. An application either appends gofont.Collection() to its
+// shaper, as workbench/mindchat does for exactly this reason, or sets
+// Style.Mono to a monospace family it does ship.
 package markdown
 
 // Span is one styled inline run within a heading or paragraph. The zero

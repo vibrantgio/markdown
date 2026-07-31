@@ -4,6 +4,19 @@
 // carries the svg dependency the same way markdown/highlight carries
 // chroma: consumers that want SVG images import this package, everyone
 // else stays free of it.
+//
+// A destination is recognised by its literal .svg extension — the match is
+// case-insensitive, but anything trailing defeats it: icon.svg is served while
+// icon.svg?v=2 and icon.svg#frag are not SVG destinations at all. Everything
+// unrecognised goes to the raster provider given to [NewWithRaster], and a
+// [New] provider has none, so a document mixing PNGs with SVGs needs the
+// two-argument constructor.
+//
+// Every failure — wrong extension, missing file, unparseable SVG — is returned
+// as an error and rendered by the document as the image's alt text. Note that
+// the document caches that outcome per block, failures included, so a file
+// that only appears after the first frame keeps rendering alt text until a new
+// markdown.Document is built.
 package svgimage
 
 import (
