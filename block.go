@@ -1,5 +1,5 @@
 // Package markdown renders markdown documents as Gio widgets built from prism
-// primitives. It is tier 4 of the VibrantGio stack, alongside cadence, and
+// primitives. It is tier 4 of the Vibrant Gio stack, alongside cadence, and
 // nothing in the design system depends on it: it is a leaf an application
 // reaches for when it has documents to put on screen.
 //

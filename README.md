@@ -1,7 +1,7 @@
 # markdown
 
 Document-grade markdown rendering for [Gio](https://gioui.org), part of
-[VibrantGio](https://github.com/vibrantgio) — a design system for native
+[Vibrant Gio](https://github.com/vibrantgio) — a design system for native
 desktop applications on macOS, Windows and Linux, written in pure Go. Gio gives
 you a text shaper and a paint API and has no notion of a document. This module
 walks a [goldmark](https://github.com/yuin/goldmark) AST into a block model and
