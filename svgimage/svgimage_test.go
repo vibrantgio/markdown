@@ -5,16 +5,14 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"gioui.org/font/gofont"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"gioui.org/text"
 
 	"github.com/vibrantgio/markdown"
 	golden "github.com/vibrantgio/markdown/internal/golden"
 	"github.com/vibrantgio/markdown/svgimage"
-	"github.com/vibrantgio/prism/tokens"
+	"github.com/vibrantgio/spectrum/tokens"
 )
 
 // iconSVG is a viewBox-sized disc with an inset square: enough geometry to
@@ -31,7 +29,7 @@ func testFS() fstest.MapFS {
 // TestDocumentRendersSVGGolden records or diffs a document whose sole image
 // is served by the provider as vector geometry.
 func TestDocumentRendersSVGGolden(t *testing.T) {
-	shaper := text.NewShaper(text.NoSystemFonts(), text.WithCollection(gofont.Collection()))
+	shaper := tokens.DefaultTypography.Shaper()
 	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
 	style.Images = svgimage.New(testFS())
 	blocks := markdown.Parse([]byte("before\n\n![vector icon](icon.svg)\n\nafter\n"))

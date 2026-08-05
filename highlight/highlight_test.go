@@ -5,18 +5,16 @@ import (
 	"strings"
 	"testing"
 
-	"gioui.org/font/gofont"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"gioui.org/text"
 	"gioui.org/unit"
 
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/markdown/highlight"
 	golden "github.com/vibrantgio/markdown/internal/golden"
-	"github.com/vibrantgio/prism/tokens"
+	"github.com/vibrantgio/spectrum/tokens"
 )
 
 const goSnippet = "func greet(name string) string {\n" +
@@ -67,7 +65,7 @@ func TestHighlightUnknownLanguage(t *testing.T) {
 // background, with or without the chroma hook.
 func snippetWidget(t *testing.T, highlighted bool) layout.Widget {
 	t.Helper()
-	shaper := text.NewShaper(text.NoSystemFonts(), text.WithCollection(gofont.Collection()))
+	shaper := tokens.DefaultTypography.Shaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
 	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
 	if highlighted {
@@ -103,7 +101,7 @@ func TestHighlightChangesPixels(t *testing.T) {
 // highlighted code block lays out at exactly the plain block's height, so
 // chroma's newline-leading whitespace tokens do not skew line metrics.
 func TestHighlightKeepsLayout(t *testing.T) {
-	shaper := text.NewShaper(text.NoSystemFonts(), text.WithCollection(gofont.Collection()))
+	shaper := tokens.DefaultTypography.Shaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
 	measure := func(hl markdown.Highlighter) int {
 		style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)

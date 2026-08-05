@@ -34,10 +34,11 @@ documents stay O(visible).
 ## Where it sits
 
 Tier 4 of the stack — `mvu → spectrum → prism → pulse → cadence → markdown` —
-alongside [cadence](https://github.com/vibrantgio/cadence). It imports `list`,
-`richtext` and `tokens` from [prism](https://github.com/vibrantgio/prism), and
+alongside [cadence](https://github.com/vibrantgio/cadence). It imports `list`
+and `richtext` from [prism](https://github.com/vibrantgio/prism), `tokens` from
+[spectrum](https://github.com/vibrantgio/spectrum), and
 [svg](https://github.com/vibrantgio/svg) in the `svgimage` subpackage only. It
-imports neither mvu, spectrum, pulse nor cadence, and nothing in the design
+imports neither mvu, pulse nor cadence, and nothing in the design
 system imports it: its consumers are the
 [workbench](https://github.com/vibrantgio/workbench) applications `mindchat`
 and `sitedocs`. The [organization page](https://github.com/vibrantgio) has the
@@ -94,12 +95,16 @@ renders in the proportional body face with no error and no warning — measured
 pixel-identical to leaving `Style.Mono` empty. Gio matches typeface names
 literally and has no CSS generic-family fallback, so the `, monospace` half of
 that string resolves nothing on its own; only the `Go Mono` token does any
-work. `mindchat` handles it like this:
+work. The theme typography's default collection
+(`spectrum/tokens.DefaultTypography.Faces`) is Roboto only, so an application
+that wants monospace code extends the collection with faces it ships itself:
 
 ```go
-// The Roboto faces lead (the shaper's default), followed by the Go
-// collection so markdown code spans resolve their "Go Mono" typeface.
-shaper := text.NewShaper(text.WithCollection(append(style.FontFaces(), gofont.Collection()...)))
+// The theme typography's Roboto faces lead (the shaper's default), followed
+// by the application's own monospace faces so markdown code spans resolve
+// their "Go Mono" typeface — or set Style.Mono to a family you do ship.
+faces := append(slices.Clone(tokens.DefaultTypography.Faces), monoFaces...)
+shaper := text.NewShaper(text.NoSystemFonts(), text.WithCollection(faces))
 ```
 
 ## Why not `gioui.org/x/markdown`?
@@ -125,11 +130,13 @@ down. Read it before writing code against this module:
 
 Current tag `v0.0.6`. What renders, renders well; these are the honest gaps.
 
-- **Typography is hard-coded, not themed.** `Style.Mono` is the string
-  `"Go Mono, monospace"` and the type scale reaches this module as sizes only,
-  with no seam for a typeface — the section above is the workaround. Phase C
-  (task C2.8) migrates the renderer, `highlight` and `svgimage` to theme
-  typography and removes the last `gofont` import, tests included.
+- **No monospace face ships anywhere in the design system.** The renderer
+  shapes with the theme typography (Roboto), and `Style.Mono` is the string
+  `"Go Mono, monospace"` — a family the default collection does not hold, so
+  out of the box code blocks render in the proportional body face, and the
+  golden images in this repository do exactly that. The section above is the
+  workaround: extend the shaper's collection with monospace faces the
+  application ships, or point `Style.Mono` at a family it does hold.
 - **Syntax highlighting does not follow the theme.** A `Highlighter` colours
   every run it emits, so `Style.CodeColor` is never reached and only the code
   block's background stays themed. The application must build one highlighter

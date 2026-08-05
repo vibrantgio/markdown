@@ -9,7 +9,7 @@ import (
 	"gioui.org/unit"
 
 	"github.com/vibrantgio/prism/richtext"
-	"github.com/vibrantgio/prism/tokens"
+	"github.com/vibrantgio/spectrum/tokens"
 )
 
 // CodeSpan is one coloured run of a highlighted code block, produced by a

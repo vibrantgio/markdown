@@ -19,8 +19,12 @@ github.com/go-text/typesetting-utils v0.0.0-20260223113751-2d88ac90dae3 h1:drBZz
 github.com/go-text/typesetting-utils v0.0.0-20260223113751-2d88ac90dae3/go.mod h1:3/62I4La/HBRX9TcTpBj4eipLiwzf+vhI+7whTc9V7o=
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
-github.com/vibrantgio/prism v0.1.2 h1:jUaWtUhgE7G2ky3WKmEb/eg2Ot2Dz9/byascOfEJEp8=
-github.com/vibrantgio/prism v0.1.2/go.mod h1:MMfYi+6n9ZsfbEl3di+L1u3Dd7A+xHtESDAiczFN7OQ=
+github.com/vibrantgio/font v0.0.4 h1:pwARHK1eNBWGS/xfs+umerD7QUXPY9qPwXqYEKzDDeg=
+github.com/vibrantgio/font v0.0.4/go.mod h1:XwIzwgqfPdl4wySiUQ2pbI2xl+yGctg+jWcFcptl2uw=
+github.com/vibrantgio/prism v0.1.3 h1:jR6m/Ad2clmVw4Acot6os2likJlXKHxpMtuLy255lyY=
+github.com/vibrantgio/prism v0.1.3/go.mod h1:bihJApO9gbCxrSUOK0vY6XhDijA00FTr2llzKVIyQvg=
+github.com/vibrantgio/spectrum v0.0.9 h1:xGrV4czJgJPMIL1wgzWJNDgIZU7zm5h3mLfAH49P6eY=
+github.com/vibrantgio/spectrum v0.0.9/go.mod h1:zOtLlWOGE+H6RYgeVwzGPFMMHa1QS/bs/w83+X+2FlQ=
 github.com/vibrantgio/svg v0.0.8 h1:c2vJujbpUlukLrifi0M4feHLE8jqthyvmOvcNDY5r4k=
 github.com/vibrantgio/svg v0.0.8/go.mod h1:H867wFCLH1Lfz+uoklXwtvOTAQgg/7DC0KoZm6nRHUA=
 github.com/vibrantgio/svg/driver/gio v0.0.7 h1:nxt47wSVe2057LCvvwylMesuS+qHgmoxZJ+TD/+JdvU=

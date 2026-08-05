@@ -5,7 +5,6 @@ import (
 	"image"
 	"testing"
 
-	"gioui.org/font/gofont"
 	gioinput "gioui.org/io/input"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -16,12 +15,12 @@ import (
 
 	"github.com/vibrantgio/markdown"
 	golden "github.com/vibrantgio/markdown/internal/golden"
-	"github.com/vibrantgio/prism/tokens"
+	"github.com/vibrantgio/spectrum/tokens"
 )
 
 func defaultShaper(t *testing.T) *text.Shaper {
 	t.Helper()
-	return text.NewShaper(text.NoSystemFonts(), text.WithCollection(gofont.Collection()))
+	return tokens.DefaultTypography.Shaper()
 }
 
 // themed wraps a document in a Background-filled widget so goldens capture

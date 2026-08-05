@@ -17,7 +17,7 @@ import (
 
 	"github.com/vibrantgio/prism/list"
 	"github.com/vibrantgio/prism/richtext"
-	"github.com/vibrantgio/prism/tokens"
+	"github.com/vibrantgio/spectrum/tokens"
 )
 
 // Document lays out a parsed block tree. Allocate once per document instance
@@ -87,6 +87,10 @@ func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style S
 }
 
 // Layout lays out the document's visible blocks in a vertical scrolling list.
+//
+// The shaper is the application's, typically the theme typography's cached
+// [tokens.Typography.Shaper]; see the package documentation for what its
+// collection must hold for Style.Mono to resolve.
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	return list.Layout(gtx, d.list, d.blocks, func(gtx layout.Context, b Block) layout.Dimensions {
 		return layout.Inset{Bottom: style.BlockGap}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {

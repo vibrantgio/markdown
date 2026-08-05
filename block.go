@@ -31,9 +31,11 @@
 // blocks and inline code simply stop looking like code. Gio matches typeface
 // names literally and has no CSS generic-family fallback: the ", monospace"
 // half of that string resolves nothing on its own, and only the "Go Mono" token
-// does any work. An application either appends gofont.Collection() to its
-// shaper, as workbench/mindchat does for exactly this reason, or sets
-// Style.Mono to a monospace family it does ship.
+// does any work. The theme typography's default collection
+// (spectrum/tokens.DefaultTypography.Faces) is Roboto only, so an application
+// either builds its shaper over that collection extended with monospace faces
+// it ships itself, or sets Style.Mono to a monospace family already in the
+// collection.
 package markdown
 
 // Span is one styled inline run within a heading or paragraph. The zero
