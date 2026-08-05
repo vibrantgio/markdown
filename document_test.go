@@ -5,6 +5,7 @@ import (
 	"image"
 	"testing"
 
+	"gioui.org/font"
 	gioinput "gioui.org/io/input"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -395,9 +396,10 @@ func TestDocumentLiveFrame(t *testing.T) {
 // ---- Token defaults ----
 
 // TestFromTokensDefaults pins the FromTokens contract: heading levels step
-// down the type scale, code sits on the Neutral 300 tinted fill with Neutral
-// 700 low-contrast text, the quote bar is Primary with Neutral 700 text, and
-// rules are separators using Divider.
+// down the type scale, code shapes in the theme Code role's typeface and
+// size on the Neutral 300 tinted fill with Neutral 700 low-contrast text,
+// the quote bar is Primary with Neutral 700 text, and rules are separators
+// using Divider.
 func TestFromTokensDefaults(t *testing.T) {
 	c, ts := tokens.DefaultLight, tokens.DefaultTypeScale
 	st := markdown.FromTokens(c, ts)
@@ -424,7 +426,10 @@ func TestFromTokensDefaults(t *testing.T) {
 	if st.TableBorder != c.Divider || st.TableHeaderBackground != c.Ramps.Neutral.Step(300) {
 		t.Errorf("table colours = %v/%v, want Divider/Neutral 300", st.TableBorder, st.TableHeaderBackground)
 	}
-	if st.CodeSize != unit.Sp(ts.BodyMedium) {
-		t.Errorf("CodeSize = %v, want BodyMedium %v", st.CodeSize, ts.BodyMedium)
+	if want := font.Typeface(tokens.DefaultTypography.Code.Typeface); st.Mono != want {
+		t.Errorf("Mono = %q, want the Code role's %q", st.Mono, want)
+	}
+	if want := unit.Sp(tokens.DefaultTypography.Code.Size); st.CodeSize != want {
+		t.Errorf("CodeSize = %v, want the Code role's %v", st.CodeSize, want)
 	}
 }

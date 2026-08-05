@@ -22,20 +22,20 @@
 // so prism never sees it; gioui.org/x/markdown was evaluated (2026-07-20) and
 // rejected as a dependency — see the README.
 //
-// # The caller supplies the monospace font
+// # The monospace font comes from the theme
 //
-// [FromTokens] sets Style.Mono to "Go Mono, monospace", and this module ships
-// no font at all. If the shaper's collection holds no "Go Mono" typeface the
-// request resolves to the proportional body face instead, with no error and no
-// warning — measured pixel-identical to leaving Style.Mono empty, so code
-// blocks and inline code simply stop looking like code. Gio matches typeface
-// names literally and has no CSS generic-family fallback: the ", monospace"
-// half of that string resolves nothing on its own, and only the "Go Mono" token
-// does any work. The theme typography's default collection
-// (spectrum/tokens.DefaultTypography.Faces) is Roboto only, so an application
-// either builds its shaper over that collection extended with monospace faces
-// it ships itself, or sets Style.Mono to a monospace family already in the
-// collection.
+// [FromTokens] resolves Style.Mono and Style.CodeSize from the theme's Code
+// role (spectrum/tokens.DefaultTypography.Code): "Roboto Mono", a face the
+// default collection (tokens.DefaultTypography.Faces) carries in all four
+// weight/style combinations code shapes in — regular, bold, italic, and bold
+// italic. Out of the box, code blocks and inline code render monospaced.
+//
+// The caveat survives for custom shapers: Gio matches typeface names
+// literally, with no CSS generic-family fallback and no error or warning on a
+// miss — a collection without a "Roboto Mono" face silently shapes code in
+// the proportional body face instead. An application building its own shaper
+// either includes vibrantgio/font/robotomono's faces in the collection or
+// points Style.Mono at a monospace family the collection does hold.
 package markdown
 
 // Span is one styled inline run within a heading or paragraph. The zero

@@ -87,23 +87,25 @@ doc := markdown.NewDocument(markdown.Parse(source))
 doc.Layout(gtx, shaper, docsStyle(colors, typeScale))
 ```
 
-## The application supplies the monospace font
+## The monospace font comes from the theme
 
-`FromTokens` sets `Style.Mono` to `"Go Mono, monospace"`, and this module ships
-no font at all. If the shaper's collection holds no `Go Mono` typeface, code
-renders in the proportional body face with no error and no warning — measured
-pixel-identical to leaving `Style.Mono` empty. Gio matches typeface names
-literally and has no CSS generic-family fallback, so the `, monospace` half of
-that string resolves nothing on its own; only the `Go Mono` token does any
-work. The theme typography's default collection
-(`spectrum/tokens.DefaultTypography.Faces`) is Roboto only, so an application
-that wants monospace code extends the collection with faces it ships itself:
+`FromTokens` resolves `Style.Mono` and `Style.CodeSize` from the theme's Code
+role (`spectrum/tokens.DefaultTypography.Code`): `"Roboto Mono"`, which the
+default collection (`tokens.DefaultTypography.Faces`) carries in all four
+weight/style combinations code shapes in — regular, bold, italic, and bold
+italic. Out of the box, code blocks and inline code render monospaced.
+
+One caveat survives for applications building their own shaper: Gio matches
+typeface names literally, with no CSS generic-family fallback and no error or
+warning on a miss — a collection without a `Roboto Mono` face silently shapes
+code in the proportional body face instead. Include
+`vibrantgio/font/robotomono`'s faces in the collection, or point `Style.Mono`
+at a monospace family the collection does hold:
 
 ```go
 // The theme typography's Roboto faces lead (the shaper's default), followed
-// by the application's own monospace faces so markdown code spans resolve
-// their "Go Mono" typeface — or set Style.Mono to a family you do ship.
-faces := append(slices.Clone(tokens.DefaultTypography.Faces), monoFaces...)
+// by the Roboto Mono faces markdown code spans resolve against.
+faces := append(slices.Clone(roboto.FontFaces()), robotomono.FontFaces()...)
 shaper := text.NewShaper(text.NoSystemFonts(), text.WithCollection(faces))
 ```
 
@@ -130,13 +132,12 @@ down. Read it before writing code against this module:
 
 Current tag `v0.0.6`. What renders, renders well; these are the honest gaps.
 
-- **No monospace face ships anywhere in the design system.** The renderer
-  shapes with the theme typography (Roboto), and `Style.Mono` is the string
-  `"Go Mono, monospace"` — a family the default collection does not hold, so
-  out of the box code blocks render in the proportional body face, and the
-  golden images in this repository do exactly that. The section above is the
-  workaround: extend the shaper's collection with monospace faces the
-  application ships, or point `Style.Mono` at a family it does hold.
+- **Code sizing does not follow a scaled `TypeScale`.** `TypeScale` has no
+  code stop — the Code role lives on `tokens.Typography`, outside the MD3
+  grid — so `FromTokens`, whose signature is frozen on `TypeScale`, reads
+  `CodeSize` from the default Code role. A caller passing a scaled
+  `TypeScale` scales headings and body but not code; set `Style.CodeSize`
+  from your own Code role after `FromTokens`.
 - **Syntax highlighting does not follow the theme.** A `Highlighter` colours
   every run it emits, so `Style.CodeColor` is never reached and only the code
   block's background stays themed. The application must build one highlighter

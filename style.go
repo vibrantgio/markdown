@@ -108,6 +108,14 @@ type Style struct {
 // 700 text, rules and table grid lines are separators and use Divider, and
 // the table header row sits on the Neutral 300 tinted fill. Highlight and
 // Images stay nil — both are opt-in.
+//
+// Mono and CodeSize come from the theme's Code role. TypeScale has no code
+// stop — Code sits outside the MD3 grid as tokens.Typography's sixteenth
+// style — so this constructor, whose TypeScale-based signature is frozen
+// (C2.8), reads tokens.DefaultTypography.Code: the "Roboto Mono" typeface
+// the default face collection carries, at Code's BodyMedium-derived size.
+// A Style shaped for a non-default Typography sets Mono and CodeSize from
+// its own Code role after this call.
 func FromTokens(c tokens.ColorTokens, ts tokens.TypeScale) Style {
 	return Style{
 		Text: richtext.FromTokens(c, ts),
@@ -119,8 +127,8 @@ func FromTokens(c tokens.ColorTokens, ts tokens.TypeScale) Style {
 			unit.Sp(ts.TitleMedium),
 			unit.Sp(ts.TitleSmall),
 		},
-		Mono:                  "Go Mono, monospace",
-		CodeSize:              unit.Sp(ts.BodyMedium),
+		Mono:                  font.Typeface(tokens.DefaultTypography.Code.Typeface),
+		CodeSize:              unit.Sp(tokens.DefaultTypography.Code.Size),
 		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
 		CodeBackground:        c.Ramps.Neutral.Step(300), // tinted fill
 		QuoteBar:              c.Primary,
