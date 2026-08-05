@@ -395,8 +395,9 @@ func TestDocumentLiveFrame(t *testing.T) {
 // ---- Token defaults ----
 
 // TestFromTokensDefaults pins the FromTokens contract: heading levels step
-// down the type scale, code sits on SurfaceVariant, the quote bar is Primary
-// with OnSurfaceVariant text, and rules use Outline.
+// down the type scale, code sits on the Neutral 300 tinted fill with Neutral
+// 700 low-contrast text, the quote bar is Primary with Neutral 700 text, and
+// rules are separators using Divider.
 func TestFromTokensDefaults(t *testing.T) {
 	c, ts := tokens.DefaultLight, tokens.DefaultTypeScale
 	st := markdown.FromTokens(c, ts)
@@ -408,17 +409,20 @@ func TestFromTokensDefaults(t *testing.T) {
 	if st.HeadingSizes != wantSizes {
 		t.Errorf("HeadingSizes = %v, want %v", st.HeadingSizes, wantSizes)
 	}
-	if st.Text.Color != c.OnBackground || st.Text.LinkColor != c.Primary {
-		t.Errorf("Text colours = %v/%v, want OnBackground/Primary", st.Text.Color, st.Text.LinkColor)
+	if st.Text.Color != c.Text || st.Text.LinkColor != c.Primary {
+		t.Errorf("Text colours = %v/%v, want Text/Primary", st.Text.Color, st.Text.LinkColor)
 	}
-	if st.CodeBackground != c.SurfaceVariant || st.CodeColor != c.OnSurfaceVariant {
-		t.Errorf("code colours = %v/%v, want SurfaceVariant/OnSurfaceVariant", st.CodeBackground, st.CodeColor)
+	if st.CodeBackground != c.Ramps.Neutral.Step(300) || st.CodeColor != c.Ramps.Neutral.Step(700) {
+		t.Errorf("code colours = %v/%v, want Neutral 300/700", st.CodeBackground, st.CodeColor)
 	}
-	if st.QuoteBar != c.Primary || st.QuoteColor != c.OnSurfaceVariant {
-		t.Errorf("quote colours = %v/%v, want Primary/OnSurfaceVariant", st.QuoteBar, st.QuoteColor)
+	if st.QuoteBar != c.Primary || st.QuoteColor != c.Ramps.Neutral.Step(700) {
+		t.Errorf("quote colours = %v/%v, want Primary/Neutral 700", st.QuoteBar, st.QuoteColor)
 	}
-	if st.RuleColor != c.Outline {
-		t.Errorf("RuleColor = %v, want Outline %v", st.RuleColor, c.Outline)
+	if st.RuleColor != c.Divider {
+		t.Errorf("RuleColor = %v, want Divider %v", st.RuleColor, c.Divider)
+	}
+	if st.TableBorder != c.Divider || st.TableHeaderBackground != c.Ramps.Neutral.Step(300) {
+		t.Errorf("table colours = %v/%v, want Divider/Neutral 300", st.TableBorder, st.TableHeaderBackground)
 	}
 	if st.CodeSize != unit.Sp(ts.BodyMedium) {
 		t.Errorf("CodeSize = %v, want BodyMedium %v", st.CodeSize, ts.BodyMedium)

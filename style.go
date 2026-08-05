@@ -103,10 +103,11 @@ type Style struct {
 
 // FromTokens derives the default document style from colour tokens and the
 // type scale: headings step down HeadlineLarge..TitleSmall, body text follows
-// richtext.FromTokens, code sits on the SurfaceVariant surface, the quote bar
-// is Primary with OnSurfaceVariant text, rules and table borders use Outline,
-// and the table header row sits on SurfaceVariant. Highlight and Images stay
-// nil — both are opt-in.
+// richtext.FromTokens, code sits on the Neutral 300 tinted fill with the
+// low-contrast Neutral 700 text step, the quote bar is Primary with Neutral
+// 700 text, rules and table grid lines are separators and use Divider, and
+// the table header row sits on the Neutral 300 tinted fill. Highlight and
+// Images stay nil — both are opt-in.
 func FromTokens(c tokens.ColorTokens, ts tokens.TypeScale) Style {
 	return Style{
 		Text: richtext.FromTokens(c, ts),
@@ -120,13 +121,13 @@ func FromTokens(c tokens.ColorTokens, ts tokens.TypeScale) Style {
 		},
 		Mono:                  "Go Mono, monospace",
 		CodeSize:              unit.Sp(ts.BodyMedium),
-		CodeColor:             c.OnSurfaceVariant,
-		CodeBackground:        c.SurfaceVariant,
+		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
+		CodeBackground:        c.Ramps.Neutral.Step(300), // tinted fill
 		QuoteBar:              c.Primary,
-		QuoteColor:            c.OnSurfaceVariant,
-		RuleColor:             c.Outline,
-		TableBorder:           c.Outline,
-		TableHeaderBackground: c.SurfaceVariant,
+		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
+		RuleColor:             c.Divider,
+		TableBorder:           c.Divider,
+		TableHeaderBackground: c.Ramps.Neutral.Step(300), // tinted fill
 		CheckboxColor:         c.Primary,
 		CheckmarkColor:        c.OnPrimary,
 		BlockGap:              unit.Dp(tokens.Spacing.S2),

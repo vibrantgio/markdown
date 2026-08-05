@@ -13,8 +13,9 @@
 //
 // An unrecognised style name is not an error. Chroma falls back to a
 // dark-background default whose runs come out near-white, which on the light
-// token theme is near-white text on SurfaceVariant. A typo in the style name
-// fails exactly that way — silently, and only on one of the two themes.
+// token theme is near-white text on the light Neutral 300 code fill. A typo
+// in the style name fails exactly that way — silently, and only on one of
+// the two themes.
 package highlight
 
 import (
