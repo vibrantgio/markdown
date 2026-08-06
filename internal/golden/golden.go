@@ -28,6 +28,7 @@ package golden
 
 import (
 	"flag"
+	"fmt"
 	"image"
 	"image/png"
 	"os"
@@ -73,6 +74,15 @@ func Render(t *testing.T, name string, size image.Point, draw layout.Widget) {
 		return
 	}
 
+	// A size change is a failure in its own right, and it has to be caught
+	// here: once the bounds differ there is no pixel count to compare, and
+	// PixelDiff refuses to invent one.
+	if sb, ib := stored.Bounds(), img.Bounds(); sb != ib {
+		actualPath := strings.TrimSuffix(path, ".png") + ".actual.png"
+		_ = saveImage(actualPath, img)
+		t.Fatalf("golden: %q: size changed: golden is %dx%d, render is %dx%d (actual saved to %s)",
+			name, sb.Dx(), sb.Dy(), ib.Dx(), ib.Dy(), actualPath)
+	}
 	if n := PixelDiff(stored, img); n > 0 {
 		actualPath := strings.TrimSuffix(path, ".png") + ".actual.png"
 		_ = saveImage(actualPath, img)
@@ -109,11 +119,18 @@ func Capture(t *testing.T, size image.Point, draw layout.Widget) *image.RGBA {
 	return img
 }
 
-// PixelDiff counts the number of pixels that differ between a and b.
-// Returns -1 if the images have different sizes.
+// PixelDiff counts the number of pixels that differ between a and b, which
+// must have equal bounds. It panics if they do not.
+//
+// The panic replaces a returned -1. There is no pixel count to report for two
+// images of different shapes, and -1 read as "no difference" to every `n > 0`
+// test — which is how a golden whose size had moved compared as a pass. Render
+// checks the bounds itself, because that is the one place where a size change
+// is a real result rather than a defect.
 func PixelDiff(a, b *image.RGBA) int {
 	if a.Bounds() != b.Bounds() {
-		return -1
+		panic(fmt.Sprintf("PixelDiff: images must have equal bounds, got %v and %v",
+			a.Bounds(), b.Bounds()))
 	}
 	bounds := a.Bounds()
 	n := 0
