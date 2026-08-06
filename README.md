@@ -59,7 +59,8 @@ From `sitedocs`, the workbench documentation browser:
 ```go
 // Built once and shared by every page. FromTokens leaves Highlight nil, so
 // assigning a highlighter is the application's opt-in to syntax colouring —
-// and there are two, because chroma's colours are its own, not the theme's.
+// and there are two, because the keyword and string colours are chroma's
+// own, not the theme's; only the plain runs follow Style.CodeColor.
 var (
     highlightLight = highlight.New("github")
     highlightDark  = highlight.New("github-dark")
@@ -142,12 +143,15 @@ organization. What renders, renders well; these are the honest gaps.
   `FromTokens` and `doc.Layout`'s positional-shaper signature are part of
   the surface the pending major (planned at v0.1.0, alongside the F3.3
   deprecation sweep) re-cuts against `Typography` directly.
-- **Syntax highlighting does not follow the theme.** A `Highlighter` colours
-  every run it emits, so `Style.CodeColor` is never reached and only the code
-  block's background stays themed. The application must build one highlighter
-  per appearance and swap them, as the example above does; an unrecognised
-  chroma style name is not an error but falls back to a dark-background
-  default, which on a light theme is near-white text on `SurfaceVariant`.
+- **Highlight colours are chroma's, except the plain runs.** Runs a chroma
+  style would render in its plain-text foreground — whitespace, punctuation,
+  plain identifiers — are emitted colourless and take `Style.CodeColor`, so
+  plain code follows the token theme; keyword, string, and comment colours
+  remain the chroma style's own. The application must still build one
+  highlighter per appearance and swap them, as the example above does. An
+  unrecognised chroma style name panics in `highlight.New` — chroma's silent
+  fallback is a dark-background style that fails visibly on only one of the
+  two themes, so a typo fails at construction instead.
 - **Text is not selectable or copyable.** Neither this module nor
   `prism/richtext` implements selection — the same gap the comparison above
   notes in `x/markdown`. Links are clickable and focusable; that is all.

@@ -3,6 +3,7 @@ package highlight_test
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"strings"
 	"testing"
 
@@ -57,6 +58,58 @@ func TestHighlightSpans(t *testing.T) {
 	}
 }
 
+// TestPlainRunsCarryNoColour asserts runs chroma would render in the style's
+// plain-text foreground — punctuation, whitespace, plain identifiers — come
+// back with the zero Color, the CodeSpan contract for "fall back to
+// Style.CodeColor". This is the FX.7 fix: before it, every run carried an
+// explicit colour and the token theme never reached highlighted code.
+func TestPlainRunsCarryNoColour(t *testing.T) {
+	for _, styleName := range []string{"github", "github-dark"} {
+		t.Run(styleName, func(t *testing.T) {
+			spans := highlight.New(styleName)("go", goSnippet)
+			var zero color.NRGBA
+			plain, coloured := 0, 0
+			for _, s := range spans {
+				if s.Color == zero {
+					plain++
+				} else {
+					coloured++
+				}
+				switch s.Text {
+				case "(", ")", "{", "}":
+					if s.Color != zero {
+						t.Errorf("punctuation %q carries colour %v; want the zero colour so Style.CodeColor fires", s.Text, s.Color)
+					}
+				case "func", "return":
+					if s.Color == zero {
+						t.Errorf("keyword %q lost its highlight colour", s.Text)
+					}
+				}
+			}
+			if plain == 0 || coloured == 0 {
+				t.Errorf("snippet split into %d plain and %d coloured runs; want both", plain, coloured)
+			}
+		})
+	}
+}
+
+// TestNewUnknownStylePanics asserts an unrecognised chroma style name fails
+// at construction. Chroma's silent fallback is a dark-background style whose
+// near-white runs disappear only against the light theme's code fill, so a
+// typo must not survive New.
+func TestNewUnknownStylePanics(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("New(\"no-such-style\") returned; want a panic naming the style")
+		}
+		if msg := fmt.Sprint(r); !strings.Contains(msg, "no-such-style") {
+			t.Errorf("panic message %q does not name the unknown style", msg)
+		}
+	}()
+	highlight.New("no-such-style")
+}
+
 // TestHighlightUnknownLanguage asserts unmatched fence languages yield nil,
 // leaving the block plain.
 func TestHighlightUnknownLanguage(t *testing.T) {
@@ -65,29 +118,114 @@ func TestHighlightUnknownLanguage(t *testing.T) {
 	}
 }
 
-// snippetWidget renders the fenced Go snippet document on the light theme
-// background, with or without the chroma hook.
-func snippetWidget(t *testing.T, highlighted bool) layout.Widget {
+// themedSnippetWidget renders the fenced Go snippet document on the given
+// theme's background, applying restyle to the token-derived style first.
+func themedSnippetWidget(t *testing.T, colors tokens.ColorTokens, restyle func(*markdown.Style)) layout.Widget {
 	t.Helper()
 	shaper := tokens.DefaultTypography.Shaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
-	if highlighted {
-		style.Highlight = highlight.New("github")
+	style := markdown.FromTokens(colors, tokens.DefaultTypeScale)
+	if restyle != nil {
+		restyle(&style)
 	}
 	d := markdown.NewDocument(blocks)
 	return func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.Layout(gtx, shaper, style)
 		})
 	}
 }
 
-// TestGoSnippetGolden records or diffs a fenced Go snippet highlighted by the
-// chroma hook in the light theme.
+// snippetWidget renders the fenced Go snippet document on the light theme
+// background, with or without the chroma hook.
+func snippetWidget(t *testing.T, highlighted bool) layout.Widget {
+	t.Helper()
+	return themedSnippetWidget(t, tokens.DefaultLight, func(s *markdown.Style) {
+		if highlighted {
+			s.Highlight = highlight.New("github")
+		}
+	})
+}
+
+// TestGoSnippetGolden records or diffs a fenced Go snippet highlighted by
+// the chroma hook, once per theme with the matching chroma style. In both
+// images the plain runs — punctuation, whitespace, plain identifiers — render
+// in the theme's Style.CodeColor (Neutral 700), not chroma's foreground;
+// TestCodeColorReachesHighlightedBlock asserts that reach directly.
 func TestGoSnippetGolden(t *testing.T) {
-	golden.Render(t, "go-snippet-light", image.Pt(560, 120), snippetWidget(t, true))
+	for _, tc := range []struct {
+		name   string
+		colors tokens.ColorTokens
+		style  string
+	}{
+		{"go-snippet-light", tokens.DefaultLight, "github"},
+		{"go-snippet-dark", tokens.DefaultDark, "github-dark"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			golden.Render(t, tc.name, image.Pt(560, 120), themedSnippetWidget(t, tc.colors, func(s *markdown.Style) {
+				s.Highlight = highlight.New(tc.style)
+			}))
+		})
+	}
+}
+
+// TestCodeColorReachesHighlightedBlock renders the highlighted snippet twice
+// per theme — once with the token CodeColor, once with CodeColor overridden —
+// and counts pixels of each colour exactly. The token colour has to be on
+// screen in the first image and gone from the second, replaced by the
+// override: only runs the highlighter leaves colourless can move that way, so
+// this is the plain runs taking Style.CodeColor and nothing else. Before FX.7
+// every run carried an explicit chroma colour, the Neutral 700 step appeared
+// in neither image, and the two were identical.
+func TestCodeColorReachesHighlightedBlock(t *testing.T) {
+	size := image.Pt(560, 120)
+	for _, tc := range []struct {
+		name   string
+		colors tokens.ColorTokens
+		style  string
+	}{
+		{"light", tokens.DefaultLight, "github"},
+		{"dark", tokens.DefaultDark, "github-dark"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			token := markdown.FromTokens(tc.colors, tokens.DefaultTypeScale).CodeColor
+			override := tc.colors.Primary
+			themed := golden.Capture(t, size, themedSnippetWidget(t, tc.colors, func(s *markdown.Style) {
+				s.Highlight = highlight.New(tc.style)
+			}))
+			moved := golden.Capture(t, size, themedSnippetWidget(t, tc.colors, func(s *markdown.Style) {
+				s.Highlight = highlight.New(tc.style)
+				s.CodeColor = override
+			}))
+			if n := countPixels(themed, token); n == 0 {
+				t.Errorf("nothing renders in the token CodeColor %v; the plain runs are not taking it", token)
+			}
+			if n := countPixels(moved, token); n != 0 {
+				t.Errorf("%d pixel(s) still render in the token CodeColor %v after overriding it; those runs are not following Style.CodeColor", n, token)
+			}
+			if n := countPixels(moved, override); n == 0 {
+				t.Errorf("nothing renders in the overridden CodeColor %v", override)
+			}
+			if n := golden.PixelDiff(themed, moved); n <= 0 {
+				t.Errorf("moving Style.CodeColor changed %d pixels; want > 0 — the theme is not reaching the highlighted block", n)
+			}
+		})
+	}
+}
+
+// countPixels counts the pixels rendering in exactly c. golden.Capture returns
+// straight-alpha bytes, so a fully-covered glyph pixel holds the paint colour
+// unchanged — anti-aliased edges hold a blend, which is why this counts exact
+// matches rather than comparing whole images.
+func countPixels(img *image.RGBA, c color.NRGBA) int {
+	n := 0
+	for i := 0; i+3 < len(img.Pix); i += 4 {
+		if img.Pix[i] == c.R && img.Pix[i+1] == c.G && img.Pix[i+2] == c.B && img.Pix[i+3] == c.A {
+			n++
+		}
+	}
+	return n
 }
 
 // TestHighlightChangesPixels renders the snippet with and without the hook
