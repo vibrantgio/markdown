@@ -130,14 +130,18 @@ down. Read it before writing code against this module:
 
 ## Status
 
-Current tag `v0.0.6`. What renders, renders well; these are the honest gaps.
+Current tag `v0.0.8` — a pre-release number, like every tag in the
+organization. What renders, renders well; these are the honest gaps.
 
 - **Code sizing does not follow a scaled `TypeScale`.** `TypeScale` has no
   code stop — the Code role lives on `tokens.Typography`, outside the MD3
   grid — so `FromTokens`, whose signature is frozen on `TypeScale`, reads
   `CodeSize` from the default Code role. A caller passing a scaled
   `TypeScale` scales headings and body but not code; set `Style.CodeSize`
-  from your own Code role after `FromTokens`.
+  from your own Code role after `FromTokens`. The freeze is deliberate:
+  `FromTokens` and `doc.Layout`'s positional-shaper signature are part of
+  the surface the pending major (planned at v0.1.0, alongside the F3.3
+  deprecation sweep) re-cuts against `Typography` directly.
 - **Syntax highlighting does not follow the theme.** A `Highlighter` colours
   every run it emits, so `Style.CodeColor` is never reached and only the code
   block's background stays themed. The application must build one highlighter
