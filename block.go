@@ -24,9 +24,9 @@
 //
 // # The monospace font comes from the theme
 //
-// [FromTokens] resolves Style.Mono and Style.CodeSize from the theme's Code
-// role (spectrum/tokens.DefaultTypography.Code): "Roboto Mono", a face the
-// default collection (tokens.DefaultTypography.Faces) carries in all four
+// [FromTokens] resolves Style.Mono and Style.CodeSize from the Code role of
+// the tokens.Typography it is handed — "Roboto Mono" for the default, a face
+// the default collection (tokens.DefaultTypography.Faces) carries in all four
 // weight/style combinations code shapes in — regular, bold, italic, and bold
 // italic. Out of the box, code blocks and inline code render monospaced.
 //

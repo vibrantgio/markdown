@@ -30,7 +30,7 @@ func testFS() fstest.MapFS {
 // is served by the provider as vector geometry.
 func TestDocumentRendersSVGGolden(t *testing.T) {
 	shaper := tokens.DefaultTypography.Shaper()
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	style.Images = svgimage.New(testFS())
 	blocks := markdown.Parse([]byte("before\n\n![vector icon](icon.svg)\n\nafter\n"))
 	d := markdown.NewDocument(blocks)

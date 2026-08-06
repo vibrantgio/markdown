@@ -66,8 +66,8 @@ var (
     highlightDark  = highlight.New("github-dark")
 )
 
-func docsStyle(c tokens.ColorTokens, ts tokens.TypeScale) markdown.Style {
-    st := markdown.FromTokens(c, ts)
+func docsStyle(c tokens.ColorTokens, typo tokens.Typography) markdown.Style {
+    st := markdown.FromTokens(c, typo)
     if isDarkColor(c.Background) {
         st.Highlight = highlightDark
     } else {
@@ -85,14 +85,14 @@ scroll, the resolved image for each block):
 ```go
 doc := markdown.NewDocument(markdown.Parse(source))
 // ...then, inside the layer:
-doc.Layout(gtx, shaper, docsStyle(colors, typeScale))
+doc.Layout(gtx, shaper, docsStyle(colors, typography))
 ```
 
 ## The monospace font comes from the theme
 
-`FromTokens` resolves `Style.Mono` and `Style.CodeSize` from the theme's Code
-role (`spectrum/tokens.DefaultTypography.Code`): `"Roboto Mono"`, which the
-default collection (`tokens.DefaultTypography.Faces`) carries in all four
+`FromTokens` resolves `Style.Mono` and `Style.CodeSize` from the Code role of
+the `tokens.Typography` it is handed — `"Roboto Mono"` for the default, which
+the default collection (`tokens.DefaultTypography.Faces`) carries in all four
 weight/style combinations code shapes in — regular, bold, italic, and bold
 italic. Out of the box, code blocks and inline code render monospaced.
 
@@ -131,18 +131,22 @@ down. Read it before writing code against this module:
 
 ## Status
 
-Current tag `v0.0.8` — a pre-release number, like every tag in the
+Current tag `v0.1.0` — a pre-release number, like every tag in the
 organization. What renders, renders well; these are the honest gaps.
 
-- **Code sizing does not follow a scaled `TypeScale`.** `TypeScale` has no
-  code stop — the Code role lives on `tokens.Typography`, outside the MD3
-  grid — so `FromTokens`, whose signature is frozen on `TypeScale`, reads
-  `CodeSize` from the default Code role. A caller passing a scaled
-  `TypeScale` scales headings and body but not code; set `Style.CodeSize`
-  from your own Code role after `FromTokens`. The freeze is deliberate:
-  `FromTokens` and `doc.Layout`'s positional-shaper signature are part of
-  the surface the pending major (planned at v0.1.0, alongside the F3.3
-  deprecation sweep) re-cuts against `Typography` directly.
+- **v0.1.0 is a breaking release.** `FromTokens` takes a
+  `tokens.Typography` where it took a `tokens.TypeScale`:
+  `markdown.FromTokens(c, tokens.DefaultTypography)`. `TypeScale` is gone
+  from spectrum as of v0.3.0, and it never had a code stop — the Code role
+  lives on `Typography`, outside the MD3 grid — so the old constructor had
+  to read `Mono` and `CodeSize` off `tokens.DefaultTypography` no matter
+  what typography the theme carried, and a caller passing a scaled
+  `TypeScale` scaled headings and body but not code. Code now follows the
+  typography you hand it, and the "set `Style.CodeSize` afterwards"
+  workaround is retired.
+- **`doc.Layout`'s positional-shaper signature is unchanged.** The other
+  half of the surface v0.1.0 was expected to re-cut stayed as it is; it
+  costs nothing today and no consumer has asked.
 - **Highlight colours are chroma's, except the plain runs.** Runs a chroma
   style would render in its plain-text foreground — whitespace, punctuation,
   plain identifiers — are emitted colourless and take `Style.CodeColor`, so

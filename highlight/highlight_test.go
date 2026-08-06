@@ -124,7 +124,7 @@ func themedSnippetWidget(t *testing.T, colors tokens.ColorTokens, restyle func(*
 	t.Helper()
 	shaper := tokens.DefaultTypography.Shaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
-	style := markdown.FromTokens(colors, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(colors, tokens.DefaultTypography)
 	if restyle != nil {
 		restyle(&style)
 	}
@@ -189,7 +189,7 @@ func TestCodeColorReachesHighlightedBlock(t *testing.T) {
 		{"dark", tokens.DefaultDark, "github-dark"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			token := markdown.FromTokens(tc.colors, tokens.DefaultTypeScale).CodeColor
+			token := markdown.FromTokens(tc.colors, tokens.DefaultTypography).CodeColor
 			override := tc.colors.Primary
 			themed := golden.Capture(t, size, themedSnippetWidget(t, tc.colors, func(s *markdown.Style) {
 				s.Highlight = highlight.New(tc.style)
@@ -282,7 +282,7 @@ func TestHighlightRunsShapeInMono(t *testing.T) {
 	if spans == nil {
 		t.Fatal("highlighter returned nil for Go code")
 	}
-	style := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypography)
 
 	combos := map[string]font.Font{}
 	var bold, italic int
@@ -348,7 +348,7 @@ func TestHighlightKeepsLayout(t *testing.T) {
 	shaper := tokens.DefaultTypography.Shaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
 	measure := func(hl markdown.Highlighter) int {
-		style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+		style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 		style.Highlight = hl
 		var ops op.Ops
 		gtx := layout.Context{

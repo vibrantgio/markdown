@@ -101,34 +101,40 @@ type Style struct {
 	Images ImageProvider
 }
 
-// FromTokens derives the default document style from colour tokens and the
-// type scale: headings step down HeadlineLarge..TitleSmall, body text follows
-// richtext.FromTokens, code sits on the Neutral 300 tinted fill with the
-// low-contrast Neutral 700 text step, the quote bar is Primary with Neutral
-// 700 text, rules and table grid lines are separators and use Divider, and
-// the table header row sits on the Neutral 300 tinted fill. Highlight and
-// Images stay nil — both are opt-in.
+// FromTokens derives the default document style from colour tokens and a
+// typography: headings step down HeadlineLarge..TitleSmall, body text follows
+// richtext.FromTokens on the BodyLarge role, code sits on the Neutral 300
+// tinted fill with the low-contrast Neutral 700 text step, the quote bar is
+// Primary with Neutral 700 text, rules and table grid lines are separators
+// and use Divider, and the table header row sits on the Neutral 300 tinted
+// fill. Highlight and Images stay nil — both are opt-in. Pass
+// tokens.DefaultTypography for the default look.
 //
-// Mono and CodeSize come from the theme's Code role. TypeScale has no code
-// stop — Code sits outside the MD3 grid as tokens.Typography's sixteenth
-// style — so this constructor, whose TypeScale-based signature is frozen
-// (C2.8), reads tokens.DefaultTypography.Code: the "Roboto Mono" typeface
-// the default face collection carries, at Code's BodyMedium-derived size.
-// A Style shaped for a non-default Typography sets Mono and CodeSize from
-// its own Code role after this call.
-func FromTokens(c tokens.ColorTokens, ts tokens.TypeScale) Style {
+// Mono and CodeSize come from typo's own Code role — the sixteenth style,
+// which sits outside the MD3 grid. Until F3.4 this constructor took a
+// tokens.TypeScale, which had no code stop, and so had to read
+// tokens.DefaultTypography.Code no matter what typography the theme carried
+// (C2.8); a Style shaped for a non-default one had to reset Mono and CodeSize
+// afterwards. Taking the whole typography retires that workaround.
+//
+// Of each role only Size lands in the Style: headings and paragraphs carry
+// their typeface, weight and slant per span (richtext.SpanStyle), so those
+// parts of a role reach the shaper through the document's spans rather than
+// through this constructor. Mono is the one typeface a Style names outright,
+// because code spans are built from it.
+func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	return Style{
-		Text: richtext.FromTokens(c, ts),
+		Text: richtext.FromTokens(c, typo.BodyLarge),
 		HeadingSizes: [6]unit.Sp{
-			unit.Sp(ts.HeadlineLarge),
-			unit.Sp(ts.HeadlineMedium),
-			unit.Sp(ts.HeadlineSmall),
-			unit.Sp(ts.TitleLarge),
-			unit.Sp(ts.TitleMedium),
-			unit.Sp(ts.TitleSmall),
+			unit.Sp(typo.HeadlineLarge.Size),
+			unit.Sp(typo.HeadlineMedium.Size),
+			unit.Sp(typo.HeadlineSmall.Size),
+			unit.Sp(typo.TitleLarge.Size),
+			unit.Sp(typo.TitleMedium.Size),
+			unit.Sp(typo.TitleSmall.Size),
 		},
-		Mono:                  font.Typeface(tokens.DefaultTypography.Code.Typeface),
-		CodeSize:              unit.Sp(tokens.DefaultTypography.Code.Size),
+		Mono:                  font.Typeface(typo.Code.Typeface),
+		CodeSize:              unit.Sp(typo.Code.Size),
 		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
 		CodeBackground:        c.Ramps.Neutral.Step(300), // tinted fill
 		QuoteBar:              c.Primary,

@@ -52,7 +52,7 @@ func TestCorpusDocumentGolden(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypeScale)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, size, themed(d, shaper, style, tc.colors))
 		})
@@ -80,7 +80,7 @@ func TestTableDocumentGolden(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypeScale)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, size, themed(d, shaper, style, tc.colors))
 		})
@@ -98,7 +98,7 @@ func TestTableNarrowGolden(t *testing.T) {
 		"| Compactline | a shell arranging its regions around a compact single line of content |\n" +
 		"| Sidebar | a shell with a leading navigation region and a trailing content region |\n"
 	blocks := markdown.Parse([]byte(src))
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	d := markdown.NewDocument(blocks)
 	golden.Render(t, "table-narrow-light", image.Pt(300, 260),
 		themed(d, shaper, style, tokens.DefaultLight))
@@ -109,7 +109,7 @@ func TestTableNarrowGolden(t *testing.T) {
 func TestScrolledDocumentGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse(corpus(t))
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	d := markdown.NewDocumentAt(blocks, 9)
 	golden.Render(t, "corpus-scrolled", image.Pt(560, 420),
 		themed(d, shaper, style, tokens.DefaultLight))
@@ -133,7 +133,7 @@ func measureDoc(shaper *text.Shaper, style markdown.Style, blocks []markdown.Blo
 // constraint.
 func TestLayoutColumnNaturalHeight(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	one := markdown.Parse([]byte("alpha\n"))
 	three := markdown.Parse([]byte("alpha\n\nbravo\n\n```\ncode\n```\n"))
 
@@ -163,7 +163,7 @@ func TestLayoutColumnNaturalHeight(t *testing.T) {
 // scrolls horizontally instead of wrapping).
 func TestCodeBlockOverflowScrolls(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	blocks := markdown.Parse([]byte("```\nthe first line is much much much much much wider than the narrow viewport\nshort line\n```\n"))
 
 	wide := measureDoc(shaper, style, blocks, image.Pt(2000, 1000))
@@ -238,7 +238,7 @@ func slicesEqual(a, b []int) bool {
 // horizontal scroll fallback.
 func TestTableNarrowKeepsWords(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	src := "| Shell | Description |\n" +
 		"|:------|:------------|\n" +
 		"| Compactline | a shell arranging its regions around a compact single line of content |\n" +
@@ -283,7 +283,7 @@ func (p *widgetProvider) ImageWidget(string) (layout.Widget, error) {
 // the layout), and the widget is requested once per block, not per frame.
 func TestWidgetImageProvider(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	prov := &widgetProvider{}
 	style.Images = prov
 	blocks := markdown.Parse([]byte("![icon](icon.svg)\n"))
@@ -314,7 +314,7 @@ func TestWidgetImageProvider(t *testing.T) {
 // unconstrained.
 func TestNestedListIndents(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 
 	flat := markdown.Parse([]byte("- alpha\n"))
 	nested := markdown.Parse([]byte("- alpha\n  - alpha\n    - alpha\n"))
@@ -343,7 +343,7 @@ func (p memProvider) Image(url string) (image.Image, error) {
 // the alt-text paragraph.
 func TestImageProvider(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	style.Images = memProvider{
 		"logo.png": image.NewNRGBA(image.Rect(0, 0, 48, 100)),
 		"wide.png": image.NewNRGBA(image.Rect(0, 0, 2000, 100)),
@@ -373,7 +373,7 @@ func TestImageProvider(t *testing.T) {
 // draining) over the full corpus without a GPU.
 func TestDocumentLiveFrame(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypeScale)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	d := markdown.NewDocument(markdown.Parse(corpus(t)))
 
 	r := new(gioinput.Router)
@@ -401,12 +401,12 @@ func TestDocumentLiveFrame(t *testing.T) {
 // the quote bar is Primary with Neutral 700 text, and rules are separators
 // using Divider.
 func TestFromTokensDefaults(t *testing.T) {
-	c, ts := tokens.DefaultLight, tokens.DefaultTypeScale
-	st := markdown.FromTokens(c, ts)
+	c, typo := tokens.DefaultLight, tokens.DefaultTypography
+	st := markdown.FromTokens(c, typo)
 
 	wantSizes := [6]unit.Sp{
-		unit.Sp(ts.HeadlineLarge), unit.Sp(ts.HeadlineMedium), unit.Sp(ts.HeadlineSmall),
-		unit.Sp(ts.TitleLarge), unit.Sp(ts.TitleMedium), unit.Sp(ts.TitleSmall),
+		unit.Sp(typo.HeadlineLarge.Size), unit.Sp(typo.HeadlineMedium.Size), unit.Sp(typo.HeadlineSmall.Size),
+		unit.Sp(typo.TitleLarge.Size), unit.Sp(typo.TitleMedium.Size), unit.Sp(typo.TitleSmall.Size),
 	}
 	if st.HeadingSizes != wantSizes {
 		t.Errorf("HeadingSizes = %v, want %v", st.HeadingSizes, wantSizes)
