@@ -29,7 +29,7 @@ func testFS() fstest.MapFS {
 // TestDocumentRendersSVGGolden records or diffs a document whose sole image
 // is served by the provider as vector geometry.
 func TestDocumentRendersSVGGolden(t *testing.T) {
-	shaper := tokens.DefaultTypography.Shaper()
+	shaper := tokens.DefaultTypography.DeterministicShaper()
 	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	style.Images = svgimage.New(testFS())
 	blocks := markdown.Parse([]byte("before\n\n![vector icon](icon.svg)\n\nafter\n"))

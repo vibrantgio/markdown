@@ -122,7 +122,7 @@ func TestHighlightUnknownLanguage(t *testing.T) {
 // theme's background, applying restyle to the token-derived style first.
 func themedSnippetWidget(t *testing.T, colors tokens.ColorTokens, restyle func(*markdown.Style)) layout.Widget {
 	t.Helper()
-	shaper := tokens.DefaultTypography.Shaper()
+	shaper := tokens.DefaultTypography.DeterministicShaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
 	style := markdown.FromTokens(colors, tokens.DefaultTypography)
 	if restyle != nil {
@@ -247,7 +247,7 @@ func TestHighlightChangesPixels(t *testing.T) {
 // face identity, not just metrics (the F0.1 technique).
 func shapeRun(t *testing.T, f font.Font) (fixed.Int26_6, []text.GlyphID) {
 	t.Helper()
-	shaper := tokens.DefaultTypography.Shaper()
+	shaper := tokens.DefaultTypography.DeterministicShaper()
 	shaper.LayoutString(text.Parameters{
 		Font:     f,
 		PxPerEm:  fixed.I(16),
@@ -345,7 +345,7 @@ func idsEqual(a, b []text.GlyphID) bool {
 // highlighted code block lays out at exactly the plain block's height, so
 // chroma's newline-leading whitespace tokens do not skew line metrics.
 func TestHighlightKeepsLayout(t *testing.T) {
-	shaper := tokens.DefaultTypography.Shaper()
+	shaper := tokens.DefaultTypography.DeterministicShaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
 	measure := func(hl markdown.Highlighter) int {
 		style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
