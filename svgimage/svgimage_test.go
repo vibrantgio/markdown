@@ -10,8 +10,8 @@ import (
 	"gioui.org/op/paint"
 
 	"github.com/vibrantgio/markdown"
-	golden "github.com/vibrantgio/markdown/internal/golden"
 	"github.com/vibrantgio/markdown/svgimage"
+	"github.com/vibrantgio/prism/golden"
 	"github.com/vibrantgio/spectrum/tokens"
 )
 
