@@ -9,12 +9,13 @@ that does the I/O. The goldmark dependency stops here and the chroma
 dependency stops in `highlight`, so prism never sees either.
 
 **Layer.** Tier 4 of ADR-001's stack, `mvu → spectrum → prism → pulse →
-cadence → markdown`, alongside cadence. It imports `prism/list`,
-`prism/richtext` and `prism/tokens`, and the support libraries svg and
-`svg/driver/gio` in the `svgimage` subpackage only; it does not import mvu,
-spectrum, pulse or cadence at all. Nothing in the design system imports
-markdown — the workbench applications `mindchat` and `sitedocs` are its
-consumers.
+cadence → markdown`, alongside cadence. Its root module imports `prism`,
+`spectrum`, `svg` and `svg/driver/gio`, and reaches `font` through them. No
+other repository's root module imports it; outside the tier table it is
+imported by the workbench applications `mindchat` and `sitedocs`. Both
+directions are measured rather than typed — `scripts/check-layers.sh
+--edges` reports the graph and `scripts/sync-agents.sh` renders these
+sentences from it — so correcting them here changes nothing.
 
 **Read the canonical guide before you write code against this module.** It is
 the organization's one agent guide — the module inventory with current tags,
