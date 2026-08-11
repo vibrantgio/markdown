@@ -33,12 +33,12 @@ documents stay O(visible).
 
 ## Where it sits
 
-Tier 4 of the stack — `mvu → theme → components → pulse → cadence → markdown` —
+Tier 4 of the stack — `mvu → theme → components → effects → cadence → markdown` —
 alongside [cadence](https://github.com/vibrantgio/cadence). It imports `list`
 and `richtext` from [components](https://github.com/vibrantgio/components), `tokens` from
 [theme](https://github.com/vibrantgio/theme), and
 [svg](https://github.com/vibrantgio/svg) in the `svgimage` subpackage only. It
-imports neither mvu, pulse nor cadence, and nothing in the design
+imports neither mvu, effects nor cadence, and nothing in the design
 system imports it: its consumers are the
 [workbench](https://github.com/vibrantgio/workbench) applications `mindchat`
 and `sitedocs`. The [organization page](https://github.com/vibrantgio) has the

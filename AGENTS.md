@@ -8,7 +8,7 @@ highlighting, GFM tables, and images through a caller-supplied provider
 that does the I/O. The goldmark dependency stops here and the chroma
 dependency stops in `highlight`, so components never sees either.
 
-**Layer.** Tier 4 of ADR-001's stack, `mvu → theme → components → pulse →
+**Layer.** Tier 4 of ADR-001's stack, `mvu → theme → components → effects →
 cadence → markdown`, alongside cadence. Its root module imports
 `components`, `svg`, `svg/driver/gio` and `theme`, and reaches `font`
 through them. No other repository's root module imports it; outside the
@@ -36,12 +36,12 @@ root.
 **Golden images.** Tests in three packages compare rendered output against
 PNGs committed under `testdata/golden/`. They render through
 `github.com/vibrantgio/components/golden`, which declares `-golden.update`
-and is shared with `cadence`, `pulse` and `workbench`. Do not inline a copy
-of it, and do not declare a second `-golden.update`: two registrations of
-one flag name in a single test binary panic in `flag.Bool` at init, before
-any test runs. When a change legitimately moves pixels, regenerate them
-within the same change, look at what came out, and say so in the commit.
-From the repository root:
+and is shared with `cadence`, `effects` and `workbench`. Do not inline a
+copy of it, and do not declare a second `-golden.update`: two registrations
+of one flag name in a single test binary panic in `flag.Bool` at init,
+before any test runs. When a change legitimately moves pixels, regenerate
+them within the same change, look at what came out, and say so in the
+commit. From the repository root:
 
     go test ./highlight ./svgimage . -golden.update
 
