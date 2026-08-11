@@ -14,8 +14,8 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 
+	"github.com/vibrantgio/components/golden"
 	"github.com/vibrantgio/markdown"
-	"github.com/vibrantgio/prism/golden"
 	"github.com/vibrantgio/theme/tokens"
 )
 
@@ -110,7 +110,7 @@ func TestTableNarrowGolden(t *testing.T) {
 }
 
 // TestScrolledDocumentGolden records or diffs the corpus scrolled to the task
-// list, proving the prism/list viewport renders later blocks.
+// list, proving the components/list viewport renders later blocks.
 func TestScrolledDocumentGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse(corpus(t))

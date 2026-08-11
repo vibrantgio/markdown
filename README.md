@@ -5,16 +5,16 @@ Document-grade markdown rendering for [Gio](https://gioui.org), part of
 desktop applications on macOS, Windows and Linux, written in pure Go. Gio gives
 you a text shaper and a paint API and has no notion of a document. This module
 walks a [goldmark](https://github.com/yuin/goldmark) AST into a block model and
-lays that model out with [prism](https://github.com/vibrantgio/prism)
+lays that model out with [components](https://github.com/vibrantgio/components)
 primitives, so a chat message, a README or a documentation page renders as a
 real document — headings on the type scale, bordered tables, code on a surface
 — rather than as one long paragraph.
 
 The package walks a goldmark AST (with `extension.GFM`) into a block model and
-renders it with prism primitives:
+renders it with components primitives:
 
 - headings on the `tokens` typography scale
-- paragraphs as `prism/richtext` span flows (bold, italic, inline code,
+- paragraphs as `components/richtext` span flows (bold, italic, inline code,
   links, GFM strikethrough)
 - ordered/unordered lists with real nesting and indentation, including GFM
   task-list checkboxes
@@ -28,14 +28,14 @@ renders it with prism primitives:
 - images through a caller-supplied `ImageProvider` (the library performs no
   I/O), rendered with `widget.Image` and falling back to alt text
 
-The document widget lays top-level blocks through `prism/list`, so long
+The document widget lays top-level blocks through `components/list`, so long
 documents stay O(visible).
 
 ## Where it sits
 
-Tier 4 of the stack — `mvu → theme → prism → pulse → cadence → markdown` —
+Tier 4 of the stack — `mvu → theme → components → pulse → cadence → markdown` —
 alongside [cadence](https://github.com/vibrantgio/cadence). It imports `list`
-and `richtext` from [prism](https://github.com/vibrantgio/prism), `tokens` from
+and `richtext` from [components](https://github.com/vibrantgio/components), `tokens` from
 [theme](https://github.com/vibrantgio/theme), and
 [svg](https://github.com/vibrantgio/svg) in the `svgimage` subpackage only. It
 imports neither mvu, pulse nor cadence, and nothing in the design
@@ -117,7 +117,7 @@ dependency: it flattens the whole document into a single richtext flow and
 drops blockquotes, thematic rules, images, tables, list nesting, and all of
 GFM; headings are distinguished by size only; tabs render as tofu; there is no
 text selection. It served as a span-model reference only — the span shape
-lives on in `prism/richtext`, and this module owns the block layer that
+lives on in `components/richtext`, and this module owns the block layer that
 `x/markdown` lacks.
 
 ## For coding assistants
@@ -157,7 +157,7 @@ organization. What renders, renders well; these are the honest gaps.
   fallback is a dark-background style that fails visibly on only one of the
   two themes, so a typo fails at construction instead.
 - **Text is not selectable or copyable.** Neither this module nor
-  `prism/richtext` implements selection — the same gap the comparison above
+  `components/richtext` implements selection — the same gap the comparison above
   notes in `x/markdown`. Links are clickable and focusable; that is all.
 - **Image results are cached per document, failures included.** A destination
   that fails to load keeps rendering its alt text for the life of that

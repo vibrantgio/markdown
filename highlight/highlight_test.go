@@ -16,9 +16,9 @@ import (
 	"gioui.org/unit"
 	"golang.org/x/image/math/fixed"
 
+	"github.com/vibrantgio/components/golden"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/markdown/highlight"
-	"github.com/vibrantgio/prism/golden"
 	"github.com/vibrantgio/theme/tokens"
 )
 

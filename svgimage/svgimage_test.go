@@ -9,9 +9,9 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 
+	"github.com/vibrantgio/components/golden"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/markdown/svgimage"
-	"github.com/vibrantgio/prism/golden"
 	"github.com/vibrantgio/theme/tokens"
 )
 

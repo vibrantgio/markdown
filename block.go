@@ -1,12 +1,12 @@
-// Package markdown renders markdown documents as Gio widgets built from prism
+// Package markdown renders markdown documents as Gio widgets built from components
 // primitives. It is tier 4 of the Vibrant Gio stack, alongside cadence, and
 // nothing in the design system depends on it: it is a leaf an application
 // reaches for when it has documents to put on screen.
 //
 // [Parse] walks a goldmark AST (with extension.GFM) into a block model — a
 // tree of [Block] values whose inline content is expressed as styled [Span]
-// runs. [Document] lays the top-level blocks through prism/list, so long
-// documents stay O(visible), and renders each block with prism widgets:
+// runs. [Document] lays the top-level blocks through components/list, so long
+// documents stay O(visible), and renders each block with components widgets:
 // type-scale headings, richtext paragraphs, nested lists with task-list
 // checkboxes, inset blockquotes with a leading token-coloured bar, rules,
 // monospace code blocks on a surface background with tab expansion and
@@ -19,7 +19,7 @@
 // which markdown/highlight implements with chroma, and vector images are served
 // through [WidgetImageProvider], which markdown/svgimage implements with
 // vibrantgio/svg. Only goldmark stops here rather than one level further out,
-// so prism never sees it; gioui.org/x/markdown was evaluated (2026-07-20) and
+// so components never sees it; gioui.org/x/markdown was evaluated (2026-07-20) and
 // rejected as a dependency — see the README.
 //
 // # The monospace font comes from the theme

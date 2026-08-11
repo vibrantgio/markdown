@@ -15,8 +15,8 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/vibrantgio/prism/list"
-	"github.com/vibrantgio/prism/richtext"
+	"github.com/vibrantgio/components/list"
+	"github.com/vibrantgio/components/richtext"
 	"github.com/vibrantgio/theme/tokens"
 )
 
@@ -25,7 +25,7 @@ import (
 // and the per-block interaction state (link focus/hover, code block scroll)
 // across frames.
 //
-// Top-level blocks are rows of a prism/list, so only the blocks in the
+// Top-level blocks are rows of a components/list, so only the blocks in the
 // viewport are laid out: O(visible), not O(len(blocks)).
 type Document struct {
 	blocks []Block

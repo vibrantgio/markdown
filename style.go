@@ -8,7 +8,7 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 
-	"github.com/vibrantgio/prism/richtext"
+	"github.com/vibrantgio/components/richtext"
 	"github.com/vibrantgio/theme/tokens"
 )
 
