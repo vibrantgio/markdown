@@ -17,7 +17,7 @@ import (
 
 	"github.com/vibrantgio/prism/list"
 	"github.com/vibrantgio/prism/richtext"
-	"github.com/vibrantgio/spectrum/tokens"
+	"github.com/vibrantgio/theme/tokens"
 )
 
 // Document lays out a parsed block tree. Allocate once per document instance

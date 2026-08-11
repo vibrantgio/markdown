@@ -33,10 +33,10 @@ documents stay O(visible).
 
 ## Where it sits
 
-Tier 4 of the stack — `mvu → spectrum → prism → pulse → cadence → markdown` —
+Tier 4 of the stack — `mvu → theme → prism → pulse → cadence → markdown` —
 alongside [cadence](https://github.com/vibrantgio/cadence). It imports `list`
 and `richtext` from [prism](https://github.com/vibrantgio/prism), `tokens` from
-[spectrum](https://github.com/vibrantgio/spectrum), and
+[theme](https://github.com/vibrantgio/theme), and
 [svg](https://github.com/vibrantgio/svg) in the `svgimage` subpackage only. It
 imports neither mvu, pulse nor cadence, and nothing in the design
 system imports it: its consumers are the

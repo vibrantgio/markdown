@@ -8,9 +8,9 @@ highlighting, GFM tables, and images through a caller-supplied provider
 that does the I/O. The goldmark dependency stops here and the chroma
 dependency stops in `highlight`, so prism never sees either.
 
-**Layer.** Tier 4 of ADR-001's stack, `mvu → spectrum → prism → pulse →
+**Layer.** Tier 4 of ADR-001's stack, `mvu → theme → prism → pulse →
 cadence → markdown`, alongside cadence. Its root module imports `prism`,
-`spectrum`, `svg` and `svg/driver/gio`, and reaches `font` through them. No
+`svg`, `svg/driver/gio` and `theme`, and reaches `font` through them. No
 other repository's root module imports it; outside the tier table it is
 imported by the workbench applications `mindchat` and `sitedocs`. Both
 directions are measured rather than typed — `scripts/check-layers.sh

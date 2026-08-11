@@ -12,7 +12,7 @@ import (
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/markdown/svgimage"
 	"github.com/vibrantgio/prism/golden"
-	"github.com/vibrantgio/spectrum/tokens"
+	"github.com/vibrantgio/theme/tokens"
 )
 
 // iconSVG is a viewBox-sized disc with an inset square: enough geometry to
