@@ -5,10 +5,10 @@ go 1.25.1
 require (
 	gioui.org v0.10.1
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/vibrantgio/prism v0.4.0
-	github.com/vibrantgio/spectrum v0.4.1
+	github.com/vibrantgio/components v0.7.0
 	github.com/vibrantgio/svg v0.0.9
 	github.com/vibrantgio/svg/driver/gio v0.0.9
+	github.com/vibrantgio/theme v0.6.0
 	github.com/yuin/goldmark v1.8.5
 	golang.org/x/image v0.44.0
 )
