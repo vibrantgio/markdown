@@ -66,7 +66,10 @@ func TestCorpusDocumentGolden(t *testing.T) {
 
 // TestTableDocumentGolden records or diffs a GFM table — emphasised header
 // row on its surface, token borders, and left/centre/right column alignment —
-// in light and dark token themes.
+// in light and dark token themes. The sample rows keep the old prism and
+// cadence names: they render into table-{light,dark}.png, and G-G0D moves
+// no pixels. They rename when those goldens are next deliberately
+// regenerated.
 func TestTableDocumentGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	src := "| Package | Role | Stars |\n" +
