@@ -7,14 +7,21 @@ blockquotes, rules, fenced code with tab expansion and optional chroma
 highlighting, GFM tables, and images through a caller-supplied provider
 that does the I/O. The goldmark dependency stops here and the chroma
 dependency stops in `highlight`, so components never sees either.
+`obsidian` recognises the Obsidian dialect around that model without
+touching the parser — frontmatter split off the source before it, wikilink
+and embed spans and `^id` block anchors derived from the blocks after it.
+It recognises and does not resolve: a wikilink arrives as an ordinary link
+span carrying the raw link body, and what that body names is the
+application's question, so the subpackage adds no dependency and reads no
+files.
 
 **Layer.** Tier 4 of ADR-001's stack, `mvu → theme → components → effects →
 patterns → markdown`, alongside patterns. Its root module imports
 `components`, `svg`, `svg/driver/gio` and `theme`, and reaches `font`
 through them. No other repository's root module imports it; outside the
-tier table it is imported by the workbench applications `mindchat` and
-`sitedocs`. Both directions are measured rather than typed —
-`scripts/check-layers.sh --edges` reports the graph and
+tier table it is imported by the workbench applications `mindchat`,
+`sitedocs` and `vaultview`. Both directions are measured rather than typed
+— `scripts/check-layers.sh --edges` reports the graph and
 `scripts/sync-agents.sh` renders these sentences from it — so correcting
 them here changes nothing.
 

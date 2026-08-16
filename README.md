@@ -31,6 +31,13 @@ renders it with components primitives:
 The document widget lays top-level blocks through `components/list`, so long
 documents stay O(visible).
 
+Notes written in the Obsidian dialect — YAML-style frontmatter, `[[wikilink]]`
+and `![[embed]]` syntax, trailing `^block-id` anchors — are recognised by the
+`markdown/obsidian` subpackage, which works on the source and on the public
+block model rather than inside the parser. It recognises; it resolves nothing:
+a wikilink becomes an ordinary link span carrying the raw link body, so the
+application decides what the target means.
+
 ## Where it sits
 
 Tier 4 of the stack — `mvu → theme → components → effects → patterns → markdown` —
@@ -39,10 +46,9 @@ and `richtext` from [components](https://github.com/vibrantgio/components), `tok
 [theme](https://github.com/vibrantgio/theme), and
 [svg](https://github.com/vibrantgio/svg) in the `svgimage` subpackage only. It
 imports neither mvu, effects nor patterns, and nothing in the design
-system imports it: its consumers are the
-[workbench](https://github.com/vibrantgio/workbench) applications `mindchat`
-and `sitedocs`. The [organization page](https://github.com/vibrantgio) has the
-full stack.
+system imports it: it is consumed by applications, at the top of the stack,
+and `AGENTS.md` names them from the measured graph rather than from memory.
+The [organization page](https://github.com/vibrantgio) has the full stack.
 
 ## Packages
 
@@ -51,6 +57,7 @@ full stack.
 | `markdown` | `Parse` a source into a block model, `Document` to lay it out, `Style` to theme it. Carries goldmark, and nothing heavier. |
 | `markdown/highlight` | A chroma-backed `Highlighter` for fenced code. Importing this package is what pulls chroma into a build. |
 | `markdown/svgimage` | An image provider serving `.svg` destinations as vector widgets through `svg/driver/gio`. Importing this package is what pulls svg in. |
+| `markdown/obsidian` | Recognition of the Obsidian dialect around `Parse`: `SplitFrontMatter` before it, `WikiSpans` and `BlockAnchors` after it. Pure Go, no dependency beyond the parent package. |
 
 ## Usage
 
@@ -110,6 +117,40 @@ faces := append(slices.Clone(roboto.FontFaces()), robotomono.FontFaces()...)
 shaper := text.NewShaper(text.NoSystemFonts(), text.WithCollection(faces))
 ```
 
+## The Obsidian dialect
+
+`markdown/obsidian` adds recognition of the three things Obsidian-flavoured
+notes carry that GitHub-flavoured markdown does not. The parser is untouched:
+one pass runs before it and two run over the block model it returns.
+
+```go
+fm, body := obsidian.SplitFrontMatter(src)          // properties off the top
+blocks, anchors := obsidian.BlockAnchors(           // "^id" tails → indices
+    obsidian.WikiSpans(markdown.Parse(body)))       // [[link]] → link spans
+doc := markdown.NewDocumentAt(blocks, anchors["intro"])
+```
+
+- **Frontmatter** is split off as data before parsing, because a leading
+  `---` block otherwise renders as a rule and a setext heading. The fields are
+  read by a trivial line split — scalars and `- item` lists — with the raw
+  text kept, so a document needing full YAML can hand `FrontMatter.Raw` to a
+  parser of its choosing. No YAML dependency arrives here.
+- **Wikilinks** — `[[target]]`, `[[target|alias]]` and the `![[target]]`
+  embed form — become ordinary link spans whose URL is the raw link body
+  under a `wiki:` scheme (`wikiembed:` for embeds). Nothing is resolved: what
+  a target names is the application's question, and answering it needs the
+  folder the notes live in, which this library never reads. Spans already
+  marked code or already carrying a URL are left alone.
+- **Block ids** — a trailing ` ^id` on a paragraph or list item, or an `^id`
+  written on its own line under a table or fence — are stripped from what is
+  displayed and returned as a map from id to top-level block index, which is
+  what `NewDocumentAt` takes.
+
+One limitation is by construction and pinned by a test: a span is a styling
+run, so a wikilink whose body crosses a styling boundary (`[[a *b*]]`) is not
+recognised. Obsidian link targets do not carry markdown styling, so this
+excludes approximately nothing.
+
 ## Why not `gioui.org/x/markdown`?
 
 The existing community renderer was evaluated on 2026-07-20 and rejected as a
@@ -131,10 +172,15 @@ down. Read it before writing code against this module:
 
 ## Status
 
-Current tag `v0.1.0` — a pre-release number, like every tag in the
+Current tag `v0.2.0` — a pre-release number, like every tag in the
 organization. What renders, renders well; these are the honest gaps.
 
-- **v0.1.0 is a breaking release.** `FromTokens` takes a
+- **v0.2.0 is additive.** It adds the `markdown/obsidian` subpackage and
+  changes nothing that existed before it: the parser, the block model, the
+  document widget and `Style` are untouched, and the stored golden images
+  are byte-identical across the release. A consumer that does not import the
+  new subpackage sees no difference.
+- **v0.1.0 was a breaking release.** `FromTokens` takes a
   `tokens.Typography` where it took a `tokens.TypeScale`:
   `markdown.FromTokens(c, tokens.DefaultTypography)`. `TypeScale` is gone
   from spectrum as of v0.3.0, and it never had a code stop — the Code role
