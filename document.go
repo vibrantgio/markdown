@@ -42,6 +42,9 @@ type Document struct {
 	// images holds per-image-block provider results, so the provider and
 	// texture upload run once per block, not per frame.
 	images map[*Image]imageState
+	// place records where each top-level heading sits among its siblings,
+	// which is what spaces it; see [headingPlacement].
+	place map[*Heading]headingPlacement
 	// line is one line of body text in pixels, taken from the Style the last
 	// layout was given. It is the overlap a page move keeps; see move.go.
 	line int
@@ -65,6 +68,7 @@ func NewDocument(blocks []Block) *Document {
 		code:   make(map[*CodeBlock]*layout.List),
 		tables: make(map[*Table]*layout.List),
 		images: make(map[*Image]imageState),
+		place:  placements(blocks),
 	}
 }
 
@@ -123,11 +127,81 @@ func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, styl
 // row returns the per-block row function both list entry points lay out.
 func (d *Document) row(shaper *text.Shaper, style Style) func(layout.Context, Block) layout.Dimensions {
 	return func(gtx layout.Context, b Block) layout.Dimensions {
-		return layout.Inset{Bottom: style.BlockGap, Right: style.Gutter}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		top, bottom := blockSpace(style, b, d.placeOf(b))
+		return layout.Inset{Top: top, Bottom: bottom, Right: style.Gutter}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Min = image.Point{}
 			return d.block(gtx, shaper, style, b)
 		})
 	}
+}
+
+// headingPlacement is where a heading sits among its siblings, which is what
+// damps the space above it: a heading opening the run has nothing above to
+// separate itself from, and a heading directly under another heading is the
+// second half of one announcement rather than the start of a second section.
+type headingPlacement uint8
+
+const (
+	// headingSection is a heading opening a section of its own.
+	headingSection headingPlacement = iota
+	// headingFirst is a heading opening the run of blocks.
+	headingFirst
+	// headingStacked is a heading directly under another heading.
+	headingStacked
+)
+
+// placements records where every heading among blocks sits. A document's
+// blocks are fixed for its life, so this is computed once at construction:
+// the row function sees one block at a time and cannot tell what precedes it.
+func placements(blocks []Block) map[*Heading]headingPlacement {
+	m := make(map[*Heading]headingPlacement)
+	for i, b := range blocks {
+		if h, ok := b.(*Heading); ok {
+			m[h] = placement(blocks, i)
+		}
+	}
+	return m
+}
+
+// placement classifies the block at index i of blocks.
+func placement(blocks []Block, i int) headingPlacement {
+	if i == 0 {
+		return headingFirst
+	}
+	if _, ok := blocks[i-1].(*Heading); ok {
+		return headingStacked
+	}
+	return headingSection
+}
+
+// placeOf returns the recorded placement of a top-level block.
+func (d *Document) placeOf(b Block) headingPlacement {
+	if h, ok := b.(*Heading); ok {
+		return d.place[h]
+	}
+	return headingSection
+}
+
+// blockSpace returns the vertical space a block puts above and below itself.
+// An ordinary block closes with BlockGap and reaches nothing above it, so the
+// space between two of them is one gap. A heading closes with its own,
+// tighter space instead, and reaches above the gap by however much its space
+// above exceeds one — suppressed where the heading opens the run of blocks,
+// halved where it follows another heading.
+func blockSpace(style Style, b Block, p headingPlacement) (top, bottom unit.Dp) {
+	h, ok := b.(*Heading)
+	if !ok {
+		return 0, style.BlockGap
+	}
+	above, below := style.headingSpace(h.Level)
+	extra := above - style.BlockGap
+	switch p {
+	case headingFirst:
+		extra = 0
+	case headingStacked:
+		extra /= 2
+	}
+	return extra, below
 }
 
 // block dispatches one block to its widget.
@@ -153,22 +227,27 @@ func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b
 	return layout.Dimensions{}
 }
 
-// column stacks blocks vertically with BlockGap between them, returning the
-// union size.
+// column stacks blocks vertically, spacing each pair the way the list rows
+// are spaced — the ordinary gap between ordinary blocks, a heading's own
+// asymmetric space around a heading — and returns the union size. Nothing is
+// added above the first block or below the last: an embedded column takes
+// exactly its content's height.
 func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, blocks []Block) layout.Dimensions {
-	gap := gtx.Dp(style.BlockGap)
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
 	var size image.Point
+	closing := 0 // the space the previous block closes with
 	for i, b := range blocks {
+		top, bottom := blockSpace(style, b, placement(blocks, i))
+		if i > 0 {
+			size.Y += closing + gtx.Dp(top)
+		}
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
 		dims := d.block(cgtx, shaper, style, b)
 		tr.Pop()
 		size.Y += dims.Size.Y
-		if i < len(blocks)-1 {
-			size.Y += gap
-		}
 		size.X = max(size.X, dims.Size.X)
+		closing = gtx.Dp(bottom)
 	}
 	return layout.Dimensions{Size: size}
 }

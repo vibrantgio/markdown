@@ -231,6 +231,36 @@ func TestTheEndsReachFromAnAnchorLanding(t *testing.T) {
 	}
 }
 
+// TestAnAnchorLandingShowsTheHeadingAndWhatItOpens is what a followed link
+// does: it names the heading's block, and the reader must arrive looking at
+// that heading with the section under it, not at a heading half off the top
+// edge. The space a heading carries above it belongs to the heading's own
+// row, so the landing has to bring that space into the viewport too.
+func TestAnAnchorLandingShowsTheHeadingAndWhatItOpens(t *testing.T) {
+	r := newReader(t, longDoc(30), image.Pt(480, 400))
+	r.frame()
+
+	// longDoc repeats a heading, a paragraph and a list, so every third block
+	// is a heading; block 0 is the one that opens the document.
+	for _, i := range []int{0, 3, 18, 45} {
+		r.doc.ScrollToBlock(i)
+		r.frame()
+		p := r.pos()
+		switch {
+		case p.First != i || p.Offset != 0:
+			t.Fatalf("landing on heading block %d left %+v; part of the heading's row is above the viewport", i, p)
+		case p.Count < 2:
+			t.Fatalf("landing on heading block %d shows %d block(s); the reader should see what the heading opens", i, p.Count)
+		}
+		// A second frame must not drift: the landing is a position, not a
+		// one-frame nudge.
+		r.frame()
+		if got := r.pos(); got.First != i || got.Offset != 0 {
+			t.Fatalf("the landing on heading block %d drifted to %+v on the next frame", i, got)
+		}
+	}
+}
+
 // TestADocumentThatFitsDoesNotMove: with the whole note on screen there is
 // nowhere to go, and every move must be a no-op — a page that scrolled the
 // last line off a document that fits would be the worst kind of motion.

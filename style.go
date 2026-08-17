@@ -89,6 +89,26 @@ type Style struct {
 	CheckmarkColor color.NRGBA
 	// BlockGap is the vertical space between sibling blocks.
 	BlockGap unit.Dp
+	// HeadingSpaceAbove is the vertical space above a heading of level 1..6
+	// (index 0..5) and HeadingSpaceBelow the space below it. They replace
+	// BlockGap on their side rather than adding to it, which is what lets a
+	// heading take more air above than an ordinary block gap and less below:
+	// a heading then separates from the section it closes and clings to the
+	// one it opens. A zero entry falls back to BlockGap, so a hand-built
+	// Style that sets neither spaces headings evenly, as it always did.
+	//
+	// The space above is suppressed for the document's first block, which has
+	// nothing to separate from, and halved for a heading directly under
+	// another heading, a pair being one announcement rather than two
+	// sections.
+	//
+	// [FromTokens] derives both from the type scale; the reader sees a little
+	// more than these numbers on each side, the shaped lines carrying their
+	// own leading above and below the ink.
+	HeadingSpaceAbove [6]unit.Dp
+	// HeadingSpaceBelow is the vertical space below a heading; see
+	// HeadingSpaceAbove.
+	HeadingSpaceBelow [6]unit.Dp
 	// Indent is the per-level indentation of list items and the inset of
 	// blockquote content.
 	Indent unit.Dp
@@ -130,16 +150,21 @@ type Style struct {
 // through this constructor. Mono is the one typeface a Style names outright,
 // because code spans are built from it.
 func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
+	sizes := [6]unit.Sp{
+		unit.Sp(typo.HeadlineLarge.Size),
+		unit.Sp(typo.HeadlineMedium.Size),
+		unit.Sp(typo.HeadlineSmall.Size),
+		unit.Sp(typo.TitleLarge.Size),
+		unit.Sp(typo.TitleMedium.Size),
+		unit.Sp(typo.TitleSmall.Size),
+	}
+	gap := unit.Dp(tokens.Spacing.S2)
+	above, below := headingSpacing(gap, sizes)
 	return Style{
-		Text: richtext.FromTokens(c, typo.BodyLarge),
-		HeadingSizes: [6]unit.Sp{
-			unit.Sp(typo.HeadlineLarge.Size),
-			unit.Sp(typo.HeadlineMedium.Size),
-			unit.Sp(typo.HeadlineSmall.Size),
-			unit.Sp(typo.TitleLarge.Size),
-			unit.Sp(typo.TitleMedium.Size),
-			unit.Sp(typo.TitleSmall.Size),
-		},
+		Text:                  richtext.FromTokens(c, typo.BodyLarge),
+		HeadingSizes:          sizes,
+		HeadingSpaceAbove:     above,
+		HeadingSpaceBelow:     below,
 		Mono:                  font.Typeface(typo.Code.Typeface),
 		CodeSize:              unit.Sp(typo.Code.Size),
 		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
@@ -151,9 +176,42 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		TableHeaderBackground: c.Ramps.Neutral.Step(300), // tinted fill
 		CheckboxColor:         c.Primary,
 		CheckmarkColor:        c.OnPrimary,
-		BlockGap:              unit.Dp(tokens.Spacing.S2),
+		BlockGap:              gap,
 		Indent:                unit.Dp(tokens.Spacing.S6),
 	}
+}
+
+// headingSpacing derives the space around every heading level from the block
+// gap and the type scale. Below a heading sits an eighth of the level's own
+// text size, which is well under the ordinary gap and pulls the heading onto
+// the text it introduces; above it sits the ordinary gap plus a twelfth of
+// that size, which is a little over it. Both scale with the level, so a deep
+// heading earns slightly less air than a shallow one, and the shaped lines'
+// own leading adds a few more points on each side of what the reader sees —
+// which lands the blank above a heading at around a third more than the blank
+// between ordinary blocks and about twice the blank below it.
+func headingSpacing(gap unit.Dp, sizes [6]unit.Sp) (above, below [6]unit.Dp) {
+	for i, size := range sizes {
+		above[i] = gap + unit.Dp(float32(size)/12)
+		below[i] = unit.Dp(float32(size) / 8)
+	}
+	return above, below
+}
+
+// headingSpace returns the space above and below a heading of the given level.
+// A zero entry — a Style built by hand rather than by [FromTokens] — falls
+// back to the ordinary block gap, and the space above never falls below it.
+func (s Style) headingSpace(level int) (above, below unit.Dp) {
+	above, below = s.BlockGap, s.BlockGap
+	if level >= 1 && level <= len(s.HeadingSpaceAbove) {
+		if v := s.HeadingSpaceAbove[level-1]; v > 0 {
+			above = v
+		}
+		if v := s.HeadingSpaceBelow[level-1]; v > 0 {
+			below = v
+		}
+	}
+	return max(above, s.BlockGap), below
 }
 
 // heading returns the richtext paragraph style for a heading of the given

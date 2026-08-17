@@ -13,7 +13,9 @@ real document — headings on the type scale, bordered tables, code on a surface
 The package walks a goldmark AST (with `extension.GFM`) into a block model and
 renders it with components primitives:
 
-- headings on the `tokens` typography scale
+- headings on the `tokens` typography scale, each carrying its own vertical
+  space — wider above than below, so a heading parts from the section it
+  closes and binds to the one it opens
 - paragraphs as `components/richtext` span flows (bold, italic, inline code,
   links, GFM strikethrough)
 - ordered/unordered lists with real nesting and indentation, including GFM

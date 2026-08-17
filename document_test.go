@@ -514,4 +514,12 @@ func TestFromTokensDefaults(t *testing.T) {
 	if want := unit.Sp(tokens.DefaultTypography.Code.Size); st.CodeSize != want {
 		t.Errorf("CodeSize = %v, want the Code role's %v", st.CodeSize, want)
 	}
+	// Heading space is derived, not left to the caller: wider than the block
+	// gap above every level and tighter below it.
+	for i := range st.HeadingSpaceAbove {
+		if st.HeadingSpaceAbove[i] <= st.BlockGap || st.HeadingSpaceBelow[i] >= st.BlockGap {
+			t.Errorf("level %d heading space = %v/%v above/below against a %v block gap; want more above and less below",
+				i+1, st.HeadingSpaceAbove[i], st.HeadingSpaceBelow[i], st.BlockGap)
+		}
+	}
 }
