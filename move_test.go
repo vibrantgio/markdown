@@ -288,3 +288,57 @@ func TestAKeyboardMoveChangesTheScrollFractions(t *testing.T) {
 		t.Fatalf("a page down left the position at %+v", after)
 	}
 }
+
+// TestScrollToBlockSeatsTheNamedBlock is the move an outline entry makes: the
+// named block leads the viewport afterwards, whether it was below the fold or
+// above it, and the document is the same one throughout — nothing here builds a
+// second document at the target.
+func TestScrollToBlockSeatsTheNamedBlock(t *testing.T) {
+	r := newReader(t, longDoc(30), image.Pt(480, 400))
+	r.frame()
+	before := r.doc
+
+	// Down the document and back up it, past the fold in both directions.
+	for _, i := range []int{18, 3, 40, 9} {
+		r.doc.ScrollToBlock(i)
+		r.frame()
+		if p := r.pos(); p.First != i || p.Offset != 0 {
+			t.Fatalf("ScrollToBlock(%d): position = %+v, want First %d Offset 0", i, p, i)
+		}
+	}
+	if r.doc != before {
+		t.Error("the document was rebuilt; scrolling to a block must move the reader, not reload the note")
+	}
+}
+
+// TestScrollToBlockOutOfRange covers the two indices a caller may hand over
+// without checking: past the last block lands on the document's end, and a
+// negative one on its start.
+func TestScrollToBlockOutOfRange(t *testing.T) {
+	r := newReader(t, longDoc(20), image.Pt(480, 400))
+	r.frame()
+
+	r.doc.ScrollToBlock(len(r.blocks) + 25)
+	r.frame()
+	if !r.atEnd() {
+		t.Fatalf("ScrollToBlock past the last block left %+v, want the document's end", r.pos())
+	}
+
+	r.doc.ScrollToBlock(-3)
+	r.frame()
+	if !r.atStart() {
+		t.Fatalf("ScrollToBlock(-3) left %+v, want the document's start", r.pos())
+	}
+}
+
+// TestScrollToBlockOnADocumentThatFits is the short-note case: every block is
+// already on screen, so naming one moves nothing.
+func TestScrollToBlockOnADocumentThatFits(t *testing.T) {
+	r := newReader(t, "# Title\n\nOne short paragraph.\n", image.Pt(480, 400))
+	r.frame()
+	r.doc.ScrollToBlock(len(r.blocks) - 1)
+	r.frame()
+	if !r.atStart() {
+		t.Fatalf("position = %+v; a document shorter than the viewport must not move", r.pos())
+	}
+}

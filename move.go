@@ -54,6 +54,24 @@ func (d *Document) ScrollToStart() { d.list.ScrollToStart() }
 // the viewport shows the end of the text and no empty space past it.
 func (d *Document) ScrollToEnd() { d.list.ScrollToEnd(len(d.blocks)) }
 
+// ScrollToBlock puts the top-level block at index i at the top of the viewport.
+// It is how an outline entry, or anything else naming a place in the document,
+// takes the reader there: the same document keeps reading, seated somewhere
+// else, rather than being built again at that block — so what the reader had
+// open, scrolled and interacted with survives the move.
+//
+// The index is the one [Document.Blocks] is indexed by, which is also what
+// [NewDocumentAt] seats a fresh document at. Out of range is not an error: a
+// negative index goes to the start, and one past the last block goes as far as
+// the document does.
+func (d *Document) ScrollToBlock(i int) {
+	if n := len(d.blocks); i >= n {
+		d.ScrollToEnd()
+		return
+	}
+	d.list.ScrollTo(i)
+}
+
 // page is the pixel distance one page move covers: the viewport the document
 // last laid out in, less a line of overlap.
 func (d *Document) page() int {
