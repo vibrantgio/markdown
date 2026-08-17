@@ -128,26 +128,29 @@ func TestTheFirstBlockTakesNoSpaceAbove(t *testing.T) {
 	}
 }
 
-// TestStackedHeadingsCloseUp: a heading directly under another heading is the
-// second half of one announcement, not the start of a second section, so it
-// takes less space above it than the same heading following prose — while
-// still standing apart from the heading above it.
+// TestStackedHeadingsCloseUp: two headings in a row are one announcement, not
+// two sections. The pair closes from both sides — the lower heading opens no
+// space of its own and the upper one closes with less than it would over
+// prose — so the space inside the pair is the tightest on the page: under an
+// ordinary block gap, and well under what the same heading takes over a
+// paragraph.
 func TestStackedHeadingsCloseUp(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 
-	// A gap is what the block above closes with plus what the block below
-	// opens with, so differencing against a paragraph in the lower position
-	// leaves the heading's own space above and nothing else.
-	stacked := gapBetween(t, shaper, style, heading(2), heading(3)) -
-		gapBetween(t, shaper, style, heading(2), spacingProse)
-	opened := gapBetween(t, shaper, style, spacingProse, heading(3)) -
-		gapBetween(t, shaper, style, spacingProse, spacingProse)
+	pair := gapBetween(t, shaper, style, heading(2), heading(3))
+	overProse := gapBetween(t, shaper, style, heading(2), spacingProse)
+	underProse := gapBetween(t, shaper, style, spacingProse, heading(3))
+	ordinary := gapBetween(t, shaper, style, spacingProse, spacingProse)
 	switch {
-	case stacked >= opened:
-		t.Errorf("a heading under a heading opened %d px above it, one under a paragraph %d px; the stacked pair must close up", stacked, opened)
-	case stacked <= 0:
-		t.Errorf("a heading under a heading opened %d px above it; the pair is still two blocks", stacked)
+	case pair >= underProse:
+		t.Errorf("a heading under a heading took %d px above it, one under a paragraph %d px; the stacked pair must close up", pair, underProse)
+	case pair >= overProse:
+		t.Errorf("a heading over a heading closed with %d px, one over a paragraph %d px; the pair must be the tighter of the two", pair, overProse)
+	case pair >= ordinary:
+		t.Errorf("a heading under a heading took %d px above it against a %d px ordinary block gap; the pair must read as one announcement", pair, ordinary)
+	case pair <= 0:
+		t.Errorf("a heading under a heading took %d px above it; the pair is still two blocks", pair)
 	}
 }
 

@@ -136,23 +136,23 @@ func (d *Document) row(shaper *text.Shaper, style Style) func(layout.Context, Bl
 }
 
 // headingPlacement is where a heading sits among its siblings, which is what
-// damps the space above it: a heading opening the run has nothing above to
-// separate itself from, and a heading directly under another heading is the
-// second half of one announcement rather than the start of a second section.
-type headingPlacement uint8
-
-const (
-	// headingSection is a heading opening a section of its own.
-	headingSection headingPlacement = iota
-	// headingFirst is a heading opening the run of blocks.
-	headingFirst
-	// headingStacked is a heading directly under another heading.
-	headingStacked
-)
+// damps the space around it. A heading opening the run has nothing above to
+// separate itself from; two headings in a row are one announcement rather
+// than two sections, so the pair closes up from both sides — the shaped lines
+// alone leave a heading's descent and the next heading's ascent between them,
+// which is already as much blank as a section break carries.
+type headingPlacement struct {
+	// first marks the heading as the block that opens the run.
+	first bool
+	// under marks a heading directly below another heading.
+	under bool
+	// over marks a heading directly above another heading.
+	over bool
+}
 
 // placements records where every heading among blocks sits. A document's
 // blocks are fixed for its life, so this is computed once at construction:
-// the row function sees one block at a time and cannot tell what precedes it.
+// the row function sees one block at a time and cannot tell what surrounds it.
 func placements(blocks []Block) map[*Heading]headingPlacement {
 	m := make(map[*Heading]headingPlacement)
 	for i, b := range blocks {
@@ -165,13 +165,14 @@ func placements(blocks []Block) map[*Heading]headingPlacement {
 
 // placement classifies the block at index i of blocks.
 func placement(blocks []Block, i int) headingPlacement {
-	if i == 0 {
-		return headingFirst
+	p := headingPlacement{first: i == 0}
+	if i > 0 {
+		_, p.under = blocks[i-1].(*Heading)
 	}
-	if _, ok := blocks[i-1].(*Heading); ok {
-		return headingStacked
+	if i < len(blocks)-1 {
+		_, p.over = blocks[i+1].(*Heading)
 	}
-	return headingSection
+	return p
 }
 
 // placeOf returns the recorded placement of a top-level block.
@@ -179,29 +180,30 @@ func (d *Document) placeOf(b Block) headingPlacement {
 	if h, ok := b.(*Heading); ok {
 		return d.place[h]
 	}
-	return headingSection
+	return headingPlacement{}
 }
 
 // blockSpace returns the vertical space a block puts above and below itself.
 // An ordinary block closes with BlockGap and reaches nothing above it, so the
 // space between two of them is one gap. A heading closes with its own,
 // tighter space instead, and reaches above the gap by however much its space
-// above exceeds one — suppressed where the heading opens the run of blocks,
-// halved where it follows another heading.
+// above exceeds one — opening none at all where it is the run's first block
+// or sits directly under another heading, and closing with half its space
+// where the next block is a heading.
 func blockSpace(style Style, b Block, p headingPlacement) (top, bottom unit.Dp) {
 	h, ok := b.(*Heading)
 	if !ok {
 		return 0, style.BlockGap
 	}
 	above, below := style.headingSpace(h.Level)
-	extra := above - style.BlockGap
-	switch p {
-	case headingFirst:
-		extra = 0
-	case headingStacked:
-		extra /= 2
+	top = above - style.BlockGap
+	if p.first || p.under {
+		top = 0
 	}
-	return extra, below
+	if p.over {
+		below /= 2
+	}
+	return top, below
 }
 
 // block dispatches one block to its widget.
