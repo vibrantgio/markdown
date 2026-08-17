@@ -42,6 +42,9 @@ type Document struct {
 	// images holds per-image-block provider results, so the provider and
 	// texture upload run once per block, not per frame.
 	images map[*Image]imageState
+	// line is one line of body text in pixels, taken from the Style the last
+	// layout was given. It is the overlap a page move keeps; see move.go.
+	line int
 }
 
 // imageState is a cached provider result: the widget serving a vector
@@ -93,6 +96,7 @@ func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style S
 // [tokens.Typography.Shaper]; see the package documentation for what its
 // collection must hold for Style.Mono to resolve.
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
+	d.recordLine(gtx, style)
 	return list.Layout(gtx, d.list, d.blocks, d.row(shaper, style))
 }
 
@@ -112,6 +116,7 @@ func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) 
 // scrollbar at all, which is what an embedder inside its own scrolling
 // viewport wants.
 func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, style Style, bar scrollbar.Style, anchor list.Anchor) layout.Dimensions {
+	d.recordLine(gtx, style)
 	return list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style))
 }
 
