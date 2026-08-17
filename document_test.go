@@ -15,6 +15,8 @@ import (
 	"gioui.org/unit"
 
 	"github.com/vibrantgio/components/golden"
+	"github.com/vibrantgio/components/list"
+	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
 )
@@ -121,6 +123,78 @@ func TestScrolledDocumentGolden(t *testing.T) {
 	d := markdown.NewDocumentAt(blocks, 9)
 	golden.Render(t, "corpus-scrolled", image.Pt(560, 420),
 		themed(d, shaper, style, tokens.DefaultLight))
+}
+
+// scrolledWithBar is themed for LayoutScrollbar: the same document on the
+// same ground, with the design system's bar in a reserved gutter.
+func scrolledWithBar(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.ColorTokens) layout.Widget {
+	bar := scrollbar.FromTokens(c)
+	return func(gtx layout.Context) layout.Dimensions {
+		paint.FillShape(gtx.Ops, c.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return d.LayoutScrollbar(gtx, shaper, style, bar, list.Occupy)
+		})
+	}
+}
+
+// TestScrollbarDocumentGolden records the corpus mid-document with the bar:
+// the thumb sits away from both ends and is shorter than the track, which is
+// the whole point of the treatment — position and proportion at a glance.
+func TestScrollbarDocumentGolden(t *testing.T) {
+	shaper := defaultShaper(t)
+	blocks := markdown.Parse(corpus(t))
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	d := markdown.NewDocumentAt(blocks, 9)
+	golden.Render(t, "corpus-scrollbar", image.Pt(560, 420),
+		scrolledWithBar(d, shaper, style, tokens.DefaultLight))
+}
+
+// TestScrollbarOnlyWhenTheDocumentOverflows asserts the appearing half of the
+// contract at the document level: a corpus far taller than the viewport draws
+// a bar, and a two-line document in the same viewport draws none. The probe
+// is the ink outside the row area — with Occupy the gutter is reserved either
+// way, so dimensions cannot tell the two apart, but pixels can.
+func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	bar := scrollbar.FromTokens(tokens.DefaultLight)
+	size := image.Pt(400, 300)
+
+	render := func(blocks []markdown.Block) *image.RGBA {
+		d := markdown.NewDocument(blocks)
+		return golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
+			paint.FillShape(gtx.Ops, tokens.DefaultLight.Background,
+				clip.Rect{Max: gtx.Constraints.Max}.Op())
+			return d.LayoutScrollbar(gtx, shaper, style, bar, list.Occupy)
+		})
+	}
+	// A blank ground of the same size is the baseline: any difference in the
+	// gutter column is the bar.
+	blank := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
+		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background,
+			clip.Rect{Max: gtx.Constraints.Max}.Op())
+		return layout.Dimensions{Size: gtx.Constraints.Max}
+	})
+	gutter := func(img *image.RGBA) int {
+		n := 0
+		for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+			for x := img.Bounds().Max.X - 10; x < img.Bounds().Max.X; x++ {
+				if img.RGBAAt(x, y) != blank.RGBAAt(x, y) {
+					n++
+				}
+			}
+		}
+		return n
+	}
+
+	long := gutter(render(markdown.Parse(corpus(t))))
+	if long == 0 {
+		t.Error("a document taller than the viewport drew no scrollbar")
+	}
+	short := gutter(render(markdown.Parse([]byte("A short note.\n"))))
+	if short != 0 {
+		t.Errorf("a document that fits drew %d scrollbar pixels, want none", short)
+	}
 }
 
 // ---- Layout tests ----

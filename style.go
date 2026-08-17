@@ -92,6 +92,13 @@ type Style struct {
 	// Indent is the per-level indentation of list items and the inset of
 	// blockquote content.
 	Indent unit.Dp
+	// Gutter is a trailing inset on every top-level block: the prose stops
+	// short of the viewport's edge by this much, and nothing is drawn in
+	// the strip left over. It is what lets a scrollbar sit where the
+	// platform puts one — hard against the pane's edge — while the reading
+	// measure keeps its own margin, which would otherwise have to be the
+	// same number. Zero, the default, gives the blocks the full width.
+	Gutter unit.Dp
 	// Highlight, when non-nil, syntax-highlights fenced code blocks.
 	// markdown/highlight provides a chroma-backed implementation.
 	Highlight Highlighter

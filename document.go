@@ -17,6 +17,7 @@ import (
 
 	"github.com/vibrantgio/components/list"
 	"github.com/vibrantgio/components/richtext"
+	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/theme/tokens"
 )
 
@@ -92,12 +93,36 @@ func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style S
 // [tokens.Typography.Shaper]; see the package documentation for what its
 // collection must hold for Style.Mono to resolve.
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
-	return list.Layout(gtx, d.list, d.blocks, func(gtx layout.Context, b Block) layout.Dimensions {
-		return layout.Inset{Bottom: style.BlockGap}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	return list.Layout(gtx, d.list, d.blocks, d.row(shaper, style))
+}
+
+// LayoutScrollbar lays out the document exactly like [Layout] and additionally
+// draws bar along its trailing edge, reporting where the viewport sits on the
+// document and how much of it is showing. It draws nothing when the whole
+// document fits, and dragging it scrolls the document.
+//
+// anchor decides whether the bar reserves a gutter beside the prose
+// ([list.Occupy]) or floats over it ([list.Overlay]). A reading column wants
+// Occupy: the gutter costs a few dp of measure once, where an overlay bar
+// lands on the ends of the lines it is drawn over.
+//
+// The bar is the design system's — build it with [scrollbar.FromTokens] from
+// the same colour tokens the [Style] came from — so a document's scrollbar is
+// the same object as a list's. A document laid out with [Layout] has no
+// scrollbar at all, which is what an embedder inside its own scrolling
+// viewport wants.
+func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, style Style, bar scrollbar.Style, anchor list.Anchor) layout.Dimensions {
+	return list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style))
+}
+
+// row returns the per-block row function both list entry points lay out.
+func (d *Document) row(shaper *text.Shaper, style Style) func(layout.Context, Block) layout.Dimensions {
+	return func(gtx layout.Context, b Block) layout.Dimensions {
+		return layout.Inset{Bottom: style.BlockGap, Right: style.Gutter}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Min = image.Point{}
 			return d.block(gtx, shaper, style, b)
 		})
-	})
+	}
 }
 
 // block dispatches one block to its widget.
