@@ -99,9 +99,14 @@ func TestADocumentRestsClearOfTheViewportsStart(t *testing.T) {
 // strip of empty ground over that half-cut line, which reads as a clipping
 // fault rather than as scrolling — and it would put that strip under whatever
 // chrome the viewport begins against.
+//
+// Both readers are seated on the same block before the page move, because the
+// inset is content: paging from the top alone would leave them a whole inset
+// apart in the text, and the two viewports would be comparing different lines
+// rather than the same line's clearance.
 func TestOnlyTheStartPaysForTheSpace(t *testing.T) {
 	size := image.Pt(480, 400)
-	page := func(d *markdown.Document) { d.PageDown() }
+	page := func(d *markdown.Document) { d.ScrollToBlock(6); d.PageDown() }
 
 	flush := startShot(t, longDoc(30), size, 0, page)
 	inset := startShot(t, longDoc(30), size, startSpaceUnderTest, page)

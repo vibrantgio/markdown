@@ -477,8 +477,9 @@ func TestDocumentLiveFrame(t *testing.T) {
 
 // ---- Token defaults ----
 
-// TestFromTokensDefaults pins the FromTokens contract: heading levels step
-// down the type scale, code shapes in the theme Code role's typeface and
+// TestFromTokensDefaults pins the FromTokens contract: heading levels take
+// the typography's document heading scale, code shapes in the theme Code
+// role's typeface and
 // size on the Neutral 300 tinted fill with Neutral 700 low-contrast text,
 // the quote bar is Primary with Neutral 700 text, and rules are separators
 // using Divider.
@@ -486,12 +487,19 @@ func TestFromTokensDefaults(t *testing.T) {
 	c, typo := tokens.DefaultLight, tokens.DefaultTypography
 	st := markdown.FromTokens(c, typo)
 
-	wantSizes := [6]unit.Sp{
-		unit.Sp(typo.HeadlineLarge.Size), unit.Sp(typo.HeadlineMedium.Size), unit.Sp(typo.HeadlineSmall.Size),
-		unit.Sp(typo.TitleLarge.Size), unit.Sp(typo.TitleMedium.Size), unit.Sp(typo.TitleSmall.Size),
+	var wantSizes [6]unit.Sp
+	for i := range wantSizes {
+		wantSizes[i] = unit.Sp(typo.DocumentHeadings.Level(i + 1).Size)
 	}
 	if st.HeadingSizes != wantSizes {
-		t.Errorf("HeadingSizes = %v, want %v", st.HeadingSizes, wantSizes)
+		t.Errorf("HeadingSizes = %v, want the document scale's %v", st.HeadingSizes, wantSizes)
+	}
+	// The scale a document sets its headings in is not the one a screen sets
+	// its own headline in: borrowing the display roles back would put a
+	// document's title a quarter again taller than a reading surface sets one.
+	if st.HeadingSizes[0] >= unit.Sp(typo.HeadlineLarge.Size) {
+		t.Errorf("level 1 sets at %v, the HeadlineLarge display role at %v; the document scale must be the quieter of the two",
+			st.HeadingSizes[0], typo.HeadlineLarge.Size)
 	}
 	if st.Text.Color != c.Text || st.Text.LinkColor != c.Primary {
 		t.Errorf("Text colours = %v/%v, want Text/Primary", st.Text.Color, st.Text.LinkColor)

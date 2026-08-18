@@ -171,8 +171,9 @@ type Style struct {
 }
 
 // FromTokens derives the default document style from colour tokens and a
-// typography: headings step down HeadlineLarge..TitleSmall, body text follows
-// richtext.FromTokens on the BodyLarge role, code sits on the Neutral 300
+// typography: headings take the six stops of the typography's document
+// heading scale, body text follows richtext.FromTokens on the BodyLarge
+// role, code sits on the Neutral 300
 // tinted fill with the low-contrast Neutral 700 text step, the quote bar is
 // Primary with Neutral 700 text, rules and table grid lines are separators
 // and use Divider, and the table header row sits on the Neutral 300 tinted
@@ -186,19 +187,25 @@ type Style struct {
 // (C2.8); a Style shaped for a non-default one had to reset Mono and CodeSize
 // afterwards. Taking the whole typography retires that workaround.
 //
+// The heading sizes come from tokens.DocumentHeadingScale rather than from
+// the Headline and Title roles this constructor used to borrow. Those roles
+// size the one big line at the top of a screen: against a 16 dp body they run
+// 32 down to 14, which inks a document's title a quarter again taller than a
+// typeset reading surface inks one — enough to wrap a title that should fit a
+// line — while crowding levels three and four onto nearly the same size and
+// then dropping a third of the ladder between levels four and five. The
+// document scale is stepped off the body role instead, evenly, so six levels
+// are six levels.
+//
 // Of each role only Size lands in the Style: headings and paragraphs carry
 // their typeface, weight and slant per span (richtext.SpanStyle), so those
 // parts of a role reach the shaper through the document's spans rather than
 // through this constructor. Mono is the one typeface a Style names outright,
 // because code spans are built from it.
 func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
-	sizes := [6]unit.Sp{
-		unit.Sp(typo.HeadlineLarge.Size),
-		unit.Sp(typo.HeadlineMedium.Size),
-		unit.Sp(typo.HeadlineSmall.Size),
-		unit.Sp(typo.TitleLarge.Size),
-		unit.Sp(typo.TitleMedium.Size),
-		unit.Sp(typo.TitleSmall.Size),
+	var sizes [6]unit.Sp
+	for i, style := range typo.DocumentHeadings {
+		sizes[i] = unit.Sp(style.Size)
 	}
 	gap := unit.Dp(tokens.Spacing.S2)
 	above, below := headingSpacing(gap, sizes)
