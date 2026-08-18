@@ -246,23 +246,39 @@ func driveDocument(w layout.Widget, size image.Point, evs ...event.Event) {
 }
 
 // TestCodeOverflowGolden records or diffs the fence that exposed the defect,
-// at rest and scrolled. At rest the long line dissolves into the fence at the
+// at rest in both schemes and scrolled. At rest the long line dissolves into the fence at the
 // right edge — the affordance that says there is more while a desktop overlay
 // bar would already have faded out — and the short fence below it draws
 // neither dissolve nor bar. Scrolled, the far end of the line is on screen,
 // the dissolve has moved to the left edge, and the bar has moved with it.
+//
+// Both schemes are recorded because the fence's bar is the one part of the
+// treatment whose legibility is not scheme-symmetric: it rests on the tinted
+// code fill rather than on the page, and the light scheme is where the two
+// come closest. See codeScrollbar.
 //
 // The scroll arrives as a real pointer gesture through a router rather than
 // as a seeded offset, so these two images also witness that the remainder is
 // reachable by scrolling.
 func TestCodeOverflowGolden(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	blocks := markdown.Parse([]byte(codeOverflowSource))
+	cases := []struct {
+		name   string
+		colors tokens.ColorTokens
+	}{
+		{"code-overflow-light", tokens.DefaultLight},
+		{"code-overflow-dark", tokens.DefaultDark},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			d := markdown.NewDocument(blocks)
+			golden.Render(t, tc.name, codeOverflowSize, themed(d, shaper, style, tc.colors))
+		})
+	}
 
-	rest := themed(markdown.NewDocument(blocks), shaper, style, tokens.DefaultLight)
-	golden.Render(t, "code-overflow-light", codeOverflowSize, rest)
-
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
 	scrolled := themed(markdown.NewDocument(blocks), shaper, style, tokens.DefaultLight)
 	driveDocument(scrolled, codeOverflowSize, pointer.Event{
 		Kind:     pointer.Scroll,

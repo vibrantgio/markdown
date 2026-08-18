@@ -240,7 +240,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CodeSize:              unit.Sp(typo.Code.Size),
 		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
 		CodeBackground:        c.Ramps.Neutral.Step(300), // tinted fill
-		CodeScrollbar:         scrollbar.FromTokens(c),
+		CodeScrollbar:         codeScrollbar(c),
 		QuoteBar:              c.Primary,
 		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
 		RuleColor:             c.Divider,
@@ -251,6 +251,31 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		BlockGap:              gap,
 		Indent:                unit.Dp(tokens.Spacing.S6),
 	}
+}
+
+// codeScrollbar is the design system's bar weighted for the ground a fence
+// puts it on. Everything else about it — the width, the radius, the minimum
+// thumb, the fade a second after the content stops — is the shared style's.
+//
+// Two things change, and the same fact drives both. scrollbar.FromTokens tunes
+// its thumb for a scrolling column, which rests on the page: the
+// low-contrast-text step at about 40%, three ramp stops from the ground it
+// lies on, reads clearly there. A fence's bar rests on the tinted code fill
+// instead — one stop from the thumb's own — and at that weight it all but
+// disappears, worst in the light scheme, where a measured 2:1 leaves the one
+// affordance that can be dragged effectively invisible.
+//
+// So the thumb is opaque, and it is the step the code itself is inked in: the
+// bar is exactly as present as the fence it belongs to, and it darkens to the
+// ramp's far end while hovered or dragged. The translucency it gives up is the
+// shared bar's identity because a column's bar lies over the column's own
+// text; a fence's lies over the fence's bottom padding, where nothing shows
+// through it either way.
+func codeScrollbar(c tokens.ColorTokens) scrollbar.Style {
+	s := scrollbar.FromTokens(c)
+	s.ThumbColor = c.Ramps.Neutral.Step(700)      // the code's own step
+	s.ThumbHoverColor = c.Ramps.Neutral.Step(900) // the ramp's far end
+	return s
 }
 
 // The reading rhythm is measured in what the reader sees — the blank run
