@@ -17,6 +17,7 @@ import (
 
 	"github.com/vibrantgio/components/list"
 	"github.com/vibrantgio/components/richtext"
+	"github.com/vibrantgio/components/scrollarea"
 	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/theme/tokens"
 )
@@ -35,7 +36,7 @@ type Document struct {
 	// identity of the heading, paragraph, table cell, or image it backs.
 	text map[any]*richtext.State
 	// code holds per-code-block horizontal scroll state.
-	code map[*CodeBlock]*layout.List
+	code map[*CodeBlock]*scrollarea.State
 	// tables holds per-table horizontal scroll state, used when even the
 	// min-content column widths overflow the constraint.
 	tables map[*Table]*layout.List
@@ -65,7 +66,7 @@ func NewDocument(blocks []Block) *Document {
 		blocks: blocks,
 		list:   list.NewState(),
 		text:   make(map[any]*richtext.State),
-		code:   make(map[*CodeBlock]*layout.List),
+		code:   make(map[*CodeBlock]*scrollarea.State),
 		tables: make(map[*Table]*layout.List),
 		images: make(map[*Image]imageState),
 		place:  placements(blocks),
@@ -292,13 +293,13 @@ func (d *Document) textState(b any) *richtext.State {
 }
 
 // codeState returns the persistent horizontal scroll state for a code block.
-func (d *Document) codeState(b *CodeBlock) *layout.List {
-	l, ok := d.code[b]
+func (d *Document) codeState(b *CodeBlock) *scrollarea.State {
+	s, ok := d.code[b]
 	if !ok {
-		l = &layout.List{Axis: layout.Horizontal}
-		d.code[b] = l
+		s = scrollarea.NewState()
+		d.code[b] = s
 	}
-	return l
+	return s
 }
 
 // tableState returns the persistent horizontal scroll state for a table.
@@ -340,32 +341,58 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 }
 
 // codeBlock renders monospace code on a rounded surface-coloured background
-// spanning the full width, with tabs already expanded at parse time and
-// horizontal overflow scrolling instead of wrapping.
+// spanning the full width, with tabs already expanded at parse time.
+//
+// A code block's own line breaks are the code, so a line too wide for the
+// column is never reflowed and never cut away: the block is a horizontal
+// scroll area (components/scrollarea), and the part that does not fit is
+// scrolled to. The fence's padding is inside the scroll area rather than
+// around it, which puts the block's whole box on the horizontal axis: the
+// leading padding scrolls away with the first column of code, the dissolve
+// that marks a cut edge runs the full height of the fence, and the bar the
+// area draws while it scrolls lands in the bottom padding, where it covers no
+// code. A block that fits lays out exactly as it would with no scroll area at
+// all — same height, same clip, no bar, no dissolve.
 func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Style, cb *CodeBlock) layout.Dimensions {
-	pad := gtx.Dp(unit.Dp(tokens.Spacing.S3))
+	pad := unit.Dp(tokens.Spacing.S3)
 	radius := gtx.Dp(unit.Dp(tokens.Radius.Base))
 	codeStyle := richtext.Style{Color: style.CodeColor, Size: style.CodeSize}
 	spans := style.codeSpans(cb)
+	area := scrollarea.Style{Fade: unit.Dp(tokens.Spacing.S4), FadeColor: style.CodeBackground}
 
+	code := func(gtx layout.Context) layout.Dimensions {
+		return layout.UniformInset(pad).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return richtext.Render(shaper, codeStyle, spans, richtext.Idle())(gtx)
+		})
+	}
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
-	cgtx.Constraints.Max.X = max(cgtx.Constraints.Max.X-2*pad, 0)
+	// The padding is drawn inside the area but is not part of the height the
+	// code has to fit in: a fence takes its content's height and pads it,
+	// rather than making the content fit a viewport two paddings shorter.
+	cgtx.Constraints.Max.Y += 2 * gtx.Dp(pad)
+	state := d.codeState(cb)
 	macro := op.Record(gtx.Ops)
-	// The horizontal list gives the code unbounded width — hard newlines
-	// still break lines, over-wide lines scroll instead of wrapping — and
-	// clips it to the viewport.
-	content := d.codeState(cb).Layout(cgtx, 1, func(gtx layout.Context, _ int) layout.Dimensions {
-		return richtext.Render(shaper, codeStyle, spans, richtext.Idle())(gtx)
-	})
+	var content layout.Dimensions
+	if style.CodeScrollbar.Width() > 0 {
+		content = area.LayoutScrollbar(cgtx, state, style.CodeScrollbar, code)
+	} else {
+		content = area.Layout(cgtx, state, code)
+	}
 	call := macro.Stop()
 
-	total := image.Pt(gtx.Constraints.Max.X, content.Size.Y+2*pad)
-	paint.FillShape(gtx.Ops, style.CodeBackground,
-		clip.UniformRRect(image.Rectangle{Max: total}, radius).Op(gtx.Ops))
-	tr := op.Offset(image.Pt(pad, pad)).Push(gtx.Ops)
+	total := image.Pt(gtx.Constraints.Max.X, content.Size.Y)
+	fence := clip.UniformRRect(image.Rectangle{Max: total}, radius)
+	paint.FillShape(gtx.Ops, style.CodeBackground, fence.Op(gtx.Ops))
+	if state.Overflows() {
+		// The dissolve at a cut edge is opaque where it meets that edge, so
+		// left unclipped it would square off the two corners it runs into.
+		// Only an overflowing fence draws one — a fence that fits reaches no
+		// corner, and clipping it would cost the corners' anti-aliasing a
+		// pixel for nothing.
+		defer fence.Push(gtx.Ops).Pop()
+	}
 	call.Add(gtx.Ops)
-	tr.Pop()
 
 	return layout.Dimensions{Size: total}
 }

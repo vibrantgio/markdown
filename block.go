@@ -10,8 +10,9 @@
 // type-scale headings, richtext paragraphs, nested lists with task-list
 // checkboxes, inset blockquotes with a leading token-coloured bar, rules,
 // monospace code blocks on a surface background with tab expansion and
-// horizontal overflow scrolling, GFM tables as bordered grids, and images
-// through a caller-supplied [ImageProvider].
+// horizontal scrolling (a fence keeps its own line breaks, and a line too wide
+// for the column is scrolled to rather than wrapped or cut), GFM tables as
+// bordered grids, and images through a caller-supplied [ImageProvider].
 //
 // Two heavy dependencies are deliberately kept out of this package's import
 // graph, each reachable only by importing the subpackage that wants it: code

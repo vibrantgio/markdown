@@ -3,10 +3,14 @@ package markdown_test
 import (
 	"fmt"
 	"image"
+	"strings"
 	"testing"
 
+	"gioui.org/f32"
 	"gioui.org/font"
+	"gioui.org/io/event"
 	gioinput "gioui.org/io/input"
+	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
@@ -194,6 +198,184 @@ func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 	short := gutter(render(markdown.Parse([]byte("A short note.\n"))))
 	if short != 0 {
 		t.Errorf("a document that fits drew %d scrollbar pixels, want none", short)
+	}
+}
+
+// ---- Code block overflow ----
+
+// codeOverflowSource is the note the overflow goldens render: a fence whose
+// first line is far wider than the column beside a fence that fits, so one
+// image carries both halves of the treatment — the wide block dissolving at
+// its cut edge with a bar in its bottom padding, the short block untouched.
+const codeOverflowSource = "## A sample\n\n" +
+	"```go\n" +
+	"// A wikilink inside code is a code sample, not navigation:\n" +
+	"// [[Design/Principles]]\n" +
+	"func main() {}\n" +
+	"```\n\n" +
+	"A short one:\n\n" +
+	"```\nfits\n```\n"
+
+// codeOverflowSize is the viewport the overflow goldens render in: narrow
+// enough that the sample's first line runs well past its right edge.
+var codeOverflowSize = image.Pt(420, 300)
+
+// driveDocument lays w out through an input router for two settling frames,
+// queues evs, and settles again — the frame that absorbs a scroll still draws
+// from the old offset, so the second pair is what the capture that follows
+// sees.
+func driveDocument(w layout.Widget, size image.Point, evs ...event.Event) {
+	r := new(gioinput.Router)
+	var ops op.Ops
+	frame := func() {
+		ops.Reset()
+		gtx := layout.Context{
+			Metric:      unit.Metric{PxPerDp: 1, PxPerSp: 1},
+			Constraints: layout.Exact(size),
+			Ops:         &ops,
+			Source:      r.Source(),
+		}
+		w(gtx)
+		r.Frame(&ops)
+	}
+	frame()
+	frame()
+	r.Queue(evs...)
+	frame()
+	frame()
+}
+
+// TestCodeOverflowGolden records or diffs the fence that exposed the defect,
+// at rest and scrolled. At rest the long line dissolves into the fence at the
+// right edge — the affordance that says there is more while a desktop overlay
+// bar would already have faded out — and the short fence below it draws
+// neither dissolve nor bar. Scrolled, the far end of the line is on screen,
+// the dissolve has moved to the left edge, and the bar has moved with it.
+//
+// The scroll arrives as a real pointer gesture through a router rather than
+// as a seeded offset, so these two images also witness that the remainder is
+// reachable by scrolling.
+func TestCodeOverflowGolden(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	blocks := markdown.Parse([]byte(codeOverflowSource))
+
+	rest := themed(markdown.NewDocument(blocks), shaper, style, tokens.DefaultLight)
+	golden.Render(t, "code-overflow-light", codeOverflowSize, rest)
+
+	scrolled := themed(markdown.NewDocument(blocks), shaper, style, tokens.DefaultLight)
+	driveDocument(scrolled, codeOverflowSize, pointer.Event{
+		Kind:     pointer.Scroll,
+		Position: f32.Pt(200, 70),
+		Scroll:   f32.Pt(400, 0),
+		Source:   pointer.Mouse,
+	})
+	golden.Render(t, "code-overflow-scrolled-light", codeOverflowSize, scrolled)
+}
+
+// TestCodeBlockClaimsHorizontalAxisOnly is the axis-separation proof at the
+// document level: over the very same pixels, a horizontal gesture moves the
+// code inside the fence and leaves the document where it was, and a vertical
+// one scrolls the document and leaves the code where it was. A reader
+// wheeling down a note therefore never gets stuck on a code block.
+func TestCodeBlockClaimsHorizontalAxisOnly(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	// A long tail below the fence, so the document has somewhere to scroll to.
+	blocks := markdown.Parse([]byte(codeOverflowSource + strings.Repeat("Filler paragraph.\n\n", 40)))
+	cb, ok := blocks[1].(*markdown.CodeBlock)
+	if !ok {
+		t.Fatalf("block 1 is %T, want *CodeBlock", blocks[1])
+	}
+	// Aim at the fence's second line, clear of its scrollbar strip.
+	over := f32.Pt(200, 70)
+
+	cases := []struct {
+		name       string
+		scroll     f32.Point
+		wantCode   bool
+		wantColumn bool
+	}{
+		{name: "horizontal", scroll: f32.Pt(400, 0), wantCode: true},
+		{name: "vertical", scroll: f32.Pt(0, 400), wantColumn: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := markdown.NewDocument(blocks)
+			driveDocument(themed(d, shaper, style, tokens.DefaultLight), codeOverflowSize,
+				pointer.Event{Kind: pointer.Scroll, Position: over, Scroll: tc.scroll, Source: pointer.Mouse})
+
+			code := markdown.CodeOffset(d, cb) > 0
+			pos := d.Position()
+			column := pos.First > 0 || pos.Offset > 0
+			if code != tc.wantCode {
+				t.Errorf("code scrolled = %v (offset %d), want %v", code, markdown.CodeOffset(d, cb), tc.wantCode)
+			}
+			if column != tc.wantColumn {
+				t.Errorf("document scrolled = %v (block %d, offset %d), want %v", column, pos.First, pos.Offset, tc.wantColumn)
+			}
+		})
+	}
+}
+
+// TestCodeOffsetBounds pins where a fence's own scrolling stops: at the start
+// however far back it is pushed, and at the last column of the widest line
+// however far forward — never on empty ground past the code.
+func TestCodeOffsetBounds(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	blocks := markdown.Parse([]byte(codeOverflowSource))
+	cb := blocks[1].(*markdown.CodeBlock)
+	over := f32.Pt(200, 70)
+
+	d := markdown.NewDocument(blocks)
+	w := themed(d, shaper, style, tokens.DefaultLight)
+	driveDocument(w, codeOverflowSize, pointer.Event{
+		Kind: pointer.Scroll, Position: over, Scroll: f32.Pt(10_000, 0), Source: pointer.Mouse,
+	})
+	end := markdown.CodeOffset(d, cb)
+	if end <= 0 {
+		t.Fatalf("code offset %d after scrolling to the end, want the overflow", end)
+	}
+
+	// Asking for more must not move it further: the end is the end.
+	driveDocument(w, codeOverflowSize, pointer.Event{
+		Kind: pointer.Scroll, Position: over, Scroll: f32.Pt(10_000, 0), Source: pointer.Mouse,
+	})
+	if got := markdown.CodeOffset(d, cb); got != end {
+		t.Errorf("code offset %d after a second scroll past the end, want it held at %d", got, end)
+	}
+
+	driveDocument(w, codeOverflowSize, pointer.Event{
+		Kind: pointer.Scroll, Position: over, Scroll: f32.Pt(-10_000, 0), Source: pointer.Mouse,
+	})
+	if got := markdown.CodeOffset(d, cb); got != 0 {
+		t.Errorf("code offset %d after scrolling back past the start, want 0", got)
+	}
+}
+
+// TestShortCodeBlockDrawsNoScroller asserts the untouched half of the
+// contract in pixels: a fence that fits draws nothing the scroll treatment
+// brought. The probe is the same fence rendered with the bar style cleared —
+// the one Style field the treatment added — and the two must be pixel-equal.
+// That the fence is also unchanged from before the treatment existed is what
+// every stored golden in this package says, none of which moved.
+func TestShortCodeBlockDrawsNoScroller(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	size := image.Pt(420, 120)
+	blocks := markdown.Parse([]byte("```\nfits\n```\n"))
+
+	withBar := golden.Capture(t, size,
+		themed(markdown.NewDocument(blocks), shaper, style, tokens.DefaultLight))
+
+	barless := style
+	barless.CodeScrollbar = scrollbar.Style{}
+	plain := golden.Capture(t, size,
+		themed(markdown.NewDocument(blocks), shaper, barless, tokens.DefaultLight))
+
+	if n := golden.PixelDiff(withBar, plain); n != 0 {
+		t.Errorf("a fence that fits drew %d pixels the same fence without a bar style did not; want none", n)
 	}
 }
 

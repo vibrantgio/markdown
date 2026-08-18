@@ -9,6 +9,7 @@ import (
 	"gioui.org/unit"
 
 	"github.com/vibrantgio/components/richtext"
+	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/theme/tokens"
 )
 
@@ -71,6 +72,16 @@ type Style struct {
 	CodeColor color.NRGBA
 	// CodeBackground fills the code block surface.
 	CodeBackground color.NRGBA
+	// CodeScrollbar styles the slim horizontal bar a code block whose widest
+	// line overflows the column shows while it scrolls. It sits in the
+	// fence's bottom padding, over no code, and it is absent — like every
+	// overlay bar on the desktop — while the block fits or rests.
+	//
+	// The zero value draws no bar. The dissolve at the cut edge is not the
+	// bar's and stays either way, so a document that turns the bar off still
+	// says that there is more; what it loses is the drag and the sense of how
+	// much more.
+	CodeScrollbar scrollbar.Style
 	// QuoteBar is the colour of the bar leading a blockquote.
 	QuoteBar color.NRGBA
 	// QuoteColor is the text colour inside blockquotes.
@@ -229,6 +240,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CodeSize:              unit.Sp(typo.Code.Size),
 		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
 		CodeBackground:        c.Ramps.Neutral.Step(300), // tinted fill
+		CodeScrollbar:         scrollbar.FromTokens(c),
 		QuoteBar:              c.Primary,
 		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
 		RuleColor:             c.Divider,
