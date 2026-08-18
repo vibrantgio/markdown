@@ -140,6 +140,35 @@ func TestWikiSpansStylingBoundary(t *testing.T) {
 	}
 }
 
+// TestWikiSpansEscapedBrackets pins the other documented limitation. The
+// spans this function reads are finished text: the parser has already turned
+// "\[\[" into "[[", so escaped brackets no longer hold a wikilink off — the
+// information that they were escaped is gone by the time the spans arrive.
+// An escape inside a body, on the other hand, lands on the right target.
+func TestWikiSpansEscapedBrackets(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want []markdown.Span
+	}{{
+		name: "escaped brackets no longer hold the link off",
+		src:  `\[\[Note\]\]`,
+		want: []markdown.Span{{Text: "Note", URL: "wiki:Note"}},
+	}, {
+		name: "an escape inside the body reaches the unescaped target",
+		src:  `[[q5\_0]]`,
+		want: []markdown.Span{{Text: "q5_0", URL: "wiki:q5_0"}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := firstSpans(t, WikiSpans(markdown.Parse([]byte(tt.src))))
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("spans = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestWikiSpansContainers checks the walk reaches headings, list items,
 // blockquotes and table cells, and leaves code blocks alone.
 func TestWikiSpansContainers(t *testing.T) {

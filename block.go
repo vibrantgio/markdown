@@ -42,7 +42,10 @@ package markdown
 // value's flags describe plain body text; rendering styles (colour, size,
 // typeface) are resolved against a [Style] at layout time.
 type Span struct {
-	// Text is the run's content. A trailing "\n" is a hard line break.
+	// Text is the run's content, ready to draw: markup is gone and backslash
+	// escapes are resolved, so "\_" arrives as "_" — except inside a code
+	// span, where a backslash is literal. A trailing "\n" is a hard line
+	// break.
 	Text string
 	// Bold marks **strong emphasis**.
 	Bold bool
@@ -152,8 +155,9 @@ type TableCell struct {
 // it fails) the alt text renders as a paragraph instead. Images mixed into
 // surrounding text fall back to their alt text at parse time.
 type Image struct {
-	// URL is the image destination as written in the source. The library
-	// never fetches it — resolution is the provider's business.
+	// URL is the image destination as written in the source, with its
+	// backslash escapes resolved. The library never fetches it — resolution
+	// is the provider's business.
 	URL string
 	// Alt is the image's alternate text, the fallback rendering.
 	Alt string

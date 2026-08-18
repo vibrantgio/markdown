@@ -24,9 +24,13 @@ var wikiLink = regexp.MustCompile(`(!?)\[\[([^\[\]\n]+)\]\]`)
 // included; interpreting it is the caller's business. Surrounding text keeps
 // its styling, and the link span inherits it.
 //
-// Limitation, by construction: a span is a styling run, so a wikilink whose
+// Limitations, by construction. A span is a styling run, so a wikilink whose
 // body crosses a styling boundary ("[[a *b*]]" arrives as three spans) is
-// not recognised.
+// not recognised. And a span is finished text: [markdown.Parse] has already
+// resolved backslash escapes, so brackets written "\[\[Note\]\]" to keep a
+// wikilink from forming reach this function as the plain characters
+// "[[Note]]" and are recognised anyway. Escapes inside a body do reach their
+// target correctly — "[[q5\_0]]" links to "q5_0", the name on disk.
 func WikiSpans(blocks []markdown.Block) []markdown.Block {
 	out := make([]markdown.Block, len(blocks))
 	for i, b := range blocks {

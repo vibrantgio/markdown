@@ -8,6 +8,7 @@ import (
 	gmext "github.com/yuin/goldmark/extension"
 	east "github.com/yuin/goldmark/extension/ast"
 	gmtext "github.com/yuin/goldmark/text"
+	gmutil "github.com/yuin/goldmark/util"
 )
 
 // tabStop is the column width tabs expand to in code blocks.
@@ -32,7 +33,7 @@ func convertBlocks(src []byte, parent ast.Node) []Block {
 		case *ast.Paragraph:
 			if img := soleImage(n); img != nil {
 				out = append(out, &Image{
-					URL: string(img.Destination),
+					URL: unescape(string(img.Destination)),
 					Alt: plainText(src, img),
 				})
 			} else if spans := inlines(src, n); len(spans) > 0 {
@@ -122,7 +123,11 @@ func plainText(src []byte, n ast.Node) string {
 		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 			switch c := c.(type) {
 			case *ast.Text:
-				b.Write(c.Segment.Value(src))
+				if c.IsRaw() {
+					b.Write(c.Segment.Value(src))
+				} else {
+					b.WriteString(unescape(string(c.Segment.Value(src))))
+				}
 			case *ast.String:
 				b.Write(c.Value)
 			default:
@@ -219,7 +224,8 @@ func expandTabs(s string) string {
 
 // inlines maps a block node's inline children onto styled spans, inheriting
 // emphasis, code, strikethrough, and link state down the inline tree.
-// Adjacent runs with identical styling are merged.
+// Backslash escapes are resolved to their literal characters outside code
+// spans (see [unescape]). Adjacent runs with identical styling are merged.
 func inlines(src []byte, parent ast.Node) []Span {
 	var out []Span
 	add := func(s Span) {
@@ -239,6 +245,9 @@ func inlines(src []byte, parent ast.Node) []Span {
 			case *ast.Text:
 				sp := s
 				sp.Text = string(c.Segment.Value(src))
+				if !c.IsRaw() {
+					sp.Text = unescape(sp.Text)
+				}
 				switch {
 				case c.HardLineBreak():
 					sp.Text += "\n"
@@ -268,7 +277,7 @@ func inlines(src []byte, parent ast.Node) []Span {
 				walk(c, sp)
 			case *ast.Link:
 				sp := s
-				sp.URL = string(c.Destination)
+				sp.URL = unescape(string(c.Destination))
 				walk(c, sp)
 			case *ast.AutoLink:
 				sp := s
@@ -290,6 +299,37 @@ func inlines(src []byte, parent ast.Node) []Span {
 	}
 	walk(parent, Span{})
 	return out
+}
+
+// unescape resolves CommonMark's backslash escapes in one literal run: a
+// backslash before an ASCII punctuation character yields that character
+// alone, a doubled backslash yields one (and the second escapes nothing),
+// and a backslash before anything else — a letter, a digit, a space, the end
+// of the run — stays literal.
+//
+// The delimiter half of the rule is settled before a run reaches here. The
+// inline scanner never lets an escaped punctuation character open emphasis
+// or a link, or split a table cell; it does leave the backslash standing in
+// the text it hands over, because turning the source into the characters to
+// draw is the renderer's job. This package is that renderer.
+//
+// Runs of raw text — the inside of a code span — never come through here:
+// backslashes are literal there by definition.
+func unescape(s string) string {
+	i := strings.IndexByte(s, '\\')
+	if i < 0 {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	b.WriteString(s[:i])
+	for ; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) && gmutil.IsPunct(s[i+1]) {
+			i++
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }
 
 // sameStyle reports whether two spans carry identical styling, making their
