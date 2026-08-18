@@ -370,17 +370,19 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	return layout.Dimensions{Size: total}
 }
 
-// rule renders a thematic break: a full-width 1 dp line with BlockGap
-// padding above and below.
+// rule renders a thematic break: a full-width 1 dp line, and nothing else.
+//
+// It used to pad itself by a block gap on each side, from a time when the gap
+// was the smallest stop that separates two widgets and a break spaced like an
+// ordinary block would have read as a stray line. The reading rhythm is wide
+// enough now to say "section break" on its own, and doubling it around the
+// line only opened a hole: the break is a block, and the rhythm spaces it like
+// every other block.
 func rule(gtx layout.Context, style Style) layout.Dimensions {
 	w := gtx.Constraints.Max.X
 	th := max(gtx.Dp(1), 1)
-	pad := gtx.Dp(style.BlockGap)
-	paint.FillShape(gtx.Ops, style.RuleColor, clip.Rect{
-		Min: image.Pt(0, pad),
-		Max: image.Pt(w, pad+th),
-	}.Op())
-	return layout.Dimensions{Size: image.Pt(w, 2*pad+th)}
+	paint.FillShape(gtx.Ops, style.RuleColor, clip.Rect{Max: image.Pt(w, th)}.Op())
+	return layout.Dimensions{Size: image.Pt(w, th)}
 }
 
 // cellSpans returns a table cell's richtext spans; header cells are
@@ -656,8 +658,16 @@ func (d *Document) image(gtx layout.Context, shaper *text.Shaper, style Style, n
 // listBlock renders a list's items as marker-plus-content rows; nested lists
 // recurse through the item content column, indenting one marker column per
 // level.
+//
+// A whole list is one block of the reading flow, so the reading rhythm stands
+// above and below it and nowhere inside it: the items are spaced by the list's
+// own compact stop, and so are the blocks within an item — a continuation
+// paragraph, or the nested list a deeper level opens with. Spacing those by
+// the block gap would put as much air between an item and its own sub-items as
+// between two paragraphs, which reads as several lists rather than one.
 func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Style, l *List) layout.Dimensions {
 	gap := gtx.Dp(unit.Dp(tokens.Spacing.S1))
+	style = style.compact(unit.Dp(tokens.Spacing.S2))
 	var size image.Point
 	for i, item := range l.Items {
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)

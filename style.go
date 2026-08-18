@@ -87,7 +87,11 @@ type Style struct {
 	CheckboxColor color.NRGBA
 	// CheckmarkColor draws the check mark inside a checked checkbox.
 	CheckmarkColor color.NRGBA
-	// BlockGap is the vertical space between sibling blocks.
+	// BlockGap is the vertical space between sibling blocks. It is authored
+	// space, not what the reader sees: the shaped lines put their own leading
+	// between their ink and the edges of their line boxes, so the blank run in
+	// a rendered document is this plus a few pixels. [FromTokens] sizes it so
+	// that the sum, not the field, lands on the reading rhythm.
 	BlockGap unit.Dp
 	// HeadingSpaceAbove is the vertical space above a heading of level 1..6
 	// (index 0..5) and HeadingSpaceBelow the space below it. They replace
@@ -102,9 +106,10 @@ type Style struct {
 	// another heading, a pair being one announcement rather than two
 	// sections.
 	//
-	// [FromTokens] derives both from the type scale; the reader sees a little
-	// more than these numbers on each side, the shaped lines carrying their
-	// own leading above and below the ink.
+	// [FromTokens] derives both from the block gap and the type scale; like
+	// the gap they are authored space, and the reader sees a little more than
+	// these numbers on each side, the shaped lines carrying their own leading
+	// above and below the ink.
 	HeadingSpaceAbove [6]unit.Dp
 	// HeadingSpaceBelow is the vertical space below a heading; see
 	// HeadingSpaceAbove.
@@ -197,6 +202,12 @@ type Style struct {
 // document scale is stepped off the body role instead, evenly, so six levels
 // are six levels.
 //
+// The block gap and the heading spaces are set from the reading rhythm rather
+// than from the smallest stop that separates two widgets: prose read at length
+// wants the openness a typeset page has, which is a good deal more air between
+// blocks than a form wants between its rows. See blockRhythm and
+// [headingSpacing] for the proportions and where they came from.
+//
 // Of each role only Size lands in the Style: headings and paragraphs carry
 // their typeface, weight and slant per span (richtext.SpanStyle), so those
 // parts of a role reach the shaper through the document's spans rather than
@@ -207,7 +218,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	for i, style := range typo.DocumentHeadings {
 		sizes[i] = unit.Sp(style.Size)
 	}
-	gap := unit.Dp(tokens.Spacing.S2)
+	gap := blockRhythm - lineLeading
 	above, below := headingSpacing(gap, sizes)
 	return Style{
 		Text:                  richtext.FromTokens(c, typo.BodyLarge),
@@ -230,21 +241,92 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	}
 }
 
+// The reading rhythm is measured in what the reader sees — the blank run
+// between one block's ink and the next's — while a [Style] is written in
+// authored space. The difference is the leading the shaped lines carry
+// between their ink and the edges of their line boxes, and these two
+// constants are that difference, read off rendered blank runs at the document
+// heading scale against a 16 dp body.
+//
+// Neither is exact, because neither can be. A line closing on a descender and
+// one opening on an ascender leave several pixels less blank than two that do
+// neither, so the same authored space measures anywhere across a range of
+// about five pixels depending on the words. Each constant is read where the
+// resulting runs centre on the measured reference across mixed prose, not
+// where any one pair of lines happens to fall.
+const (
+	// lineLeading is what a pair of ordinary blocks contributes.
+	lineLeading = unit.Dp(3)
+	// headingLeading is the same for a transition with a heading on one side.
+	// It is the larger of the two because a heading's line box is taller and
+	// its leading with it — and because that box swings wider, a heading being
+	// a few words rather than a full line of prose.
+	headingLeading = unit.Dp(6)
+)
+
+// blockRhythm is the blank an ordinary pair of blocks shows the reader: the
+// spacing scale's S8 stop plus an S1, which is 2.25 body sizes at the default
+// 16 dp body. It is the reader-visible number rather than the authored one
+// precisely because that is the quantity a typeset reading surface is set in;
+// [FromTokens] authors it less lineLeading, which puts the rendered run on it
+// where the facing lines are tallest and a pixel or two over it on average —
+// and the average is where the reference's own 37 px sits.
+var blockRhythm = unit.Dp(tokens.Spacing.S8 + tokens.Spacing.S1)
+
+// The proportions a heading holds against that rhythm: the space above it is
+// a little over a block gap and the space below it about half of the space
+// above, so a heading separates from the section it closes and clings to the
+// one it opens. Both are proportions of visible blank, not of authored space.
+const (
+	headingAboveRhythm = 1.35
+	headingBelowAbove  = 0.5
+)
+
 // headingSpacing derives the space around every heading level from the block
-// gap and the type scale. Below a heading sits an eighth of the level's own
-// text size, which is well under the ordinary gap and pulls the heading onto
-// the text it introduces; above it sits the ordinary gap plus a twelfth of
-// that size, which is a little over it. Both scale with the level, so a deep
-// heading earns slightly less air than a shallow one, and the shaped lines'
-// own leading adds a few more points on each side of what the reader sees —
-// which lands the blank above a heading at around a third more than the blank
-// between ordinary blocks and about twice the blank below it.
+// gap and the type scale. It works in visible blank throughout — the space
+// above a heading is headingAboveRhythm ordinary block rhythms, the space
+// below it headingBelowAbove of that — and subtracts the shaped lines'
+// leading only at the end, when the visible number becomes an authored one.
+// Deriving it the other way round is what would break at a different gap: the
+// leading is a constant few pixels and the rhythm is not, so a formula that
+// mixes them lands on the proportions at one gap and nowhere else.
+//
+// Level two is the section heading the rhythm was measured at, so it sits
+// exactly on the proportions above and the other levels lean off it by their
+// own size — which is what makes a deep heading earn slightly less air than a
+// shallow one without any level leaving the measured range.
 func headingSpacing(gap unit.Dp, sizes [6]unit.Sp) (above, below [6]unit.Dp) {
+	if sizes[1] == 0 {
+		// No scale to lean off: leave the spaces zero, which is a fall back to
+		// the plain block gap on both sides of every heading.
+		return above, below
+	}
+	rhythm := gap + lineLeading
 	for i, size := range sizes {
-		above[i] = gap + unit.Dp(float32(size)/12)
-		below[i] = unit.Dp(float32(size) / 8)
+		// Only the part of the space that exceeds an ordinary block gap scales
+		// with the level. Scaling the whole of it would run the ladder from
+		// half again the rhythm down to well under it, which is a level six
+		// that binds to the section above rather than to the one it opens.
+		level := float32(size) / float32(sizes[1])
+		visible := rhythm * unit.Dp(1+(headingAboveRhythm-1)*level)
+		above[i] = visible - headingLeading
+		below[i] = visible*headingBelowAbove - headingLeading
 	}
 	return above, below
+}
+
+// compact returns the style with its block rhythm reset to gap: the gap
+// itself, and the heading spaces re-derived so they hold their proportions
+// against it rather than against the document's own, much wider, rhythm. It is
+// what a container whose contents are one block of the reading flow — a list —
+// lays its inner blocks out with. A style whose heading spaces were left zero
+// keeps them zero, so a hand-built Style still spaces every pair by its gap.
+func (s Style) compact(gap unit.Dp) Style {
+	s.BlockGap = gap
+	if s.HeadingSpaceAbove != ([6]unit.Dp{}) {
+		s.HeadingSpaceAbove, s.HeadingSpaceBelow = headingSpacing(gap, s.HeadingSizes)
+	}
+	return s
 }
 
 // headingSpace returns the space above and below a heading of the given level.

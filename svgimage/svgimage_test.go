@@ -35,7 +35,10 @@ func TestDocumentRendersSVGGolden(t *testing.T) {
 	blocks := markdown.Parse([]byte("before\n\n![vector icon](icon.svg)\n\nafter\n"))
 	d := markdown.NewDocument(blocks)
 
-	golden.Render(t, "svg-icon-light", image.Pt(200, 120), func(gtx layout.Context) layout.Dimensions {
+	// Tall enough for the paragraph under the image: the document's block
+	// rhythm is the reading rhythm, so three blocks need more room than they
+	// did when a block gap was the smallest stop on the spacing scale.
+	golden.Render(t, "svg-icon-light", image.Pt(200, 200), func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.Layout(gtx, shaper, style)
