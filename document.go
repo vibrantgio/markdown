@@ -15,6 +15,11 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
+	// fixed is part of Gio's text API surface (text.Parameters.PxPerEm and
+	// text.Glyph metrics are fixed.Int26_6); it is already required by
+	// gioui.org itself and introduces no new third-party dependency.
+	"golang.org/x/image/math/fixed"
+
 	"github.com/vibrantgio/components/list"
 	"github.com/vibrantgio/components/richtext"
 	"github.com/vibrantgio/components/scrollarea"
@@ -711,10 +716,14 @@ func (d *Document) image(gtx layout.Context, shaper *text.Shaper, style Style, n
 func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Style, l *List) layout.Dimensions {
 	gap := gtx.Dp(unit.Dp(tokens.Spacing.S1))
 	style = style.compact(unit.Dp(tokens.Spacing.S2))
+	// One reading of the shaped body line for the whole list: every item's
+	// first line is set in the same style, so every marker hangs from the
+	// same anchor.
+	line := firstLine(gtx, shaper, style)
 	var size image.Point
 	for i, item := range l.Items {
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
-		dims := d.listItem(gtx, shaper, style, l, item, i)
+		dims := d.listItem(gtx, shaper, style, l, item, i, line)
 		tr.Pop()
 		size.Y += dims.Size.Y
 		if i < len(l.Items)-1 {
@@ -726,8 +735,9 @@ func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 }
 
 // listItem renders one item: its marker (bullet, number, or task checkbox)
-// in a fixed Indent-wide column, then the content blocks.
-func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style, l *List, item *ListItem, i int) layout.Dimensions {
+// in a fixed Indent-wide column, then the content blocks. line is the
+// geometry of the item's first text line, which anchors the marker.
+func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style, l *List, item *ListItem, i int, line lineGeometry) layout.Dimensions {
 	markerW := gtx.Dp(style.Indent)
 
 	cgtx := gtx
@@ -737,12 +747,9 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 	content := d.column(cgtx, shaper, style, item.Blocks)
 	call := macro.Stop()
 
-	// lineH approximates the first text line's height, anchoring the marker
-	// vertically.
-	lineH := gtx.Sp(style.Text.Size)
 	switch {
 	case item.Task:
-		drawCheckbox(gtx, style, item.Checked, lineH)
+		drawCheckbox(gtx, style, item.Checked, line.center)
 	case l.Ordered:
 		marker := fmt.Sprintf("%d.", l.Start+i)
 		mgtx := gtx
@@ -750,25 +757,84 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 		mgtx.Constraints.Max.X = markerW
 		richtext.Render(shaper, style.Text, []richtext.SpanStyle{{Content: marker}}, richtext.Idle())(mgtx)
 	default:
-		drawBullet(gtx, style, lineH)
+		drawBullet(gtx, style, line.center)
 	}
 
 	tr := op.Offset(image.Pt(markerW, 0)).Push(gtx.Ops)
 	call.Add(gtx.Ops)
 	tr.Pop()
 
-	h := max(content.Size.Y, lineH)
+	h := max(content.Size.Y, line.height)
 	return layout.Dimensions{Size: image.Pt(markerW+content.Size.X, h)}
+}
+
+// lineGeometry is the vertical geometry of an item's first text line, in
+// pixels below the item's top.
+type lineGeometry struct {
+	// height is the whole line box, baseline plus descent.
+	height int
+	// center is the middle of the cap band: the strip from the tops of the
+	// capitals down to the baseline.
+	center int
+}
+
+// capProbe is the string firstLine shapes to read the body face's cap height.
+// A capital with flat terminals gives the band its true top, free of the
+// overshoot a round letter adds.
+const capProbe = "H"
+
+// firstLine reports where an item's first text line sits, so a marker beside
+// it can be hung from the shaped line rather than from an approximation of
+// it. Shaping is the only honest source: a line is taller than its text size
+// by the leading the face asks for, so anchoring to the size alone rides
+// every marker high — most visibly the checkbox, which is nearly as tall as
+// the text and so has the least room to hide the error.
+//
+// The anchor is the centre of the cap band, not of the line's whole ink.
+// Ascenders and descenders come and go with the words, which would make a
+// marker wander from line to line; the capitals' band is where a line's
+// weight sits whatever it says. A line that opens with taller ink — inline
+// code, say — stretches below this band, and the marker stays with the body
+// line it belongs to.
+//
+// The probe is shaped in the paragraph's own face and size, matching what
+// the paragraph is laid out with, so the two agree at any scale.
+func firstLine(gtx layout.Context, shaper *text.Shaper, style Style) lineGeometry {
+	px := gtx.Sp(style.Text.Size)
+	shaper.LayoutString(text.Parameters{
+		PxPerEm: fixed.I(px),
+		Locale:  gtx.Locale,
+	}, capProbe)
+	g, ok := shaper.NextGlyph()
+	// Drain the run so the shaper is not left mid-iteration for its next
+	// caller.
+	for more := ok; more; {
+		_, more = shaper.NextGlyph()
+	}
+	if !ok {
+		// No face could shape the probe: fall back to the text size, which is
+		// at least the right order of magnitude.
+		return lineGeometry{height: px, center: px / 2}
+	}
+	// Glyph bounds are relative to the dot, y down, so the cap band reaches
+	// -Bounds.Min.Y above the baseline; the baseline itself is the glyph's
+	// document y, the same quantity a paragraph's first line is drawn at.
+	baseline := int(g.Y)
+	capBand := -g.Bounds.Min.Y
+	return lineGeometry{
+		height: baseline + g.Descent.Ceil(),
+		center: (fixed.I(baseline) - capBand/2).Round(),
+	}
 }
 
 // drawBullet paints an unordered item's marker: a small filled disc centred
 // on the first text line.
-func drawBullet(gtx layout.Context, style Style, lineH int) {
+func drawBullet(gtx layout.Context, style Style, center int) {
 	r := gtx.Dp(unit.Dp(2.5))
-	cx, cy := gtx.Dp(unit.Dp(4)), lineH*11/20
+	cx := gtx.Dp(unit.Dp(4))
 	paint.FillShape(gtx.Ops, style.Text.Color, clip.Ellipse{
-		Min: image.Pt(cx-r, cy-r),
-		Max: image.Pt(cx+r, cy+r),
+		Min: image.Pt(cx-r, center-r),
+		Max: image.Pt(cx+r, center+r),
 	}.Op(gtx.Ops))
 }
 
@@ -776,9 +842,9 @@ func drawBullet(gtx layout.Context, style Style, lineH int) {
 // a rounded outline when unchecked, a filled box with a check mark when
 // checked. The checkbox is display-only — GFM task state belongs to the
 // document, not the reader.
-func drawCheckbox(gtx layout.Context, style Style, checked bool, lineH int) {
+func drawCheckbox(gtx layout.Context, style Style, checked bool, center int) {
 	sz := gtx.Dp(14)
-	top := max((lineH-sz)*3/4, 0)
+	top := max(center-sz/2, 0)
 	tr := op.Offset(image.Pt(0, top)).Push(gtx.Ops)
 	defer tr.Pop()
 	box := clip.UniformRRect(image.Rectangle{Max: image.Pt(sz, sz)}, gtx.Dp(unit.Dp(tokens.Radius.Sm)))
