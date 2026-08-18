@@ -139,6 +139,28 @@ type Style struct {
 	//
 	// Zero, the default, ends the document flush with the viewport.
 	EndSpace unit.Dp
+	// StartSpace is EndSpace at the other end: the space a scrolling document
+	// keeps above its first block, and the reason a viewport may begin hard
+	// against whatever chrome stands over it.
+	//
+	// The document's first block opens with nothing of its own — a heading's
+	// space above is suppressed there, having no section to separate from — on
+	// the understanding that whatever holds the document puts the air above it.
+	// A holder that puts that air outside the viewport buys it at the price of
+	// a strip of empty ground over every half-cut line the reader scrolls past,
+	// which reads as a clipping fault rather than as scrolling. Spent here
+	// instead, the air belongs to the document's start: the viewport reaches
+	// the chrome's own edge, a line leaving the top is cut by that edge, and
+	// the document scrolled back to its start comes to rest clear of it.
+	//
+	// Like EndSpace it is content, so the scroll bounds, the page moves and the
+	// scrollbar's track all account for it without being told, and only
+	// [Document.Layout] and [Document.LayoutScrollbar] spend it — a document
+	// laid out with [Document.LayoutColumn] leaves the space above its first
+	// block to whoever is scrolling it.
+	//
+	// Zero, the default, starts the document flush with the viewport.
+	StartSpace unit.Dp
 	// Highlight, when non-nil, syntax-highlights fenced code blocks.
 	// markdown/highlight provides a chroma-backed implementation.
 	Highlight Highlighter
