@@ -18,12 +18,13 @@ files.
 **Layer.** Tier 4 of ADR-001's stack, `mvu → theme → components → effects →
 patterns → markdown`, alongside patterns. Its root module imports
 `components`, `svg`, `svg/driver/gio` and `theme`, and reaches `font`
-through them. No other repository's root module imports it; outside the
-tier table it is imported by the workbench applications `mindchat`,
-`sitedocs` and `vaultview`. Both directions are measured rather than typed
-— `scripts/check-layers.sh --edges` reports the graph and
+through them. That direction is measured rather than typed —
+`scripts/check-layers.sh --edges` reports the graph and
 `scripts/sync-agents.sh` renders these sentences from it — so correcting
-them here changes nothing.
+them here changes nothing. The other direction is measured too and
+deliberately not written down: the gate checks the graph both ways, but a
+public API's consumers are unknowable, so this file says what its module
+needs and never who needs it.
 
 **Read the canonical guide before you write code against this module.** It is
 the organization's one agent guide — the module inventory with current tags,
@@ -43,12 +44,12 @@ root.
 **Golden images.** Tests in three packages compare rendered output against
 PNGs committed under `testdata/golden/`. They render through
 `github.com/vibrantgio/components/golden`, which declares `-golden.update`
-and is shared with `design`, `effects`, `patterns` and `workbench`. Do not
-inline a copy of it, and do not declare a second `-golden.update`: two
-registrations of one flag name in a single test binary panic in `flag.Bool`
-at init, before any test runs. When a change legitimately moves pixels,
-regenerate them within the same change, look at what came out, and say so
-in the commit. From the repository root:
+and is the organization's only golden harness. Do not inline a copy of it,
+and do not declare a second `-golden.update`: two registrations of one flag
+name in a single test binary panic in `flag.Bool` at init, before any test
+runs. When a change legitimately moves pixels, regenerate them within the
+same change, look at what came out, and say so in the commit. From the
+repository root:
 
     go test ./highlight ./svgimage . -golden.update
 
