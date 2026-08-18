@@ -43,9 +43,9 @@ type Document struct {
 	// images holds per-image-block provider results, so the provider and
 	// texture upload run once per block, not per frame.
 	images map[*Image]imageState
-	// place records where each top-level heading sits among its siblings,
-	// which is what spaces it; see [headingPlacement].
-	place map[*Heading]headingPlacement
+	// place records where each top-level block sits among its siblings, which
+	// is what spaces it; see [blockPlacement].
+	place map[Block]blockPlacement
 	// line is one line of body text in pixels, taken from the Style the last
 	// layout was given. It is the overlap a page move keeps; see move.go.
 	line int
@@ -162,52 +162,59 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 	}
 }
 
-// headingPlacement is where a heading sits among its siblings, which is what
-// damps the space around it. A heading opening the run has nothing above to
-// separate itself from; two headings in a row are one announcement rather
-// than two sections, so the pair closes up from both sides — the shaped lines
-// alone leave a heading's descent and the next heading's ascent between them,
-// which is already as much blank as a section break carries.
-type headingPlacement struct {
-	// first marks the heading as the block that opens the run.
+// blockPlacement is where a block sits among its siblings, which is what damps
+// the space around it. A heading opening the run has nothing above to separate
+// itself from; two headings in a row are one announcement rather than two
+// sections, so the pair closes up from both sides — the shaped lines alone
+// leave a heading's descent and the next heading's ascent between them, which
+// is already as much blank as a section break carries. A paragraph with a list
+// directly under it is announcing that list, and closes up towards it.
+//
+// The zero value is the ordinary block, spaced by the block gap alone.
+type blockPlacement struct {
+	// first marks the block that opens the run.
 	first bool
 	// under marks a heading directly below another heading.
 	under bool
 	// over marks a heading directly above another heading.
 	over bool
+	// announcing marks a paragraph directly above a list.
+	announcing bool
 }
 
-// placements records where every heading among blocks sits. A document's
-// blocks are fixed for its life, so this is computed once at construction:
-// the row function sees one block at a time and cannot tell what surrounds it.
-func placements(blocks []Block) map[*Heading]headingPlacement {
-	m := make(map[*Heading]headingPlacement)
+// placements records where every block among blocks sits, keeping only the ones
+// with somewhere to be. A document's blocks are fixed for its life, so this is
+// computed once at construction: the row function sees one block at a time and
+// cannot tell what surrounds it.
+func placements(blocks []Block) map[Block]blockPlacement {
+	m := make(map[Block]blockPlacement)
 	for i, b := range blocks {
-		if h, ok := b.(*Heading); ok {
-			m[h] = placement(blocks, i)
+		if p := placement(blocks, i); p != (blockPlacement{}) {
+			m[b] = p
 		}
 	}
 	return m
 }
 
 // placement classifies the block at index i of blocks.
-func placement(blocks []Block, i int) headingPlacement {
-	p := headingPlacement{first: i == 0}
+func placement(blocks []Block, i int) blockPlacement {
+	p := blockPlacement{first: i == 0}
 	if i > 0 {
 		_, p.under = blocks[i-1].(*Heading)
 	}
 	if i < len(blocks)-1 {
 		_, p.over = blocks[i+1].(*Heading)
+		if _, ok := blocks[i].(*Paragraph); ok {
+			_, p.announcing = blocks[i+1].(*List)
+		}
 	}
 	return p
 }
 
-// placeOf returns the recorded placement of a top-level block.
-func (d *Document) placeOf(b Block) headingPlacement {
-	if h, ok := b.(*Heading); ok {
-		return d.place[h]
-	}
-	return headingPlacement{}
+// placeOf returns the recorded placement of a top-level block; the zero value
+// for the blocks that have no placement worth recording.
+func (d *Document) placeOf(b Block) blockPlacement {
+	return d.place[b]
 }
 
 // blockSpace returns the vertical space a block puts above and below itself.
@@ -216,10 +223,19 @@ func (d *Document) placeOf(b Block) headingPlacement {
 // tighter space instead, and reaches above the gap by however much its space
 // above exceeds one — opening none at all where it is the run's first block
 // or sits directly under another heading, and closing with half its space
-// where the next block is a heading.
-func blockSpace(style Style, b Block, p headingPlacement) (top, bottom unit.Dp) {
+// where the next block is a heading. A paragraph announcing the list under it
+// closes with the seam instead of the gap.
+//
+// The seam is spent by the paragraph rather than claimed by the list, which is
+// what keeps it a plain space: the block above has not closed yet when the
+// decision is made, where a list claiming the seam would have to claim a
+// negative one against a gap already spent.
+func blockSpace(style Style, b Block, p blockPlacement) (top, bottom unit.Dp) {
 	h, ok := b.(*Heading)
 	if !ok {
+		if p.announcing {
+			return 0, style.listSpace()
+		}
 		return 0, style.BlockGap
 	}
 	above, below := style.headingSpace(h.Level)

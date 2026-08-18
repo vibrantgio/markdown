@@ -182,6 +182,72 @@ func TestAStyleWithoutHeadingSpaceKeepsTheOldRhythm(t *testing.T) {
 	}
 }
 
+// An announcing paragraph and the list under it, in the words the side-by-side
+// against the reference reading surface was measured on.
+const (
+	spacingAnnounce = "Open questions, both unowned:"
+	spacingList     = "- What drives the instability, and whether it matters.\n- Whether a low-confidence answer is surfaced or refused."
+)
+
+// TestAParagraphClosesUpTowardsTheListItAnnounces: a paragraph running straight
+// into a list is announcing it, so that one seam is tighter than an ordinary
+// block gap — near two thirds of it — while the seam below the list and every
+// other transition into a list keep the ordinary gap.
+func TestAParagraphClosesUpTowardsTheListItAnnounces(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+
+	ordinary := gapBetween(t, shaper, style, spacingProse, spacingProse)
+	seam := gapBetween(t, shaper, style, spacingAnnounce, spacingList)
+	switch {
+	case seam >= ordinary:
+		t.Errorf("a paragraph opened %d px above the list it announces against a %d px ordinary block gap; the seam must close up", seam, ordinary)
+	case seam < ordinary/2:
+		t.Errorf("a paragraph opened %d px above the list it announces against a %d px ordinary block gap; the list must not crowd the line introducing it", seam, ordinary)
+	}
+	// Only that seam. Below the list, under a heading, and after any other
+	// block, a list is spaced like anything else.
+	if below := gapBetween(t, shaper, style, spacingList, spacingProse); below != ordinary {
+		t.Errorf("the seam below a list measured %d px, want the %d px ordinary gap; only the seam above an announced list tightens", below, ordinary)
+	}
+	if under := gapBetween(t, shaper, style, heading(2), spacingList); under != gapBetween(t, shaper, style, heading(2), spacingProse) {
+		t.Errorf("a list under a heading took %d px above it, a paragraph there %d px; a heading spaces both the same", under, gapBetween(t, shaper, style, heading(2), spacingProse))
+	}
+	if after := gapBetween(t, shaper, style, "> Quoted prose the list does not belong to.", spacingList); after != ordinary {
+		t.Errorf("a list under a blockquote took %d px above it, want the %d px ordinary gap; the seam is a paragraph's", after, ordinary)
+	}
+}
+
+// TestTheAnnouncedSeamIgnoresPunctuation: the rule is structural. A paragraph
+// that ends in a colon and one that does not open exactly the same seam above
+// the list under them — an announcing sentence need not carry a colon, and a
+// colon need not announce anything.
+func TestTheAnnouncedSeamIgnoresPunctuation(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+
+	colon := gapBetween(t, shaper, style, "There are two open questions:", spacingList)
+	plain := gapBetween(t, shaper, style, "There are two open questions.", spacingList)
+	if colon != plain {
+		t.Errorf("a paragraph ending in a colon opened %d px above its list, one ending in a full stop %d px; the seam must not read punctuation", colon, plain)
+	}
+}
+
+// TestAStyleWithoutListSpaceKeepsTheOldRhythm: the field is the only thing that
+// moves the seam, so a Style built by hand — the space left zero — spaces a
+// list from the paragraph above it by BlockGap, exactly as a document laid out
+// before the seam existed.
+func TestAStyleWithoutListSpaceKeepsTheOldRhythm(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style.ListSpaceAbove = 0
+
+	ordinary := gapBetween(t, shaper, style, spacingProse, spacingProse)
+	if seam := gapBetween(t, shaper, style, spacingAnnounce, spacingList); seam != ordinary {
+		t.Errorf("a list under a paragraph took %d px above it with no list space set; want the plain %d px block gap", seam, ordinary)
+	}
+}
+
 // TestTheEmbeddedColumnSpacesHeadingsLikeTheScrollingList: the two entry
 // points are one rhythm. A document laid out as a natural-height column — a
 // chat message, a card — must space its headings exactly as the scrolling
@@ -209,6 +275,7 @@ const (
 	referenceBlockRun     = 37
 	referenceAboveHeading = 50
 	referenceBelowHeading = 23
+	referenceListSeam     = 25
 	rhythmTolerance       = 4
 )
 
@@ -226,7 +293,9 @@ const rhythmProse = "The measurement was taken from a rendered document.\n\n" +
 	"The paragraph a section heading opens with.\n\n" +
 	"Another ordinary paragraph closing the section.\n\n" +
 	"## Jumping typography glyphs\n\n" +
-	"quiet lowercase prose after the second heading\n"
+	"quiet lowercase prose after the second heading\n\n" +
+	spacingAnnounce + "\n\n" +
+	"- What drives the instability, and whether it matters.\n"
 
 // blankRuns returns the height of every run of rows carrying no ink, in
 // order, ignoring the runs that open and close the image. A row counts as ink
@@ -270,14 +339,16 @@ func blankRuns(img *image.RGBA) []int {
 
 // TestTheRenderedRhythmMatchesTheReference is the measurement the rhythm was
 // set from, run forwards: render a document, scan its blank runs, and hold
-// the three transitions a reader notices — between two ordinary blocks, above
-// a heading, below one — against what the same three measure on the reference
-// reading surface at the same body size.
+// the four transitions a reader notices — between two ordinary blocks, above
+// a heading, below one, and between a paragraph and the list it announces —
+// against what the same four measure on the reference reading surface at the
+// same body size.
 //
-// The blocks of rhythmProse are one-line paragraphs, so every interior blank
-// run is a transition between two blocks and the runs come out in document
-// order: five ordinary gaps, then above and below the first heading, then one
-// more ordinary gap, then above and below the second.
+// The blocks of rhythmProse are one-line paragraphs and a one-item list, so
+// every interior blank run is a transition between two blocks and the runs come
+// out in document order: five ordinary gaps, then above and below the first
+// heading, then one more ordinary gap, then above and below the second, then a
+// last ordinary gap and the announcing seam.
 func TestTheRenderedRhythmMatchesTheReference(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypography)
@@ -288,12 +359,13 @@ func TestTheRenderedRhythmMatchesTheReference(t *testing.T) {
 		return d.LayoutColumn(gtx, shaper, style)
 	})
 	runs := blankRuns(img)
-	if len(runs) != 10 {
-		t.Fatalf("scanned %d blank runs, want 10 (one per block transition): %v; the probe or the scan has drifted", len(runs), runs)
+	if len(runs) != 12 {
+		t.Fatalf("scanned %d blank runs, want 12 (one per block transition): %v; the probe or the scan has drifted", len(runs), runs)
 	}
-	ordinary := []int{runs[0], runs[1], runs[2], runs[3], runs[4], runs[7]}
+	ordinary := []int{runs[0], runs[1], runs[2], runs[3], runs[4], runs[7], runs[10]}
 	above := []int{runs[5], runs[8]}
 	below := []int{runs[6], runs[9]}
+	seam := runs[11]
 
 	// Every run of a kind is the same authored space seen through different
 	// glyphs, so the average is that space with the swing taken out of it and
@@ -317,6 +389,15 @@ func TestTheRenderedRhythmMatchesTheReference(t *testing.T) {
 		if r < referenceBelowHeading-rhythmTolerance || r > referenceBelowHeading+rhythmTolerance {
 			t.Errorf("a level-2 heading left %d px of blank below it (%v), want %d ± %d", r, below, referenceBelowHeading, rhythmTolerance)
 		}
+	}
+	// The announcing seam is held to the tighter tolerance the side-by-side was
+	// read at: it is one transition measured against one reference measurement,
+	// not a kind averaged over the swing.
+	if seam < referenceListSeam-2 || seam > referenceListSeam+2 {
+		t.Errorf("a paragraph showed %d px of blank above the list it announces, want %d ± 2 — the reference's join between the two", seam, referenceListSeam)
+	}
+	if o := mean(ordinary); seam >= o {
+		t.Errorf("the announcing seam shows %d px of blank against %d px between ordinary blocks (%v); the list must read as belonging to the line above it", seam, o, ordinary)
 	}
 	// The proportions the reference holds, on the pixels rather than on the
 	// style: a heading shows about twice as much blank above it as below, and

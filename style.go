@@ -125,6 +125,30 @@ type Style struct {
 	// HeadingSpaceBelow is the vertical space below a heading; see
 	// HeadingSpaceAbove.
 	HeadingSpaceBelow [6]unit.Dp
+	// ListSpaceAbove is the vertical space at the one seam a list makes with a
+	// paragraph directly above it. A paragraph running straight into a list is
+	// announcing it — the two are one statement — so an ordinary block gap
+	// there reads as a break between them and this tighter space closes it.
+	// Like the heading spaces it replaces BlockGap at that seam rather than
+	// adding to it, and a zero value falls back to BlockGap, so a hand-built
+	// Style spaces a list from the paragraph above it the way it spaces any
+	// other pair of blocks.
+	//
+	// The rule is structural rather than punctuational: every list directly
+	// below a paragraph takes it, whether or not that paragraph ends in a
+	// colon. A colon test would miss the announcing sentences that carry none
+	// and fire on the colons that announce nothing.
+	//
+	// Nothing else moves. A list below a heading, below another list, first in
+	// its container, or nested inside a list item keeps the space it had, and
+	// so does the seam below a list back to ordinary blocks: the reference this
+	// was measured from shows no list with a paragraph under it, so that side
+	// stays at the ordinary gap rather than being guessed at.
+	//
+	// [FromTokens] derives it from the block rhythm; like the gap it is
+	// authored space, and the reader sees a little more than the number, the
+	// shaped lines carrying their own leading above and below the ink.
+	ListSpaceAbove unit.Dp
 	// Indent is the per-level indentation of list items and the inset of
 	// blockquote content.
 	Indent unit.Dp
@@ -213,11 +237,12 @@ type Style struct {
 // document scale is stepped off the body role instead, evenly, so six levels
 // are six levels.
 //
-// The block gap and the heading spaces are set from the reading rhythm rather
-// than from the smallest stop that separates two widgets: prose read at length
-// wants the openness a typeset page has, which is a good deal more air between
-// blocks than a form wants between its rows. See blockRhythm and
-// [headingSpacing] for the proportions and where they came from.
+// The block gap, the heading spaces and the announcing seam are set from the
+// reading rhythm rather than from the smallest stop that separates two widgets:
+// prose read at length wants the openness a typeset page has, which is a good
+// deal more air between blocks than a form wants between its rows. See
+// blockRhythm, [headingSpacing] and listSeam for the proportions and where they
+// came from.
 //
 // Of each role only Size lands in the Style: headings and paragraphs carry
 // their typeface, weight and slant per span (richtext.SpanStyle), so those
@@ -249,6 +274,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CheckboxColor:         c.Primary,
 		CheckmarkColor:        c.OnPrimary,
 		BlockGap:              gap,
+		ListSpaceAbove:        listSeam(gap),
 		Indent:                unit.Dp(tokens.Spacing.S6),
 	}
 }
@@ -319,6 +345,25 @@ const (
 	headingBelowAbove  = 0.5
 )
 
+// listSeamRhythm is the share of an ordinary block rhythm the seam between a
+// paragraph and the list it announces keeps: two thirds. It is read off the
+// same reference reading surface as the rest of the rhythm, where an ordinary
+// pair of blocks shows about 37 px of blank at a 16 dp body and a paragraph
+// with a list under it shows 25 — a seam a reader sees as a join rather than
+// as a break, without the list crowding the line that introduces it.
+const listSeamRhythm = 2.0 / 3.0
+
+// listSeam derives the announcing seam from the block gap. Like
+// [headingSpacing] it works in visible blank throughout — the seam is
+// listSeamRhythm of an ordinary block rhythm — and turns the visible number
+// into an authored one only at the end, by subtracting the leading the shaped
+// lines carry. Taking the proportion of the authored gap instead would land on
+// the measurement at this gap and nowhere else, the leading being a constant
+// few pixels while the rhythm is not.
+func listSeam(gap unit.Dp) unit.Dp {
+	return (gap+lineLeading)*listSeamRhythm - lineLeading
+}
+
 // headingSpacing derives the space around every heading level from the block
 // gap and the type scale. It works in visible blank throughout — the space
 // above a heading is headingAboveRhythm ordinary block rhythms, the space
@@ -358,11 +403,21 @@ func headingSpacing(gap unit.Dp, sizes [6]unit.Sp) (above, below [6]unit.Dp) {
 // what a container whose contents are one block of the reading flow — a list —
 // lays its inner blocks out with. A style whose heading spaces were left zero
 // keeps them zero, so a hand-built Style still spaces every pair by its gap.
+//
+// The announcing seam does not survive the compacting, and unlike the heading
+// spaces it is not re-derived either. It is a correction to the reading rhythm
+// — the air between two blocks a reader takes in one after the other — and
+// inside a container that rhythm has already been spent: the compact stop binds
+// an item's own blocks tightly enough that the line above a sub-list needs
+// nothing done to it. Carrying the number across would leave the seam wider
+// than the gap it is meant to tighten; re-deriving it would close a seam
+// nothing was measured at.
 func (s Style) compact(gap unit.Dp) Style {
 	s.BlockGap = gap
 	if s.HeadingSpaceAbove != ([6]unit.Dp{}) {
 		s.HeadingSpaceAbove, s.HeadingSpaceBelow = headingSpacing(gap, s.HeadingSizes)
 	}
+	s.ListSpaceAbove = 0
 	return s
 }
 
@@ -380,6 +435,16 @@ func (s Style) headingSpace(level int) (above, below unit.Dp) {
 		}
 	}
 	return max(above, s.BlockGap), below
+}
+
+// listSpace returns the space at the seam between a paragraph and the list it
+// announces. A zero field — a Style built by hand rather than by [FromTokens] —
+// falls back to the ordinary block gap, which is what that seam always had.
+func (s Style) listSpace() unit.Dp {
+	if s.ListSpaceAbove > 0 {
+		return s.ListSpaceAbove
+	}
+	return s.BlockGap
 }
 
 // heading returns the richtext paragraph style for a heading of the given
