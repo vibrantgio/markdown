@@ -126,6 +126,22 @@ faces := append(slices.Clone(roboto.FontFaces()), robotomono.FontFaces()...)
 shaper := text.NewShaper(text.NoSystemFonts(), text.WithCollection(faces))
 ```
 
+## Inline code is sized for the line it sits in
+
+A code span takes `Style.CodeSize` too — the same size a fence is set at, held
+as a proportion of the line so a span inside a heading takes the heading's own
+size less that proportion. It is not a stylistic preference: at the body's own
+size the monospace face asks for more ascent than the body face does, and
+since every segment on a line shares one baseline, the taller ascent pushes
+the whole line's baseline down and out from under everything hung beside it —
+a list's markers first of all, which is how the defect showed itself.
+
+The span then sits on `Style.CodeChip`: a rounded fill one ramp step off the
+page, padded horizontally, taking the code's own shaped height so it can
+never stretch the line it is quoted into. `FromTokens` sets it; a `Style`
+built by hand leaves it zero and inline code sits on the page, as it did
+before.
+
 ## The Obsidian dialect
 
 `markdown/obsidian` adds recognition of the three things Obsidian-flavoured

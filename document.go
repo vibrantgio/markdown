@@ -258,9 +258,10 @@ func blockSpace(style Style, b Block, p blockPlacement) (top, bottom unit.Dp) {
 func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b Block) layout.Dimensions {
 	switch b := b.(type) {
 	case *Heading:
-		return richtext.Layout(gtx, d.textState(b), shaper, style.heading(b.Level), style.spanStyles(b.Spans, font.Bold))
+		h := style.heading(b.Level)
+		return richtext.Layout(gtx, d.textState(b), shaper, h, style.spanStyles(b.Spans, font.Bold, h.Size))
 	case *Paragraph:
-		return richtext.Layout(gtx, d.textState(b), shaper, style.Text, style.spanStyles(b.Spans, font.Normal))
+		return richtext.Layout(gtx, d.textState(b), shaper, style.Text, style.spanStyles(b.Spans, font.Normal, style.Text.Size))
 	case *List:
 		return d.listBlock(gtx, shaper, style, b)
 	case *Blockquote:
@@ -440,7 +441,7 @@ func cellSpans(style Style, cell *TableCell, header bool) []richtext.SpanStyle {
 	if header {
 		w = font.Bold
 	}
-	return style.spanStyles(cell.Spans, w)
+	return style.spanStyles(cell.Spans, w, style.Text.Size)
 }
 
 // table renders a GFM table as a grid: the emphasised header row on the

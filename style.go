@@ -72,6 +72,16 @@ type Style struct {
 	CodeColor color.NRGBA
 	// CodeBackground fills the code block surface.
 	CodeBackground color.NRGBA
+	// CodeChip fills the rounded chip an inline code span sits on. A zero
+	// alpha — a Style built by hand rather than by [FromTokens] — sets inline
+	// code on the page itself, as it always was, and the span is still set in
+	// Mono at the code size.
+	//
+	// It is a lighter treatment than CodeBackground on purpose. A fence is a
+	// block, and the reader's eye may rest on the surface under it; a chip is
+	// a word inside a sentence, and a fill deep enough to hold a block would
+	// stipple a paragraph with it.
+	CodeChip color.NRGBA
 	// CodeScrollbar styles the slim horizontal bar a code block whose widest
 	// line overflows the column shows while it scrolls. It sits in the
 	// fence's bottom padding, over no code, and it is absent — like every
@@ -214,7 +224,9 @@ type Style struct {
 // typography: headings take the six stops of the typography's document
 // heading scale, body text follows richtext.FromTokens on the BodyLarge
 // role, code sits on the Neutral 300
-// tinted fill with the low-contrast Neutral 700 text step, the quote bar is
+// tinted fill with the low-contrast Neutral 700 text step — inline code on the
+// gentler Neutral 200 chip, one step off the page in either scheme, keeping
+// the body's own ink so a quoted word reads as the sentence's — the quote bar is
 // Primary with Neutral 700 text, rules and table grid lines are separators
 // and use Divider, and the table header row sits on the Neutral 300 tinted
 // fill. Highlight and Images stay nil — both are opt-in. Pass
@@ -265,6 +277,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CodeSize:              unit.Sp(typo.Code.Size),
 		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
 		CodeBackground:        c.Ramps.Neutral.Step(300), // tinted fill
+		CodeChip:              c.Ramps.Neutral.Step(200), // the step off the page
 		CodeScrollbar:         codeScrollbar(c),
 		QuoteBar:              c.Primary,
 		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
@@ -495,10 +508,45 @@ func (s Style) codeSpans(cb *CodeBlock) []richtext.SpanStyle {
 	return []richtext.SpanStyle{{Content: cb.Code, Typeface: s.Mono}}
 }
 
+// The chip an inline code span sits on, read off a reference reading surface
+// set at a 16 px body: 4 px of clear space between the code and each end of
+// the fill, and a 4 px radius on a chip 20 px tall. Both land on the theme's
+// own first stops, so the chip is drawn in the design system's units rather
+// than in the measurement's, and both scale with the reader's density because
+// they are dp.
+var (
+	codeChipPad    = unit.Dp(tokens.Spacing.S1)
+	codeChipRadius = unit.Dp(tokens.Radius.Base)
+)
+
+// codeSize is the size inline code takes in a line set at size.
+//
+// Code is set below the prose around it — the reference reading surface sets
+// an inline span at the same size as a fence, seven eighths of its body — and
+// that is what keeps a line holding code the height of a line without it: at
+// the body's own size the monospace face asks for more ascent than the body
+// face does, which drops the line's shared baseline out from under everything
+// hung beside it, a list's markers first of all.
+//
+// The proportion travels rather than the number: a code span in a heading
+// takes the same fraction of the heading's size. Setting it at the fence's 14
+// there would read as a footnote dropped into a title, and one line of a
+// document would be sized by another line's face.
+//
+// A style carrying no code size — built by hand rather than by [FromTokens] —
+// leaves the span at the line's own size, which is what it always had.
+func (s Style) codeSize(size unit.Sp) unit.Sp {
+	if s.CodeSize == 0 || s.Text.Size == 0 {
+		return size
+	}
+	return size * s.CodeSize / s.Text.Size
+}
+
 // spanStyles maps model spans onto richtext spans against the style's
 // typefaces. defWeight is the run weight for spans without their own bold
-// flag (font.Bold for headings).
-func (s Style) spanStyles(spans []Span, defWeight font.Weight) []richtext.SpanStyle {
+// flag (font.Bold for headings), and size is the size the line is set at,
+// which inline code is sized against.
+func (s Style) spanStyles(spans []Span, defWeight font.Weight, size unit.Sp) []richtext.SpanStyle {
 	out := make([]richtext.SpanStyle, 0, len(spans))
 	for _, sp := range spans {
 		rs := richtext.SpanStyle{
@@ -515,6 +563,12 @@ func (s Style) spanStyles(spans []Span, defWeight font.Weight) []richtext.SpanSt
 		}
 		if sp.Code {
 			rs.Typeface = s.Mono
+			rs.Size = s.codeSize(size)
+			rs.Chip = richtext.Chip{
+				Color:   s.CodeChip,
+				Padding: codeChipPad,
+				Radius:  codeChipRadius,
+			}
 		}
 		out = append(out, rs)
 	}
