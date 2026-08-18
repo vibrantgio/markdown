@@ -90,6 +90,9 @@ func (d *Document) Blocks() []Block { return d.blocks }
 // already — a chat message row, a card — where [Layout]'s own viewport would
 // fight the outer one. It is O(len(blocks)) per frame, so it suits the short
 // documents such contexts hold.
+//
+// [Style.EndSpace] is not spent here: the space below an embedded document's
+// end belongs to whoever is scrolling it.
 func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	return d.column(gtx, shaper, style, d.blocks)
 }
@@ -101,7 +104,7 @@ func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style S
 // collection must hold for Style.Mono to resolve.
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	d.recordLine(gtx, style)
-	return list.Layout(gtx, d.list, d.blocks, d.row(shaper, style))
+	return list.Layout(gtx, d.list, d.blocks, d.row(shaper, style, style.EndSpace))
 }
 
 // LayoutScrollbar lays out the document exactly like [Layout] and additionally
@@ -121,13 +124,25 @@ func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) 
 // viewport wants.
 func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, style Style, bar scrollbar.Style, anchor list.Anchor) layout.Dimensions {
 	d.recordLine(gtx, style)
-	return list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style))
+	return list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style, style.EndSpace))
 }
 
-// row returns the per-block row function both list entry points lay out.
-func (d *Document) row(shaper *text.Shaper, style Style) func(layout.Context, Block) layout.Dimensions {
+// row returns the per-block row function both list entry points lay out. end
+// is added below the document's last block and nowhere else, which is what
+// makes it a resting position rather than a margin every frame pays for; see
+// [Style.EndSpace]. It rides in the row itself so the list measures it as
+// content: the scroll bounds, the page moves and the scrollbar's geometry
+// then all agree about where the document ends without being told.
+func (d *Document) row(shaper *text.Shaper, style Style, end unit.Dp) func(layout.Context, Block) layout.Dimensions {
+	var last Block
+	if n := len(d.blocks); n > 0 && end > 0 {
+		last = d.blocks[n-1]
+	}
 	return func(gtx layout.Context, b Block) layout.Dimensions {
 		top, bottom := blockSpace(style, b, d.placeOf(b))
+		if b == last {
+			bottom += end
+		}
 		return layout.Inset{Top: top, Bottom: bottom, Right: style.Gutter}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Min = image.Point{}
 			return d.block(gtx, shaper, style, b)

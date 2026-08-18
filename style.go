@@ -119,6 +119,26 @@ type Style struct {
 	// measure keeps its own margin, which would otherwise have to be the
 	// same number. Zero, the default, gives the blocks the full width.
 	Gutter unit.Dp
+	// EndSpace is the space a scrolling document keeps below its last block,
+	// on top of whatever that block closes with. It is Gutter's vertical
+	// twin, and it is spent at one place rather than on every frame: the
+	// viewport stays full while the reader is in the middle of the document,
+	// so a line half-way off the trailing edge is the window cutting it and
+	// not a margin, and the document scrolled to its end comes to rest with
+	// its last line clear of that edge instead of sitting on it.
+	//
+	// Only [Document.Layout] and [Document.LayoutScrollbar] spend it, because
+	// only they own a viewport for the document to rest against. A document
+	// laid out with [Document.LayoutColumn] takes exactly its content's
+	// height, and the space below its end belongs to whoever is scrolling it.
+	//
+	// It also fixes where the ends are for everything that moves the document
+	// without the pointer: a page move, [Document.ScrollToEnd] and the keys
+	// that reach for it all stop at the resting position, and the scrollbar's
+	// indicator reaches the end of its track exactly there.
+	//
+	// Zero, the default, ends the document flush with the viewport.
+	EndSpace unit.Dp
 	// Highlight, when non-nil, syntax-highlights fenced code blocks.
 	// markdown/highlight provides a chroma-backed implementation.
 	Highlight Highlighter
