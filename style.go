@@ -64,6 +64,11 @@ type Style struct {
 	Text richtext.Style
 	// HeadingSizes maps heading levels 1..6 (index 0..5) onto text sizes.
 	HeadingSizes [6]unit.Sp
+	// HeadingLineHeights maps the same levels onto the line box each heading's
+	// lines occupy, the way [richtext.Style].LineHeight means it. A zero entry
+	// — a Style built by hand rather than by [FromTokens] — leaves that level's
+	// lines on their shaped metrics.
+	HeadingLineHeights [6]unit.Sp
 	// Mono is the typeface for inline code and code blocks.
 	Mono font.Typeface
 	// CodeSize is the text size of code blocks.
@@ -263,14 +268,17 @@ type Style struct {
 // because code spans are built from it.
 func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	var sizes [6]unit.Sp
+	var boxes [6]unit.Sp
 	for i, style := range typo.DocumentHeadings {
 		sizes[i] = unit.Sp(style.Size)
+		boxes[i] = unit.Sp(style.LineHeight)
 	}
 	gap := blockRhythm - lineLeading
 	above, below := headingSpacing(gap, sizes)
 	return Style{
 		Text:                  richtext.FromTokens(c, typo.BodyLarge),
 		HeadingSizes:          sizes,
+		HeadingLineHeights:    boxes,
 		HeadingSpaceAbove:     above,
 		HeadingSpaceBelow:     below,
 		Mono:                  font.Typeface(typo.Code.Typeface),
@@ -320,33 +328,45 @@ func codeScrollbar(c tokens.ColorTokens) scrollbar.Style {
 // The reading rhythm is measured in what the reader sees — the blank run
 // between one block's ink and the next's — while a [Style] is written in
 // authored space. The difference is the leading the shaped lines carry
-// between their ink and the edges of their line boxes, and these two
-// constants are that difference, read off rendered blank runs at the document
-// heading scale against a 16 dp body.
+// between their ink and the edges of their line boxes, and these constants are
+// that difference, read off rendered blank runs at the document heading scale
+// against a 16 dp body.
 //
-// Neither is exact, because neither can be. A line closing on a descender and
-// one opening on an ascender leave several pixels less blank than two that do
-// neither, so the same authored space measures anywhere across a range of
+// None of them is exact, because none can be. A line closing on a descender
+// and one opening on an ascender leave several pixels less blank than two that
+// do neither, so the same authored space measures anywhere across a range of
 // about five pixels depending on the words. Each constant is read where the
 // resulting runs centre on the measured reference across mixed prose, not
 // where any one pair of lines happens to fall.
+//
+// They are the size they are because a line box is the type role's, not the
+// glyphs'. A 16 dp body line inks 16 px inside a 24 px box, and the 8 px left
+// over is what a pair of ordinary blocks shows the reader on top of the space
+// between them. Under a box left to the shaped metrics the same pair showed
+// three, which is the whole of why every number here moved when the boxes
+// arrived.
 const (
 	// lineLeading is what a pair of ordinary blocks contributes.
-	lineLeading = unit.Dp(3)
-	// headingLeading is the same for a transition with a heading on one side.
-	// It is the larger of the two because a heading's line box is taller and
-	// its leading with it — and because that box swings wider, a heading being
-	// a few words rather than a full line of prose.
-	headingLeading = unit.Dp(6)
+	lineLeading = unit.Dp(8)
+	// headingLeadingAbove is the same for the transition into a heading: a
+	// body line's leading below its ink, then a heading line's above its own.
+	headingLeadingAbove = unit.Dp(6)
+	// headingLeadingBelow is the transition out of one, which is the other two
+	// halves — a heading's leading below its ink and a body line's above its
+	// own. It is the wider of the pair, a heading's box being the taller and
+	// the deeper of its two halves the one that faces this way.
+	headingLeadingBelow = unit.Dp(8)
 )
 
 // blockRhythm is the blank an ordinary pair of blocks shows the reader: the
 // spacing scale's S8 stop plus an S1, which is 2.25 body sizes at the default
 // 16 dp body. It is the reader-visible number rather than the authored one
 // precisely because that is the quantity a typeset reading surface is set in;
-// [FromTokens] authors it less lineLeading, which puts the rendered run on it
-// where the facing lines are tallest and a pixel or two over it on average —
-// and the average is where the reference's own 37 px sits.
+// [FromTokens] authors it less lineLeading, which lands the rendered run
+// within a pixel of it across mixed prose — and that is where the reference's
+// own 37 px sits. The swing is small now that a line occupies its role's box
+// rather than its glyphs': the box edges are fixed, so only where the ink sits
+// inside them still varies with the words.
 var blockRhythm = unit.Dp(tokens.Spacing.S8 + tokens.Spacing.S1)
 
 // The proportions a heading holds against that rhythm: the space above it is
@@ -386,6 +406,12 @@ func listSeam(gap unit.Dp) unit.Dp {
 // leading is a constant few pixels and the rhythm is not, so a formula that
 // mixes them lands on the proportions at one gap and nowhere else.
 //
+// The two sides subtract different leadings because they are different pairs
+// of halves. Above a heading the reader sees a body line's leading below its
+// ink and then a heading line's above its own; below one it is the heading's
+// lower half over a body line's upper. Those are four different quantities,
+// and one number for both sides lands on the reference on one side only.
+//
 // Level two is the section heading the rhythm was measured at, so it sits
 // exactly on the proportions above and the other levels lean off it by their
 // own size — which is what makes a deep heading earn slightly less air than a
@@ -404,8 +430,8 @@ func headingSpacing(gap unit.Dp, sizes [6]unit.Sp) (above, below [6]unit.Dp) {
 		// that binds to the section above rather than to the one it opens.
 		level := float32(size) / float32(sizes[1])
 		visible := rhythm * unit.Dp(1+(headingAboveRhythm-1)*level)
-		above[i] = visible - headingLeading
-		below[i] = visible*headingBelowAbove - headingLeading
+		above[i] = visible - headingLeadingAbove
+		below[i] = visible*headingBelowAbove - headingLeadingBelow
 	}
 	return above, below
 }
@@ -461,11 +487,17 @@ func (s Style) listSpace() unit.Dp {
 }
 
 // heading returns the richtext paragraph style for a heading of the given
-// level: the level's type-scale size with body colours.
+// level: the level's type-scale size and line box with body colours. A level
+// with no line box of its own falls back to the body's, which is the smallest
+// box any of them asks for and so cannot squeeze a heading's own metrics.
 func (s Style) heading(level int) richtext.Style {
 	st := s.Text
 	if level >= 1 && level <= len(s.HeadingSizes) {
 		st.Size = s.HeadingSizes[level-1]
+		st.LineHeight = s.HeadingLineHeights[level-1]
+		if st.LineHeight == 0 {
+			st.LineHeight = s.Text.LineHeight
+		}
 	}
 	return st
 }

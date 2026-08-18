@@ -772,7 +772,8 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 // lineGeometry is the vertical geometry of an item's first text line, in
 // pixels below the item's top.
 type lineGeometry struct {
-	// height is the whole line box, baseline plus descent.
+	// height is the whole line box: the paragraph's line height, or the
+	// shaped ascent plus descent where that is the taller of the two.
 	height int
 	// center is the middle of the cap band: the strip from the tops of the
 	// capitals down to the baseline.
@@ -800,6 +801,14 @@ const capProbe = "H"
 //
 // The probe is shaped in the paragraph's own face and size, matching what
 // the paragraph is laid out with, so the two agree at any scale.
+//
+// The line box the paragraph sets its lines in is part of that agreement. A
+// paragraph whose style names a line height taller than its shaped metrics
+// splits the surplus around the ink, half above and half below, so its first
+// baseline sits half a leading lower than the metrics alone would put it —
+// and a marker anchored to the metrics alone would ride exactly that far
+// high. The same split is applied here, on the same rounding, so the anchor
+// tracks the line whatever box it is set in.
 func firstLine(gtx layout.Context, shaper *text.Shaper, style Style) lineGeometry {
 	px := gtx.Sp(style.Text.Size)
 	shaper.LayoutString(text.Parameters{
@@ -822,9 +831,19 @@ func firstLine(gtx layout.Context, shaper *text.Shaper, style Style) lineGeometr
 	// document y, the same quantity a paragraph's first line is drawn at.
 	baseline := int(g.Y)
 	capBand := -g.Bounds.Min.Y
+	// The shaped line's own box, which is what the paragraph's leading is
+	// measured against: the line's ascent and descent, both rounded outwards,
+	// exactly as the paragraph measures them.
+	natural := g.Ascent.Ceil() + g.Descent.Ceil()
+	height := natural
+	above := 0
+	if box := gtx.Sp(style.Text.LineHeight); box > natural {
+		above = (box - natural) / 2
+		height = box
+	}
 	return lineGeometry{
-		height: baseline + g.Descent.Ceil(),
-		center: (fixed.I(baseline) - capBand/2).Round(),
+		height: height,
+		center: (fixed.I(above+baseline) - capBand/2).Round(),
 	}
 }
 

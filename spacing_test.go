@@ -277,7 +277,49 @@ const (
 	referenceBelowHeading = 23
 	referenceListSeam     = 25
 	rhythmTolerance       = 4
+	// Inside a paragraph the reference is exact rather than a middle: its
+	// lines are pitched at the body role's line height whatever the words are,
+	// and at a 16 px body inking 16 px that leaves 8 px between one line's ink
+	// and the next's.
+	referenceLinePitch = 24
+	referenceLineBlank = 8
 )
+
+// pitchProse repeats one syllable carrying a capital, an x-height letter and a
+// descender, so every line it wraps to inks exactly the same band — cap tops
+// down to the descender's foot. What is left between two bands is then the
+// blank the reader sees between two lines of prose, with nothing about the
+// words left in it.
+const pitchProse = "Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg\n"
+
+// TestTheLinePitchInsideAParagraphMatchesTheReference measures the rhythm the
+// reader spends nearly all their time inside: not the space between blocks but
+// the space between two lines of the same paragraph. It is the one number in
+// the rhythm that comes from the type role rather than from a spacing field —
+// a paragraph occupies its role's line height per line — so it is exact, and
+// held exactly.
+func TestTheLinePitchInsideAParagraphMatchesTheReference(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypography)
+	d := markdown.NewDocument(markdown.Parse([]byte(pitchProse)))
+	img := golden.Capture(t, image.Pt(120, 220), func(gtx layout.Context) layout.Dimensions {
+		paint.FillShape(gtx.Ops, tokens.DefaultDark.Background,
+			clip.Rect{Max: gtx.Constraints.Max}.Op())
+		return d.LayoutColumn(gtx, shaper, style)
+	})
+	bands := inkBands(img, 0, img.Bounds().Max.X)
+	if len(bands) < 4 {
+		t.Fatalf("scanned %d ink bands, want at least 4 (one per wrapped line): %v; the probe did not wrap", len(bands), bands)
+	}
+	for i := 1; i < len(bands); i++ {
+		if pitch := bands[i][0] - bands[i-1][0]; pitch != referenceLinePitch {
+			t.Errorf("line %d inks %d px below line %d, want the reference's %d px pitch (bands %v)", i, pitch, i-1, referenceLinePitch, bands)
+		}
+		if blank := bands[i][0] - bands[i-1][1]; blank != referenceLineBlank {
+			t.Errorf("lines %d and %d leave %d px of blank between their ink, want the reference's %d (bands %v)", i-1, i, blank, referenceLineBlank, bands)
+		}
+	}
+}
 
 // rhythmProse walks the swing on purpose: blocks whose facing lines carry
 // descenders, ascenders, both and neither, and a heading of each kind — one
