@@ -702,8 +702,13 @@ func TestFromTokensDefaults(t *testing.T) {
 	if st.Text.Color != c.Text || st.Text.LinkColor != c.Primary {
 		t.Errorf("Text colours = %v/%v, want Text/Primary", st.Text.Color, st.Text.LinkColor)
 	}
-	if st.CodeBackground != c.Ramps.Neutral.Step(300) || st.CodeColor != c.Ramps.Neutral.Step(700) {
-		t.Errorf("code colours = %v/%v, want Neutral 300/700", st.CodeBackground, st.CodeColor)
+	if st.CodeBackground != c.Ramps.Neutral.Step(200) || st.CodeColor != c.Ramps.Neutral.Step(700) {
+		t.Errorf("code colours = %v/%v, want Neutral 200/700", st.CodeBackground, st.CodeColor)
+	}
+	// A fence and an inline chip are one surface, so the constructor may not
+	// quietly drift them apart.
+	if st.CodeChip != st.CodeBackground {
+		t.Errorf("CodeChip = %v, CodeBackground = %v; the code surface is one value", st.CodeChip, st.CodeBackground)
 	}
 	if st.QuoteBar != c.Primary || st.QuoteColor != c.Ramps.Neutral.Step(700) {
 		t.Errorf("quote colours = %v/%v, want Primary/Neutral 700", st.QuoteBar, st.QuoteColor)

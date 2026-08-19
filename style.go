@@ -75,17 +75,21 @@ type Style struct {
 	CodeSize unit.Sp
 	// CodeColor is the code block text colour.
 	CodeColor color.NRGBA
-	// CodeBackground fills the code block surface.
+	// CodeBackground fills the code block surface. It is a near-white in a
+	// light scheme and a near-black in a dark one: a fence is a panel inset
+	// into the page, and a panel separates by a step, not by a drop.
 	CodeBackground color.NRGBA
 	// CodeChip fills the rounded chip an inline code span sits on. A zero
 	// alpha — a Style built by hand rather than by [FromTokens] — sets inline
 	// code on the page itself, as it always was, and the span is still set in
 	// Mono at the code size.
 	//
-	// It is a lighter treatment than CodeBackground on purpose. A fence is a
-	// block, and the reader's eye may rest on the surface under it; a chip is
-	// a word inside a sentence, and a fill deep enough to hold a block would
-	// stipple a paragraph with it.
+	// [FromTokens] gives it and CodeBackground the same value, which is the
+	// measured behaviour of the reading application this library is judged
+	// against: quoted code is one surface, whether a word of it is set in a
+	// sentence or a screenful of it is set apart. The two fields stay separate
+	// so a hand-built Style can still hold them apart, and because the chip is
+	// the one of the two that may be switched off.
 	CodeChip color.NRGBA
 	// CodeScrollbar styles the slim horizontal bar a code block whose widest
 	// line overflows the column shows while it scrolls. It sits in the
@@ -228,14 +232,24 @@ type Style struct {
 // FromTokens derives the default document style from colour tokens and a
 // typography: headings take the six stops of the typography's document
 // heading scale, body text follows richtext.FromTokens on the BodyLarge
-// role, code sits on the Neutral 300
-// tinted fill with the low-contrast Neutral 700 text step — inline code on the
-// gentler Neutral 200 chip, one step off the page in either scheme, keeping
-// the body's own ink so a quoted word reads as the sentence's — the quote bar is
-// Primary with Neutral 700 text, rules and table grid lines are separators
-// and use Divider, and the table header row sits on the Neutral 300 tinted
-// fill. Highlight and Images stay nil — both are opt-in. Pass
-// tokens.DefaultTypography for the default look.
+// role, code sits on the Neutral 200 surface — one step off the page in either
+// scheme — with the low-contrast Neutral 700 text step, inline code on the same
+// step while keeping the body's own ink so a quoted word reads as the
+// sentence's, the quote bar is Primary with Neutral 700 text, rules and table
+// grid lines are separators and use Divider, and the table header row sits on
+// the Neutral 300 tinted fill. Highlight and Images stay nil — both are opt-in.
+// Pass tokens.DefaultTypography for the default look.
+//
+// The code surface is one step and not three. A fence covers a good deal of
+// the column, and area amplifies a fill: the tinted-fill step that reads as a
+// tint behind a table's header row reads, spread under a screenful of code, as
+// a slab of grey with the page showing white around it — worst in a light
+// scheme, where it also leaves the code's own ink barely over its floor. The
+// step measured off the reading application this library is judged against is
+// gentler still: a code surface 3.4 L* off its page, against the 4.9 and 5.0
+// this step gives in the light and dark schemes. What that measurement also
+// says is that a fence and an inline chip are one surface there, not two, so
+// they are one here.
 //
 // Mono and CodeSize come from typo's own Code role — the sixteenth style,
 // which sits outside the MD3 grid. Until F3.4 this constructor took a
@@ -284,8 +298,8 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		Mono:                  font.Typeface(typo.Code.Typeface),
 		CodeSize:              unit.Sp(typo.Code.Size),
 		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
-		CodeBackground:        c.Ramps.Neutral.Step(300), // tinted fill
-		CodeChip:              c.Ramps.Neutral.Step(200), // the step off the page
+		CodeBackground:        c.Ramps.Neutral.Step(200), // the step off the page
+		CodeChip:              c.Ramps.Neutral.Step(200), // one code surface, not two
 		CodeScrollbar:         codeScrollbar(c),
 		QuoteBar:              c.Primary,
 		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
@@ -307,10 +321,10 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 // Two things change, and the same fact drives both. scrollbar.FromTokens tunes
 // its thumb for a scrolling column, which rests on the page: the
 // low-contrast-text step at about 40%, three ramp stops from the ground it
-// lies on, reads clearly there. A fence's bar rests on the tinted code fill
-// instead — one stop from the thumb's own — and at that weight it all but
-// disappears, worst in the light scheme, where a measured 2:1 leaves the one
-// affordance that can be dragged effectively invisible.
+// lies on, reads clearly there. A fence's bar rests on the code surface
+// instead, one step off that page, and over so little separation the
+// translucency all but disappears — about 1.5:1 in the light scheme, which
+// leaves the one affordance that can be dragged effectively invisible.
 //
 // So the thumb is opaque, and it is the step the code itself is inked in: the
 // bar is exactly as present as the fence it belongs to, and it darkens to the

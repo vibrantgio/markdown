@@ -109,8 +109,8 @@ func TestAdaptedContrastSweep(t *testing.T) {
 // TestAdaptationLiftsWhatStockLeavesShort is the same measurement made twice —
 // once on the stock base, once on what the derivation makes of it — so the
 // difference is on the record rather than assumed. Both bases fall short on
-// this theme's code fill, and the default one falls furthest: it was fitted to
-// a near-white page, and the fill a fence sits on here is three steps darker.
+// this theme's code surface, and the default one falls short in the most
+// places: it was fitted to a page, and a fence here sits a step off one.
 func TestAdaptationLiftsWhatStockLeavesShort(t *testing.T) {
 	for _, base := range bases {
 		for _, sc := range schemes() {
