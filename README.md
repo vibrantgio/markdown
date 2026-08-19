@@ -119,6 +119,22 @@ lightness re-fit leaves intact — a palette that told a keyword from a
 string by how dark it was would come out of the same fit with the two
 harder to tell apart.
 
+The choice is not limited to what ships embedded. A chroma style is a small
+XML document, and `highlight.LoadDir` reads a folder of them and makes each
+one choosable by its own name:
+
+```go
+loaded, skipped := highlight.LoadDir(dir) // names, and files with reasons
+names := highlight.Bases()                // embedded and loaded, sorted
+base := highlight.BaseOrDefault(chosen)   // a name that no longer resolves
+```
+
+A folder that is not there loads nothing and reports nothing; a file that
+will not parse, or one claiming the name of an embedded style, is skipped
+and named with its reason rather than thrown, so one bad file never costs
+the rest of the folder. Loaded styles are held beside chroma's registry and
+never inside it.
+
 Derive once per theme, not once per frame: the walk over a base's entry
 table is cheap but not free. Stock styles are untouched by any of this —
 adaptation builds a new style beside the registry and never mutates it, so
