@@ -170,6 +170,37 @@ func TestGoSnippetGolden(t *testing.T) {
 	}
 }
 
+// TestAdaptedSnippetGolden records or diffs the same fenced snippet coloured
+// by a style derived from the github base and fitted to each theme's own code
+// surface. Beside the two images above — the same code in the stock styles —
+// it is what the derivation actually costs and buys: the keyword and the
+// comment darken on the light fill, the comment loses the slant the dark
+// style alone gave it, and nothing else moves.
+func TestAdaptedSnippetGolden(t *testing.T) {
+	code := "// greet returns a greeting\n" + goSnippet
+	for _, tc := range []struct {
+		name   string
+		colors tokens.ColorTokens
+	}{
+		{"go-snippet-adapted-light", tokens.DefaultLight},
+		{"go-snippet-adapted-dark", tokens.DefaultDark},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			shaper := tokens.DefaultTypography.DeterministicShaper()
+			blocks := markdown.Parse([]byte("```go\n" + code + "\n```\n"))
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style.Highlight = highlight.Adapt("github", tc.colors)
+			d := markdown.NewDocument(blocks)
+			golden.Render(t, tc.name, image.Pt(560, 140), func(gtx layout.Context) layout.Dimensions {
+				paint.FillShape(gtx.Ops, tc.colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+				return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return d.Layout(gtx, shaper, style)
+				})
+			})
+		})
+	}
+}
+
 // TestCodeColorReachesHighlightedBlock renders the highlighted snippet twice
 // per theme — once with the token CodeColor, once with CodeColor overridden —
 // and counts pixels of each colour exactly. The token colour has to be on

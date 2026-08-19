@@ -64,7 +64,7 @@ The [organization page](https://github.com/vibrantgio) has the full stack.
 | package | what it does |
 | --- | --- |
 | `markdown` | `Parse` a source into a block model, `Document` to lay it out, `Style` to theme it. Carries goldmark, and nothing heavier. |
-| `markdown/highlight` | A chroma-backed `Highlighter` for fenced code. Importing this package is what pulls chroma into a build. |
+| `markdown/highlight` | A chroma-backed `Highlighter` for fenced code — `New` to wear a stock style, `Adapt` to derive one fitted to your tokens. Importing this package is what pulls chroma into a build; no chroma type reaches its exported API. |
 | `markdown/svgimage` | An image provider serving `.svg` destinations as vector widgets through `svg/driver/gio`. Importing this package is what pulls svg in. |
 | `markdown/obsidian` | Recognition of the Obsidian dialect around `Parse`: `SplitFrontMatter` before it, `WikiSpans` and `BlockAnchors` after it. Pure Go, no dependency beyond the parent package. |
 
@@ -93,6 +93,27 @@ func docsStyle(c tokens.ColorTokens, typo tokens.Typography) markdown.Style {
     return st
 }
 ```
+
+`New` wears a stock style exactly as its author wrote it, which means its
+inks were fitted to that author's background rather than to the fill your
+theme puts under a fence. `Adapt` derives a style instead: it holds each
+entry's hue and chroma and re-fits the lightness against your own code
+surface until every ink clears the WCAG AA contrast ratio, settles one bold
+and italic policy across the light and dark members of the pair, and keeps
+the plain-foreground fallback. One base name covers both appearances — which
+member is derived from follows the tokens — so a single line replaces the
+pair of highlighters above, and it re-derives with the theme rather than
+staying where it was built:
+
+```go
+st := markdown.FromTokens(c, typo)
+st.Highlight = highlight.Adapt("github", c)
+```
+
+Derive once per theme, not once per frame: the walk over a base's entry
+table is cheap but not free. Stock styles are untouched by any of this —
+adaptation builds a new style beside the registry and never mutates it, so
+`New("github")` still yields exactly what chroma ships.
 
 Allocate the `Document` once and reuse it on every frame — it holds the scroll
 position and the per-block interaction state (link focus and hover, code block
@@ -222,9 +243,11 @@ organization. What renders, renders well; these are the honest gaps.
   style would render in its plain-text foreground — whitespace, punctuation,
   plain identifiers — are emitted colourless and take `Style.CodeColor`, so
   plain code follows the token theme; keyword, string, and comment colours
-  remain the chroma style's own. The application must still build one
-  highlighter per appearance and swap them, as the example above does. An
-  unrecognised chroma style name panics in `highlight.New` — chroma's silent
+  remain the chroma style's own, and a style whose author drew them on a
+  near-white page may leave them short of AA on a tinted code fill —
+  `highlight.Adapt` is the constructor that re-fits them, and it takes one
+  base name for both appearances where `New` needs one style per appearance.
+  An unrecognised chroma style name panics in either — chroma's silent
   fallback is a dark-background style that fails visibly on only one of the
   two themes, so a typo fails at construction instead.
 - **Text is not selectable or copyable.** Neither this module nor

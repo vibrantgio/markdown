@@ -2,27 +2,43 @@
 // separate package inside the markdown module so the chroma dependency stays
 // out of the core package's graph: only importers of this package pay for it.
 //
-// Setting one on [markdown.Style].Highlight keeps a code block inside the
-// token theme: runs the chroma style would render in its plain-text
+// The confinement is stricter than the package boundary alone: no chroma type
+// appears in any signature this package exports. A style is named by string,
+// colours arrive as theme tokens, and what comes back is a
+// [markdown.Highlighter]. Chroma's major version is therefore a fact about
+// this one package, and moving to a later one is a change here and nowhere
+// else. That is deliberate — chroma v3 is in pre-release and still moving, so
+// the seam is kept cheap to cross rather than crossed early.
+//
+// Setting a Highlighter on [markdown.Style].Highlight keeps a code block
+// inside the token theme: runs the chroma style would render in its plain-text
 // foreground — whitespace, punctuation, plain identifiers — are emitted
 // without a colour, so they fall back to [markdown.Style].CodeColor, and only
-// runs the style genuinely colours (keywords, strings, comments) carry
-// chroma's own colour. Pass the style name that matches the theme, github
-// against a light one and github-dark against a dark one, and build a new
-// Highlighter when the theme changes: [New] resolves the style once and the
-// returned func closes over it, so it cannot follow a theme observable.
+// runs the style genuinely colours (keywords, strings, comments) carry a
+// colour of their own.
 //
-// An unrecognised style name panics in [New]. Chroma's own fallback is a
+// There are two constructors, and they differ in whether the style is worn or
+// derived. [New] wears a stock style verbatim: pass the name that matches the
+// theme, github against a light one and github-dark against a dark one. [Adapt]
+// derives a new style from a named base and fits it to the theme's own
+// colours — the base's hues and chromas held, its lightness re-fitted against
+// the actual code surface until every ink clears a contrast floor. Stock
+// styles stay curated artifacts either way: adaptation builds beside the
+// registry and never mutates it.
+//
+// Build a new Highlighter when the theme changes. Both constructors resolve
+// their style once and the returned func closes over it, so neither can follow
+// a theme observable.
+//
+// An unrecognised style name panics in both. Chroma's own fallback is a
 // dark-background style whose runs come out near-white — on the light token
 // theme that is near-white text on the light Neutral 300 code fill, so a typo
 // in the style name would fail silently, and only on one of the two themes.
-// Both known callers construct their highlighters in package-level var
-// declarations, where the panic surfaces at process start on either theme.
 package highlight
 
 import (
 	"fmt"
-	"image/color"
+	stdcolor "image/color"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2"
@@ -33,31 +49,47 @@ import (
 )
 
 // New returns a Highlighter that colours code with the named chroma style
-// (e.g. "github" on light themes, "github-dark" on dark ones). A name missing
-// from chroma's style registry panics: construction is the only place the
-// typo can fail on both themes at once (see the package comment). Runs the
-// style would render in its plain-text foreground are emitted with the zero
-// colour and take [markdown.Style].CodeColor instead, so plain code follows
-// the token theme. The fence language is matched against chroma's lexer
-// registry; an unrecognised language yields nil, rendering the block plain.
-// Assign the result to [markdown.Style].Highlight.
+// (e.g. "github" on light themes, "github-dark" on dark ones), worn exactly as
+// the style's author wrote it. A name missing from chroma's style registry
+// panics: construction is the only place the typo can fail on both themes at
+// once (see the package comment). Runs the style would render in its plain-text
+// foreground are emitted with the zero colour and take [markdown.Style].CodeColor
+// instead, so plain code follows the token theme. The fence language is matched
+// against chroma's lexer registry; an unrecognised language yields nil,
+// rendering the block plain. Assign the result to [markdown.Style].Highlight.
+//
+// A stock style's inks were fitted to the background its author drew them on.
+// Where that is not the background the theme puts under a fence, [Adapt] fits
+// them to the one that is.
 func New(styleName string) markdown.Highlighter {
 	style, ok := styles.Registry[strings.ToLower(styleName)]
 	if !ok {
 		panic(fmt.Sprintf("highlight: unknown chroma style %q (chroma's styles.Names lists the registry)", styleName))
 	}
-	// Get resolves unspecified token types to the style's plain-text
-	// foreground by inheritance (Text, then Background), so a run whose
-	// resolved colour equals it is one chroma had no opinion about — emit it
-	// colourless and let Style.CodeColor theme it. A minority of styles
-	// (github among them) declare no foreground at all and instead restate
-	// their body colour per token type; for those the punctuation colour is
-	// the de-facto body colour — punctuation is the least semantic ink a
-	// style ever colours — so it stands in as the plain foreground.
+	return spanner(style, plainForeground(style))
+}
+
+// plainForeground is the colour a style renders ordinary text in.
+//
+// Get resolves unspecified token types to the style's plain-text foreground by
+// inheritance (Text, then Background), so a run whose resolved colour equals it
+// is one chroma had no opinion about — emit it colourless and let
+// Style.CodeColor theme it. A minority of styles (github among them) declare no
+// foreground at all and instead restate their body colour per token type; for
+// those the punctuation colour is the de-facto body colour — punctuation is the
+// least semantic ink a style ever colours — so it stands in as the plain
+// foreground.
+func plainForeground(style *chroma.Style) chroma.Colour {
 	plain := style.Get(chroma.Text).Colour
 	if !plain.IsSet() {
 		plain = style.Get(chroma.Punctuation).Colour
 	}
+	return plain
+}
+
+// spanner returns the Highlighter that tokenises through style, emitting the
+// zero colour for every run resolving to plain.
+func spanner(style *chroma.Style, plain chroma.Colour) markdown.Highlighter {
 	return func(language, code string) []markdown.CodeSpan {
 		lexer := lexers.Get(language)
 		if lexer == nil {
@@ -79,7 +111,7 @@ func New(styleName string) markdown.Highlighter {
 				Italic: entry.Italic == chroma.Yes,
 			}
 			if entry.Colour.IsSet() && entry.Colour != plain {
-				sp.Color = color.NRGBA{
+				sp.Color = stdcolor.NRGBA{
 					R: entry.Colour.Red(),
 					G: entry.Colour.Green(),
 					B: entry.Colour.Blue(),
