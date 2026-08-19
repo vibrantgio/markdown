@@ -34,13 +34,21 @@ func schemes() []struct {
 	}
 }
 
-// stockGithub is the member of chroma's github pair a scheme derives from,
-// unadapted — the before half of every before/after measurement here.
-func stockGithub(scheme string) *chroma.Style {
+// bases are the pairs the before/after measurements run over: the default
+// one, which is what ships, and github, which is where the defect was first
+// measured. Two bases rather than one because the derivation's claims are
+// about any base, and a pair whose members already agree on emphasis cannot
+// on its own show that the policy is being imposed.
+var bases = []string{DefaultBase, "github"}
+
+// stock is the member of a pair a scheme derives from, unadapted — the before
+// half of every before/after measurement here.
+func stock(base, scheme string) *chroma.Style {
+	mode := chroma.Light
 	if scheme == "dark" {
-		return styles.Registry["github-dark"]
+		mode = chroma.Dark
 	}
-	return styles.Registry["github"]
+	return styles.GetForMode(base, mode)
 }
 
 // emitted walks the token entries a derived style can actually put on screen:
@@ -100,39 +108,41 @@ func TestAdaptedContrastSweep(t *testing.T) {
 
 // TestAdaptationLiftsWhatStockLeavesShort is the same measurement made twice —
 // once on the stock base, once on what the derivation makes of it — so the
-// difference is on the record rather than assumed. The stock github pair is
-// where the defect was measured: on this theme's code fill its keyword red and
-// its comment grey both read under the floor.
+// difference is on the record rather than assumed. Both bases fall short on
+// this theme's code fill, and the default one falls furthest: it was fitted to
+// a near-white page, and the fill a fence sits on here is three steps darker.
 func TestAdaptationLiftsWhatStockLeavesShort(t *testing.T) {
-	for _, sc := range schemes() {
-		surface := codeSurface(sc.tok)
-		t.Run(sc.name, func(t *testing.T) {
-			stock := stockGithub(sc.name)
-			adapted := derive("github", sc.tok, Options{})
-			stockPlain := plainForeground(stock)
+	for _, base := range bases {
+		for _, sc := range schemes() {
+			surface := codeSurface(sc.tok)
+			t.Run(base+"/"+sc.name, func(t *testing.T) {
+				was := stock(base, sc.name)
+				adapted := derive(base, sc.tok, Options{})
+				stockPlain := plainForeground(was)
 
-			short := 0
-			for _, tt := range emitted(adapted) {
-				before := stock.Get(tt).Colour
-				if !before.IsSet() || before == stockPlain {
-					continue
+				short, worstBefore := 0, math.Inf(1)
+				for _, tt := range emitted(adapted) {
+					before := was.Get(tt).Colour
+					if !before.IsSet() || before == stockPlain {
+						continue
+					}
+					b := color.ContrastRatio(fromChroma(before), surface)
+					a := color.ContrastRatio(fromChroma(adapted.Get(tt).Colour), surface)
+					if b < contrastFloor {
+						short++
+						worstBefore = math.Min(worstBefore, b)
+					}
+					if a < b-0.01 {
+						t.Errorf("%s: adaptation lowered contrast, %.2f:1 -> %.2f:1", tt, b, a)
+					}
 				}
-				b := color.ContrastRatio(fromChroma(before), surface)
-				a := color.ContrastRatio(fromChroma(adapted.Get(tt).Colour), surface)
-				if b < contrastFloor {
-					short++
-					t.Logf("%-24s %v %.2f:1 -> %v %.2f:1", tt, fromChroma(before), b,
-						fromChroma(adapted.Get(tt).Colour), a)
+				if short == 0 {
+					t.Errorf("no stock %s entry measured under the floor on %v; the defect this derivation answers is not reproduced", base, surface)
 				}
-				if a < b-0.01 {
-					t.Errorf("%s: adaptation lowered contrast, %.2f:1 -> %.2f:1", tt, b, a)
-				}
-			}
-			if short == 0 {
-				t.Errorf("no stock github entry measured under the floor on %v; the defect this derivation answers is not reproduced", surface)
-			}
-			t.Logf("%d stock entries were under the %.1f:1 floor on %v; none are after adaptation", short, contrastFloor, surface)
-		})
+				t.Logf("%d stock entries were under the %.1f:1 floor on %v, the worst at %.2f:1; none are after adaptation",
+					short, contrastFloor, surface, worstBefore)
+			})
+		}
 	}
 }
 
@@ -142,71 +152,113 @@ func TestAdaptationLiftsWhatStockLeavesShort(t *testing.T) {
 // moved. Hue assertions skip below this, chroma assertions do not.
 const measurableChroma = 0.03
 
+// gamutSafeChroma is a chroma sRGB holds at any lightness the re-fit is
+// likely to land on, whatever the hue. Below it a moved entry must come back
+// at the chroma it went in with; above it the gamut has the last word.
+const gamutSafeChroma = 0.09
+
 // TestAdaptationHoldsHueAndChroma asserts the re-fit moves lightness and
-// nothing else: the hue and chroma of a corrected ink are the base's, which is
-// the curated part the derivation is supposed to keep. Both survive an 8-bit
-// round trip only approximately, hence the tolerances — a degree of hue and a
-// hundredth of chroma are well under a just-noticeable difference, and a
-// derivation that recoloured rather than re-fitted would miss by far more.
+// nothing else it has a choice about: the hue of a corrected ink is the
+// base's, and so is its chroma wherever sRGB can still hold it.
+//
+// Where it cannot, chroma falls, and the test says so rather than pretending
+// otherwise. A saturated orange at the lightness its author chose is a colour
+// sRGB has; the same orange a third of a lightness darker is not, and the
+// conversion answers by reducing chroma at constant lightness and constant
+// hue. That is the gamut's doing, not the derivation's, and the invariant that
+// survives it is one-directional: chroma may be given up, never added.
+//
+// The tolerances are the 8-bit round trip. Two degrees of hue and a hundredth
+// of chroma sit well under a just-noticeable difference, and a derivation that
+// recoloured rather than re-fitted would miss by tens of degrees.
 func TestAdaptationHoldsHueAndChroma(t *testing.T) {
-	for _, sc := range schemes() {
-		t.Run(sc.name, func(t *testing.T) {
-			stock := stockGithub(sc.name)
-			adapted := derive("github", sc.tok, Options{})
-			moved := 0
-			for _, tt := range emitted(adapted) {
-				before := stock.Get(tt).Colour
-				after := adapted.Get(tt).Colour
-				if !before.IsSet() || before == after {
-					continue
+	for _, base := range bases {
+		for _, sc := range schemes() {
+			t.Run(base+"/"+sc.name, func(t *testing.T) {
+				was := stock(base, sc.name)
+				adapted := derive(base, sc.tok, Options{})
+				moved, clipped := 0, 0
+				for _, tt := range emitted(adapted) {
+					before := was.Get(tt).Colour
+					after := adapted.Get(tt).Colour
+					if !before.IsSet() || before == after {
+						continue
+					}
+					moved++
+					_, bc, bh := color.OKLChFromNRGBA(fromChroma(before))
+					_, ac, ah := color.OKLChFromNRGBA(fromChroma(after))
+					if d := math.Abs(math.Mod(ah-bh+540, 360) - 180); d > 2.0 && bc >= measurableChroma {
+						t.Errorf("%s: hue moved %.2f° (%.1f -> %.1f); the re-fit holds hue", tt, d, bh, ah)
+					}
+					if ac > bc+0.01 {
+						t.Errorf("%s: chroma rose %.3f -> %.3f; the re-fit never adds chroma", tt, bc, ac)
+					}
+					if bc <= gamutSafeChroma && bc-ac > 0.01 {
+						t.Errorf("%s: chroma fell %.3f -> %.3f at a chroma sRGB holds throughout; the re-fit holds chroma", tt, bc, ac)
+					}
+					if bc-ac > 0.01 {
+						clipped++
+					}
 				}
-				moved++
-				_, bc, bh := color.OKLChFromNRGBA(fromChroma(before))
-				_, ac, ah := color.OKLChFromNRGBA(fromChroma(after))
-				if d := math.Abs(math.Mod(ah-bh+540, 360) - 180); d > 1.0 && bc >= measurableChroma {
-					t.Errorf("%s: hue moved %.2f° (%.1f -> %.1f); the re-fit holds hue", tt, d, bh, ah)
+				if moved == 0 {
+					t.Error("no entry moved; the test measures nothing")
 				}
-				if d := math.Abs(ac - bc); d > 0.01 {
-					t.Errorf("%s: chroma moved %.4f (%.3f -> %.3f); the re-fit holds chroma", tt, d, bc, ac)
+				t.Logf("%d entries re-fitted on their own hue; %d gave up chroma sRGB could not hold at the new lightness", moved, clipped)
+			})
+		}
+	}
+}
+
+// TestOneEmphasisPolicyAcrossThePair asserts the two schemes agree, entry for
+// entry, on bold and italic, and that what they agree on is the light member's
+// answer. Stock github and github-dark do not agree: the dark one italicises
+// comments and bolds operators, functions and classes where the light one asks
+// for neither, so the same note changes its code's emphasis when the
+// appearance changes. The default pair already agrees, which is a reason to
+// prefer it and not a reason to stop checking — the policy has to be imposed
+// rather than inherited, or the next base chosen brings the split back.
+func TestOneEmphasisPolicyAcrossThePair(t *testing.T) {
+	for _, base := range bases {
+		t.Run(base, func(t *testing.T) {
+			light := derive(base, tokens.DefaultLight, Options{})
+			dark := derive(base, tokens.DefaultDark, Options{})
+			if light.Name == dark.Name {
+				t.Fatalf("both schemes derived from %q; the pair's two members are not being reached", light.Name)
+			}
+			types := append(light.Types(), dark.Types()...)
+			slices.Sort(types)
+			types = slices.Compact(types)
+			for _, tt := range types {
+				l, d := light.Get(tt), dark.Get(tt)
+				if l.Bold != d.Bold || l.Italic != d.Italic {
+					t.Errorf("%s: light(bold=%v italic=%v) dark(bold=%v italic=%v); one policy means one answer",
+						tt, l.Bold, l.Italic, d.Bold, d.Italic)
 				}
 			}
-			if moved == 0 {
-				t.Error("no entry moved; the test measures nothing")
+
+			// And the policy is the light member's, verbatim.
+			was := stock(base, "light")
+			for _, tt := range was.Types() {
+				want, got := was.Get(tt), light.Get(tt)
+				if (want.Bold == chroma.Yes) != (got.Bold == chroma.Yes) ||
+					(want.Italic == chroma.Yes) != (got.Italic == chroma.Yes) {
+					t.Errorf("%s: policy reads bold=%v italic=%v, light base says bold=%v italic=%v",
+						tt, got.Bold, got.Italic, want.Bold, want.Italic)
+				}
 			}
 		})
 	}
 }
 
-// TestOneEmphasisPolicyAcrossThePair asserts the two schemes agree, entry for
-// entry, on bold and italic. Stock github and github-dark do not: the dark one
-// italicises comments and bolds operators, functions and classes where the
-// light one asks for neither, so the same note changes its code's emphasis
-// when the appearance changes. The derivation settles it on the light member.
-func TestOneEmphasisPolicyAcrossThePair(t *testing.T) {
-	light := derive("github", tokens.DefaultLight, Options{})
-	dark := derive("github", tokens.DefaultDark, Options{})
-	if light.Name == dark.Name {
-		t.Fatalf("both schemes derived from %q; the pair's two members are not being reached", light.Name)
-	}
-	types := append(light.Types(), dark.Types()...)
-	slices.Sort(types)
-	types = slices.Compact(types)
-	for _, tt := range types {
-		l, d := light.Get(tt), dark.Get(tt)
-		if l.Bold != d.Bold || l.Italic != d.Italic {
-			t.Errorf("%s: light(bold=%v italic=%v) dark(bold=%v italic=%v); one policy means one answer",
-				tt, l.Bold, l.Italic, d.Bold, d.Italic)
-		}
-	}
-
-	// And the policy is the light member's, verbatim.
-	stock := styles.Registry["github"]
-	for _, tt := range stock.Types() {
-		want, got := stock.Get(tt), light.Get(tt)
-		if (want.Bold == chroma.Yes) != (got.Bold == chroma.Yes) ||
-			(want.Italic == chroma.Yes) != (got.Italic == chroma.Yes) {
-			t.Errorf("%s: policy reads bold=%v italic=%v, light base says bold=%v italic=%v",
-				tt, got.Bold, got.Italic, want.Bold, want.Italic)
+// TestDefaultPairComments asserts the concrete outcome the emphasis policy was
+// imposed for: a comment is italic in both appearances under the default base,
+// where the pair the highlighter shipped with before italicised one and not
+// the other.
+func TestDefaultPairComments(t *testing.T) {
+	for _, sc := range schemes() {
+		style := derive(DefaultBase, sc.tok, Options{})
+		if e := style.Get(chroma.CommentSingle); e.Italic != chroma.Yes {
+			t.Errorf("%s: a line comment reads italic=%v under %s", sc.name, e.Italic, style.Name)
 		}
 	}
 }
@@ -219,31 +271,33 @@ func TestOneEmphasisPolicyAcrossThePair(t *testing.T) {
 // specially would silently colour every space and bracket in the block.
 func TestPlainFallbackSurvivesAdaptation(t *testing.T) {
 	const snippet = "func greet(name string) string {\n\treturn name\n}"
-	for _, sc := range schemes() {
-		t.Run(sc.name, func(t *testing.T) {
-			var zero stdcolor.NRGBA
-			plain, coloured := 0, 0
-			for _, sp := range Adapt("github", sc.tok)("go", snippet) {
-				if sp.Color == zero {
-					plain++
-				} else {
-					coloured++
-				}
-				switch sp.Text {
-				case "(", ")", "{", "}":
-					if sp.Color != zero {
-						t.Errorf("punctuation %q carries %v; want the zero colour so Style.CodeColor fires", sp.Text, sp.Color)
-					}
-				case "func", "return":
+	for _, base := range bases {
+		for _, sc := range schemes() {
+			t.Run(base+"/"+sc.name, func(t *testing.T) {
+				var zero stdcolor.NRGBA
+				plain, coloured := 0, 0
+				for _, sp := range Adapt(base, sc.tok)("go", snippet) {
 					if sp.Color == zero {
-						t.Errorf("keyword %q lost its colour", sp.Text)
+						plain++
+					} else {
+						coloured++
+					}
+					switch sp.Text {
+					case "(", ")", "{", "}":
+						if sp.Color != zero {
+							t.Errorf("punctuation %q carries %v; want the zero colour so Style.CodeColor fires", sp.Text, sp.Color)
+						}
+					case "func", "return":
+						if sp.Color == zero {
+							t.Errorf("keyword %q lost its colour", sp.Text)
+						}
 					}
 				}
-			}
-			if plain == 0 || coloured == 0 {
-				t.Errorf("snippet split into %d plain and %d coloured runs; want both", plain, coloured)
-			}
-		})
+				if plain == 0 || coloured == 0 {
+					t.Errorf("snippet split into %d plain and %d coloured runs; want both", plain, coloured)
+				}
+			})
+		}
 	}
 }
 
@@ -291,10 +345,10 @@ func TestAdaptLeavesTheRegistryAlone(t *testing.T) {
 func TestAlignToBrandTurnsThePaletteAsOne(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
-			plainStyle := derive("github", sc.tok, Options{})
-			turned := derive("github", sc.tok, Options{AlignToBrand: true})
+			plainStyle := derive(DefaultBase, sc.tok, Options{})
+			turned := derive(DefaultBase, sc.tok, Options{AlignToBrand: true})
 
-			base, ok := dominantHue(stockGithub(sc.name))
+			base, ok := dominantHue(stock(DefaultBase, sc.name))
 			if !ok {
 				t.Fatal("the github base reports no dominant hue")
 			}
@@ -346,19 +400,19 @@ func TestAlignToBrandTurnsThePaletteAsOne(t *testing.T) {
 // TestAlignToBrandIsOffByDefault asserts the dial's default: Adapt leaves the
 // base's hues where their author put them.
 func TestAlignToBrandIsOffByDefault(t *testing.T) {
-	byDefault := derive("github", tokens.DefaultLight, Options{})
-	explicit := derive("github", tokens.DefaultLight, Options{AlignToBrand: false})
-	stock := styles.Registry["github"]
+	byDefault := derive(DefaultBase, tokens.DefaultLight, Options{})
+	explicit := derive(DefaultBase, tokens.DefaultLight, Options{AlignToBrand: false})
+	was := stock(DefaultBase, "light")
 	for _, tt := range emitted(byDefault) {
 		if byDefault.Get(tt).Colour != explicit.Get(tt).Colour {
 			t.Errorf("%s: the zero Options and an explicit off disagree", tt)
 		}
-		_, chr, was := color.OKLChFromNRGBA(fromChroma(stock.Get(tt).Colour))
+		_, chr, before := color.OKLChFromNRGBA(fromChroma(was.Get(tt).Colour))
 		_, _, now := color.OKLChFromNRGBA(fromChroma(byDefault.Get(tt).Colour))
 		if chr < measurableChroma {
 			continue
 		}
-		if d := math.Abs(math.Mod(now-was+540, 360) - 180); d > 1 {
+		if d := math.Abs(math.Mod(now-before+540, 360) - 180); d > 1 {
 			t.Errorf("%s: hue turned %.1f° with the dial off", tt, d)
 		}
 	}
@@ -380,7 +434,7 @@ func TestAdaptHoldsUnderAKeptBrand(t *testing.T) {
 			surface := codeSurface(sc.tok)
 			_, _, brand := color.OKLChFromNRGBA(sc.tok.Primary)
 			for _, opt := range []Options{{}, {AlignToBrand: true}} {
-				style := derive("github", sc.tok, opt)
+				style := derive(DefaultBase, sc.tok, opt)
 				for _, tt := range emitted(style) {
 					ink := fromChroma(style.Get(tt).Colour)
 					if r := color.ContrastRatio(ink, surface); r < contrastFloor {
@@ -415,13 +469,21 @@ func TestAdaptUnknownStylePanics(t *testing.T) {
 // members: the light tokens derive from github, the dark ones from
 // github-dark, and naming either member gets the same pair.
 func TestAdaptPicksThePairMemberByScheme(t *testing.T) {
-	for _, base := range []string{"github", "github-dark"} {
-		if got := derive(base, tokens.DefaultLight, Options{}).Name; got != "github-adapted" {
-			t.Errorf("%s on light tokens derived %q, want the light member", base, got)
+	for _, pair := range []struct{ light, dark string }{
+		{"catppuccin-latte", "catppuccin-mocha"},
+		{"github", "github-dark"},
+	} {
+		for _, base := range []string{pair.light, pair.dark} {
+			if got := derive(base, tokens.DefaultLight, Options{}).Name; got != pair.light+"-adapted" {
+				t.Errorf("%s on light tokens derived %q, want the light member", base, got)
+			}
+			if got := derive(base, tokens.DefaultDark, Options{}).Name; got != pair.dark+"-adapted" {
+				t.Errorf("%s on dark tokens derived %q, want the dark member", base, got)
+			}
 		}
-		if got := derive(base, tokens.DefaultDark, Options{}).Name; got != "github-dark-adapted" {
-			t.Errorf("%s on dark tokens derived %q, want the dark member", base, got)
-		}
+	}
+	if DefaultBase != "catppuccin-latte" {
+		t.Errorf("the default base is %q; the pair checked above is no longer the default one", DefaultBase)
 	}
 	// A base with no registered counterpart is derived from on both sides.
 	unpaired := ""

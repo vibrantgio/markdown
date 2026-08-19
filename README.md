@@ -107,8 +107,17 @@ staying where it was built:
 
 ```go
 st := markdown.FromTokens(c, typo)
-st.Highlight = highlight.Adapt("github", c)
+st.Highlight = highlight.Adapt(highlight.DefaultBase, c)
 ```
+
+`DefaultBase` is `catppuccin-latte`, whose registered counterpart
+`catppuccin-mocha` is the dark member that same name reaches. It is a
+default, not a policy: pass any name chroma's registry holds. It is the
+default because its accents already sit in one perceptual-lightness band
+with the hues carrying the semantics, which is exactly the shape a
+lightness re-fit leaves intact — a palette that told a keyword from a
+string by how dark it was would come out of the same fit with the two
+harder to tell apart.
 
 Derive once per theme, not once per frame: the walk over a base's entry
 table is cheap but not free. Stock styles are untouched by any of this —

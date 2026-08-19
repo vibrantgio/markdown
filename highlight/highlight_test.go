@@ -171,11 +171,11 @@ func TestGoSnippetGolden(t *testing.T) {
 }
 
 // TestAdaptedSnippetGolden records or diffs the same fenced snippet coloured
-// by a style derived from the github base and fitted to each theme's own code
-// surface. Beside the two images above — the same code in the stock styles —
-// it is what the derivation actually costs and buys: the keyword and the
-// comment darken on the light fill, the comment loses the slant the dark
-// style alone gave it, and nothing else moves.
+// by a style derived from the default base and fitted to each theme's own code
+// surface. Beside the two images above — the same code in a stock style worn
+// verbatim — it is what the derivation buys: inks that were fitted to somebody
+// else's page, re-fitted to this one, on their own hues, with the comment
+// italic in both appearances rather than in one.
 func TestAdaptedSnippetGolden(t *testing.T) {
 	code := "// greet returns a greeting\n" + goSnippet
 	for _, tc := range []struct {
@@ -189,7 +189,7 @@ func TestAdaptedSnippetGolden(t *testing.T) {
 			shaper := tokens.DefaultTypography.DeterministicShaper()
 			blocks := markdown.Parse([]byte("```go\n" + code + "\n```\n"))
 			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
-			style.Highlight = highlight.Adapt("github", tc.colors)
+			style.Highlight = highlight.Adapt(highlight.DefaultBase, tc.colors)
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, image.Pt(560, 140), func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())

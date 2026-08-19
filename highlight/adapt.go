@@ -20,10 +20,8 @@ import (
 	stdcolor "image/color"
 	"math"
 	"slices"
-	"strings"
 
 	"github.com/alecthomas/chroma/v2"
-	"github.com/alecthomas/chroma/v2/styles"
 
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/color"
@@ -47,6 +45,22 @@ const contrastFloor = 4.5
 // be darkened or lightened beyond what the floor actually demanded.
 const refitSteps = 256
 
+// DefaultBase names the syntax palette to derive from when nothing else is
+// chosen: chroma's catppuccin-latte, whose registered counterpart
+// catppuccin-mocha is the dark member the same name reaches. It is a default
+// and not a policy — [Adapt] takes any name in chroma's registry.
+//
+// The pair is picked for what survives the derivation. Its accents already sit
+// in one perceptual-lightness band, so hue is what tells its token types apart
+// rather than lightness; re-fitting lightness against a surface therefore
+// costs it nothing it was using to carry meaning, where a palette that
+// distinguished a keyword from a string by how dark it is would come out of
+// the same fit with the two harder to tell apart. Its two members also already
+// agree entry for entry on bold and italic, so the one policy across the pair
+// changes nothing about it — comments are italic in both appearances rather
+// than in one.
+const DefaultBase = "catppuccin-latte"
+
 // Options are the dials on [AdaptWith]. The zero value is what [Adapt] uses:
 // the surface re-fit alone, which is not a dial — a style that cannot be read
 // on the surface it is drawn on is not a style.
@@ -65,17 +79,18 @@ type Options struct {
 }
 
 // Adapt returns a Highlighter that colours code with a style derived from the
-// named chroma base and fitted to c: every entry keeps its hue and chroma and
-// takes the lightness that clears the contrast floor against the code surface
-// these tokens put under a fence. Runs the base renders in its plain-text
-// foreground still come back colourless, so plain code follows
-// [markdown.Style].CodeColor exactly as it does under [New].
+// named chroma base and fitted to c: every entry keeps its hue and as much of
+// its chroma as sRGB still holds, and takes the lightness that clears the
+// contrast floor against the code surface these tokens put under a fence. Runs
+// the base renders in its plain-text foreground still come back colourless, so
+// plain code follows [markdown.Style].CodeColor exactly as it does under [New].
 //
 // The base names a pair, not a side. Which member is derived from follows the
 // tokens: c's own code surface decides light or dark, and chroma's registered
-// counterpart supplies the other member, so Adapt("github", …) yields the
-// github inks on a light theme and the github-dark inks on a dark one from
-// the one name. A base with no counterpart is derived from for both.
+// counterpart supplies the other member, so Adapt([DefaultBase], …) yields the
+// catppuccin-latte inks on a light theme and the catppuccin-mocha inks on a
+// dark one from the one name. A base with no counterpart is derived from for
+// both.
 //
 // A name missing from chroma's style registry panics, as in [New].
 //
@@ -104,10 +119,6 @@ func codeSurface(c tokens.ColorTokens) stdcolor.NRGBA {
 // signature in this package that names a chroma type: see the package comment
 // in highlight.go for why the dependency is confined here.
 func derive(name string, c tokens.ColorTokens, opt Options) *chroma.Style {
-	base, ok := styles.Registry[strings.ToLower(name)]
-	if !ok {
-		panic(fmt.Sprintf("highlight: unknown chroma style %q (chroma's styles.Names lists the registry)", name))
-	}
 	surface := codeSurface(c)
 	mode := chroma.Light
 	if isDarkSurface(surface) {
@@ -116,8 +127,11 @@ func derive(name string, c tokens.ColorTokens, opt Options) *chroma.Style {
 	// The member the theme's own appearance calls for, and the member the
 	// emphasis policy comes from. They are the same style whenever the base
 	// is unpaired.
-	member := styles.GetForMode(base.Name, mode)
-	policy := styles.GetForMode(base.Name, chroma.Light)
+	member, ok := forMode(name, mode)
+	if !ok {
+		panic(fmt.Sprintf("highlight: unknown style %q (Bases lists every name that resolves)", name))
+	}
+	policy, _ := forMode(name, chroma.Light)
 
 	var turn float64
 	if opt.AlignToBrand {
@@ -239,6 +253,13 @@ func rotateHue(c stdcolor.NRGBA, turn float64) stdcolor.NRGBA {
 // that passes. That is the smallest correction the floor demands rather than
 // the largest one available, so a keyword that misses by a tenth of a ratio
 // point moves about that far and no further.
+//
+// Chroma is held as an intent, and sRGB has the last word on it. A saturated
+// orange at the lightness its author chose is a colour the display has; the
+// same orange a third of a lightness darker is not, and the conversion answers
+// out-of-gamut by reducing chroma at constant lightness and constant hue. So a
+// deeply corrected ink can come back less saturated than it went in — never
+// more, and never on another hue.
 func refit(c, surface stdcolor.NRGBA, floor float64) stdcolor.NRGBA {
 	if color.ContrastRatio(c, surface) >= floor {
 		return c

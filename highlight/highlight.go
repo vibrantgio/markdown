@@ -7,8 +7,7 @@
 // colours arrive as theme tokens, and what comes back is a
 // [markdown.Highlighter]. Chroma's major version is therefore a fact about
 // this one package, and moving to a later one is a change here and nowhere
-// else. That is deliberate — chroma v3 is in pre-release and still moving, so
-// the seam is kept cheap to cross rather than crossed early.
+// else — no consumer's code mentions the dependency it would be migrating.
 //
 // Setting a Highlighter on [markdown.Style].Highlight keeps a code block
 // inside the token theme: runs the chroma style would render in its plain-text
@@ -25,6 +24,18 @@
 // the actual code surface until every ink clears a contrast floor. Stock
 // styles stay curated artifacts either way: adaptation builds beside the
 // registry and never mutates it.
+//
+// Adapt takes any name chroma's registry holds. The default, [DefaultBase], is
+// catppuccin-latte, whose registered counterpart catppuccin-mocha is the dark
+// member the same name reaches: a pair whose accents sit in one
+// perceptual-lightness band with the hues carrying the semantics, which is the
+// shape a lightness re-fit leaves intact.
+//
+// It also takes the name of a style read from a folder. A chroma style is a
+// small XML document, and [LoadDir] reads a folder of them and makes each one
+// choosable by its own name; [Bases] is the whole list, embedded and loaded
+// together, and [Known] answers for one name. Loaded styles are held beside
+// chroma's registry and never inside it — see bases.go.
 //
 // Build a new Highlighter when the theme changes. Both constructors resolve
 // their style once and the returned func closes over it, so neither can follow
@@ -43,16 +54,16 @@ import (
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/alecthomas/chroma/v2/styles"
 
 	"github.com/vibrantgio/markdown"
 )
 
 // New returns a Highlighter that colours code with the named chroma style
 // (e.g. "github" on light themes, "github-dark" on dark ones), worn exactly as
-// the style's author wrote it. A name missing from chroma's style registry
-// panics: construction is the only place the typo can fail on both themes at
-// once (see the package comment). Runs the style would render in its plain-text
+// the style's author wrote it. A name that resolves to no style — neither an
+// embedded one nor one [LoadDir] read — panics: construction is the only place
+// the typo can fail on both themes at once (see the package comment). Runs the
+// style would render in its plain-text
 // foreground are emitted with the zero colour and take [markdown.Style].CodeColor
 // instead, so plain code follows the token theme. The fence language is matched
 // against chroma's lexer registry; an unrecognised language yields nil,
@@ -62,9 +73,9 @@ import (
 // Where that is not the background the theme puts under a fence, [Adapt] fits
 // them to the one that is.
 func New(styleName string) markdown.Highlighter {
-	style, ok := styles.Registry[strings.ToLower(styleName)]
+	style, ok := lookup(styleName)
 	if !ok {
-		panic(fmt.Sprintf("highlight: unknown chroma style %q (chroma's styles.Names lists the registry)", styleName))
+		panic(fmt.Sprintf("highlight: unknown style %q (Bases lists every name that resolves)", styleName))
 	}
 	return spanner(style, plainForeground(style))
 }
