@@ -260,3 +260,87 @@ func TestEveryEmbeddedStyleIsChoosable(t *testing.T) {
 		t.Error("the names came back unsorted — a chooser built from them would not stand still")
 	}
 }
+
+// TestEveryBaseIsOfferedUnderOneAppearanceOrBoth: the split is a partition of
+// the whole set — a base offered under neither is a style that has become
+// unreachable, which is the one outcome a filter must not produce. The counts
+// are logged rather than pinned: chroma's set grows, and a test that failed
+// when it did would be reporting on chroma rather than on this.
+func TestEveryBaseIsOfferedUnderOneAppearanceOrBoth(t *testing.T) {
+	var light, dark, both int
+	for _, n := range Bases() {
+		l, d := BaseSuits(n, false), BaseSuits(n, true)
+		switch {
+		case l && d:
+			both++
+		case l:
+			light++
+		case d:
+			dark++
+		default:
+			t.Errorf("the base %q is offered under neither appearance — nothing can reach it", n)
+		}
+	}
+	t.Logf("%d bases: %d light, %d dark, %d fitted to no ground and offered under both",
+		len(Bases()), light, dark, both)
+	if light == 0 || dark == 0 {
+		t.Errorf("the split came out %d light and %d dark — one half of the chooser would be empty", light, dark)
+	}
+}
+
+// TestTheGroundDecidesTheAppearance, and not the name: a style whose title says
+// one thing and whose background says the other is offered under what it draws
+// on. Both fixtures are loaded from a folder, which is also the assertion that
+// a style somebody wrote themselves is classified exactly like one that ships.
+func TestTheGroundDecidesTheAppearance(t *testing.T) {
+	const misnamed = `<style name="lantern-night-in-name-only">
+  <entry type="Background" style="bg:#fdf6e3 #586e75"/>
+  <entry type="Keyword" style="bold #d33682"/>
+</style>
+`
+	const groundless = `<style name="lantern-nowhere">
+  <entry type="Keyword" style="bold #d33682"/>
+</style>
+`
+	dir := folder(t, map[string]string{
+		"day.xml": lanternXML, "night.xml": lanternNightXML,
+		"misnamed.xml": misnamed, "groundless.xml": groundless,
+	})
+	if _, skipped := LoadDir(dir); len(skipped) > 0 {
+		t.Fatalf("the folder skipped %v", skipped)
+	}
+	for _, tc := range []struct {
+		name        string
+		light, dark bool
+	}{
+		{"lantern-day", true, false},
+		{"lantern-night", false, true},
+		{"lantern-night-in-name-only", true, false},
+		{"lantern-nowhere", true, true},
+	} {
+		if got := BaseSuits(tc.name, false); got != tc.light {
+			t.Errorf("BaseSuits(%q, light) = %v, want %v", tc.name, got, tc.light)
+		}
+		if got := BaseSuits(tc.name, true); got != tc.dark {
+			t.Errorf("BaseSuits(%q, dark) = %v, want %v", tc.name, got, tc.dark)
+		}
+	}
+	// A name nothing resolves is offered nowhere: a chooser asking about a base
+	// that has left the folder must not be handed a row for it.
+	if BaseSuits("a-style-nobody-wrote", false) || BaseSuits("a-style-nobody-wrote", true) {
+		t.Error("a name that resolves to nothing was offered under an appearance")
+	}
+}
+
+// TestTheDefaultPairSitsOnOppositeSides: the base the window opens on is light
+// and the counterpart it reaches in the dark is dark, so the two halves of the
+// chooser each hold one member of the pair rather than both or neither.
+func TestTheDefaultPairSitsOnOppositeSides(t *testing.T) {
+	if !BaseSuits(DefaultBase, false) || BaseSuits(DefaultBase, true) {
+		t.Errorf("the default base %q is not offered as a light base and only as one", DefaultBase)
+	}
+	const counterpart = "catppuccin-mocha"
+	if BaseSuits(counterpart, false) || !BaseSuits(counterpart, true) {
+		t.Errorf("%q is not offered as a dark base and only as one", counterpart)
+	}
+}

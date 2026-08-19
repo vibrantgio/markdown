@@ -127,7 +127,13 @@ one choosable by its own name:
 loaded, skipped := highlight.LoadDir(dir) // names, and files with reasons
 names := highlight.Bases()                // embedded and loaded, sorted
 base := highlight.BaseOrDefault(chosen)   // a name that no longer resolves
+ok := highlight.BaseSuits(base, dark)     // which appearance it was fitted to
 ```
+
+`BaseSuits` measures the style's own background rather than reading its
+name, so a chooser can show one half of the list at a time and put every
+style — embedded or loaded — under the appearance it was actually drawn
+for. A style that names no background of its own suits both.
 
 A folder that is not there loads nothing and reports nothing; a file that
 will not parse, or one claiming the name of an embedded style, is skipped

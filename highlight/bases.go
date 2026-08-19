@@ -170,6 +170,39 @@ func Loaded(name string) bool {
 	return ok
 }
 
+// BaseSuits reports whether the base named is one to offer for a dark
+// appearance, or for a light one — the question a chooser that shows one half
+// of the list at a time has to ask of every name in it.
+//
+// The answer is measured, off the style's own Background entry: the ground its
+// author fitted its inks against, read on the same perceptual lightness axis
+// the derivation uses to decide which way an ink has to move. It is measured
+// and not read off the name because a name is not evidence: most of the
+// embedded set says nothing about its appearance at all, and a name that does
+// say something is under no obligation to be true — a styles folder is a place
+// people put files they wrote themselves. A chooser that guessed would put a
+// style under the wrong half with nothing to appeal to.
+//
+// A style that names no ground at all suits both. It was fitted to nothing, so
+// whatever it is drawn on is the theme's own surface and there is no appearance
+// it is the wrong choice for; putting it under one half would take it out of
+// reach under the other for no measured reason. Four of the embedded styles are
+// like this.
+//
+// A name that resolves to nothing suits neither: there is no style to measure,
+// and none to offer.
+func BaseSuits(name string, dark bool) bool {
+	s, ok := lookup(name)
+	if !ok {
+		return false
+	}
+	bg := s.Get(chroma.Background).Background
+	if !bg.IsSet() {
+		return true
+	}
+	return isDarkSurface(fromChroma(bg)) == dark
+}
+
 // BaseOrDefault returns name when it resolves and [DefaultBase] when it does
 // not, which is the whole of what a kept preference needs: a name nobody
 // chose, or one whose file is no longer in the folder, leaves the code

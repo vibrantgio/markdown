@@ -34,8 +34,10 @@
 // It also takes the name of a style read from a folder. A chroma style is a
 // small XML document, and [LoadDir] reads a folder of them and makes each one
 // choosable by its own name; [Bases] is the whole list, embedded and loaded
-// together, and [Known] answers for one name. Loaded styles are held beside
-// chroma's registry and never inside it — see bases.go.
+// together, and [Known] answers for one name. [BaseSuits] measures which
+// appearance a base was fitted to, for a chooser that offers one half of the
+// list at a time. Loaded styles are held beside chroma's registry and never
+// inside it — see bases.go.
 //
 // Build a new Highlighter when the theme changes. Both constructors resolve
 // their style once and the returned func closes over it, so neither can follow
