@@ -333,14 +333,52 @@ func TestTheGroundDecidesTheAppearance(t *testing.T) {
 }
 
 // TestTheDefaultPairSitsOnOppositeSides: the base the window opens on is light
-// and the counterpart it reaches in the dark is dark, so the two halves of the
-// chooser each hold one member of the pair rather than both or neither.
+// and the one it reaches in the dark is dark, so the two halves of the chooser
+// each hold one member of the pair rather than both or neither.
 func TestTheDefaultPairSitsOnOppositeSides(t *testing.T) {
 	if !BaseSuits(DefaultBase, false) || BaseSuits(DefaultBase, true) {
 		t.Errorf("the default base %q is not offered as a light base and only as one", DefaultBase)
 	}
-	const counterpart = "catppuccin-mocha"
-	if BaseSuits(counterpart, false) || !BaseSuits(counterpart, true) {
-		t.Errorf("%q is not offered as a dark base and only as one", counterpart)
+	if BaseSuits(DefaultDarkBase, false) || !BaseSuits(DefaultDarkBase, true) {
+		t.Errorf("the default dark base %q is not offered as a dark base and only as one", DefaultDarkBase)
+	}
+	if got := DefaultBases(); got.Base(false) != DefaultBase || got.Base(true) != DefaultDarkBase {
+		t.Errorf("the default pair reads %+v, want %q under the sun and %q under the moon", got, DefaultBase, DefaultDarkBase)
+	}
+}
+
+// TestAKeptPairResolvesByMeasurement is the whole of what a reader does with a
+// pair somebody kept: a member stands where it was fitted to stand, and falls
+// back to that appearance's default everywhere else. The last two cases are the
+// migration — a file naming one base with no appearance attached arrives with
+// that name in both members, and comes out with the name on the half it was
+// measured to belong on and the default on the other.
+func TestAKeptPairResolvesByMeasurement(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		light, dark  string
+		wantL, wantD string
+	}{
+		{"a pair chosen for each appearance", "github", "dracula", "github", "dracula"},
+		{"nothing kept", "", "", DefaultBase, DefaultDarkBase},
+		{"names this build cannot resolve", "a-style-nobody-wrote", "another", DefaultBase, DefaultDarkBase},
+		{"members on the wrong halves", "dracula", "github", DefaultBase, DefaultDarkBase},
+		{"one light base, no appearance attached", "github", "github", "github", DefaultDarkBase},
+		{"one dark base, no appearance attached", "dracula", "dracula", DefaultBase, "dracula"},
+		{"one base fitted to no ground at all", "pygments", "pygments", "pygments", "pygments"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := BasesOrDefault(tc.light, tc.dark)
+			if got.Light != tc.wantL || got.Dark != tc.wantD {
+				t.Errorf("BasesOrDefault(%q, %q) = %+v, want light %q and dark %q",
+					tc.light, tc.dark, got, tc.wantL, tc.wantD)
+			}
+			// Whatever comes out is drawable under the appearance it came out
+			// for, which is the property a chooser leans on: the applied base
+			// is always on the list the scheme is showing.
+			if !BaseSuits(got.Light, false) || !BaseSuits(got.Dark, true) {
+				t.Errorf("%+v holds a member fitted to the other ground", got)
+			}
+		})
 	}
 }

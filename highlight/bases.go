@@ -214,6 +214,61 @@ func BaseOrDefault(name string) string {
 	return DefaultBase
 }
 
+// BasePair is a base per appearance: the palette code is coloured from under a
+// light one, and the palette it is coloured from under a dark one. It is what
+// a person has chosen when they have chosen twice, and what [AdaptPair]
+// derives through.
+type BasePair struct {
+	Light string
+	Dark  string
+}
+
+// DefaultBases is the pair to derive through when nothing was chosen:
+// [DefaultBase] under a light appearance and [DefaultDarkBase] under a dark
+// one.
+func DefaultBases() BasePair { return BasePair{Light: DefaultBase, Dark: DefaultDarkBase} }
+
+// Base returns the member for one appearance.
+func (p BasePair) Base(dark bool) string {
+	if dark {
+		return p.Dark
+	}
+	return p.Light
+}
+
+// BasesOrDefault resolves a pair that was kept into a pair that can be drawn:
+// each member stands when it names a style this build has AND that style was
+// fitted to the appearance it is being kept for, and falls back to the default
+// for that appearance otherwise.
+//
+// Both halves of that are the same rule — a member has to be usable where it
+// is going. A name nobody chose, or one whose file has left the folder, is the
+// ordinary case and falls back the way [BaseOrDefault] does. A name fitted to
+// the other ground is the odder one: it can only arrive from a file naming one
+// base with no appearance attached, or from a file somebody edited by hand,
+// and it is measured off the style's own background by [BaseSuits] rather than
+// guessed from the name. Sending it through anyway would put a palette
+// balanced for paper on a near-black slab, and would leave a chooser marking a
+// row that its own list does not hold.
+//
+// So one kept name resolves by measurement: passed as both members, it keeps
+// the appearance it was fitted to and the other takes the default. A style
+// fitted to no ground at all suits both and keeps both.
+func BasesOrDefault(light, dark string) BasePair {
+	return BasePair{Light: baseFor(light, false), Dark: baseFor(dark, true)}
+}
+
+// baseFor is one member of [BasesOrDefault].
+func baseFor(name string, dark bool) string {
+	if Known(name) && BaseSuits(name, dark) {
+		return name
+	}
+	if dark {
+		return DefaultDarkBase
+	}
+	return DefaultBase
+}
+
 // lookup resolves a name to the style it names, loaded styles first and
 // chroma's registry after. Unknown names return false rather than chroma's
 // fallback style: this package's callers panic on a name that is not there,

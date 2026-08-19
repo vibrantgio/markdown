@@ -502,3 +502,131 @@ func TestAdaptPicksThePairMemberByScheme(t *testing.T) {
 		t.Errorf("unpaired base %q derived %q on light and %q on dark", unpaired, l, d)
 	}
 }
+
+// TestAPairDerivesThroughTheAppearancesOwnMember: two names that are nothing to
+// do with each other, and the appearance on screen decides which one the code
+// is coloured from. This is what a base per appearance buys — a scheme change
+// is a palette change — and it is asserted on two unrelated members precisely
+// because chroma's counterpart rule could never have reached either from the
+// other.
+func TestAPairDerivesThroughTheAppearancesOwnMember(t *testing.T) {
+	p := BasePair{Light: "solarized-light", Dark: "dracula"}
+	if got := derivePair(p, tokens.DefaultLight, Options{}).Name; got != p.Light+"-adapted" {
+		t.Errorf("the light appearance derived %q, want the pair's light member", got)
+	}
+	if got := derivePair(p, tokens.DefaultDark, Options{}).Name; got != p.Dark+"-adapted" {
+		t.Errorf("the dark appearance derived %q, want the pair's dark member", got)
+	}
+	// And the spans a fence comes back as follow the member, not the name that
+	// was passed first.
+	const src = "// greet.\nfunc greet(name string) string { return name }\n"
+	for _, tc := range []struct {
+		name   string
+		colors tokens.ColorTokens
+		member string
+	}{
+		{"light", tokens.DefaultLight, p.Light},
+		{"dark", tokens.DefaultDark, p.Dark},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := AdaptPair(p, tc.colors)("go", src)
+			alone := Adapt(tc.member, tc.colors)("go", src)
+			if len(got) == 0 || len(got) != len(alone) {
+				t.Fatalf("the fence split into %d runs, the member alone gives %d", len(got), len(alone))
+			}
+			coloured := 0
+			for i := range got {
+				if got[i].Color != alone[i].Color {
+					t.Fatalf("run %d is %v, the member alone gives %v", i, got[i].Color, alone[i].Color)
+				}
+				if got[i].Color.A != 0 {
+					coloured++
+				}
+			}
+			if coloured == 0 {
+				t.Fatal("no run carries a colour, so matching proves nothing")
+			}
+			t.Logf("%d runs, %d coloured, ink for ink the %s member's", len(got), coloured, tc.name)
+		})
+	}
+}
+
+// TestAChosenMemberKeepsItsOwnEmphasis: where the two members were chosen,
+// each is drawn as its author wrote it. The single-name rule above is for a
+// counterpart nobody picked; a pair is two picks, and imposing one member's
+// italics on the other would mean the appearance on screen depended on a
+// choice made for the appearance that is not — a base picked under the sun
+// quietly re-typesetting the moon's.
+//
+// github-dark is the fixture because it is where the two rules part company: it
+// italicises comments and bolds four token categories where chroma's light
+// github asks for neither.
+func TestAChosenMemberKeepsItsOwnEmphasis(t *testing.T) {
+	p := BasePair{Light: "solarized-light", Dark: "github-dark"}
+	stockDark, ok := lookup(p.Dark)
+	if !ok {
+		t.Fatalf("the fixture pair's dark member %q does not resolve", p.Dark)
+	}
+	dark := derivePair(p, tokens.DefaultDark, Options{})
+	types := slices.Clone(stockDark.Types())
+	slices.Sort(types)
+	emphasised := 0
+	for _, tt := range types {
+		want, got := stockDark.Get(tt), dark.Get(tt)
+		if (want.Bold == chroma.Yes) != (got.Bold == chroma.Yes) ||
+			(want.Italic == chroma.Yes) != (got.Italic == chroma.Yes) {
+			t.Errorf("%s: the derived dark member reads bold=%v italic=%v, %s itself says bold=%v italic=%v",
+				tt, got.Bold, got.Italic, p.Dark, want.Bold, want.Italic)
+		}
+		if got.Bold == chroma.Yes || got.Italic == chroma.Yes {
+			emphasised++
+		}
+	}
+	if emphasised == 0 {
+		t.Fatalf("%s emphasises nothing at all — this fixture cannot show whose emphasis was used", p.Dark)
+	}
+	t.Logf("%d of %s's own entries keep the emphasis its author gave them", emphasised, p.Dark)
+	// And the choice is still a choice: another light member picked beside it
+	// moves not one of them.
+	other := derivePair(BasePair{Light: "github", Dark: p.Dark}, tokens.DefaultDark, Options{})
+	for _, tt := range types {
+		if a, b := dark.Get(tt), other.Get(tt); a.Bold != b.Bold || a.Italic != b.Italic {
+			t.Errorf("%s: changing the light member changed the dark member's emphasis", tt)
+		}
+	}
+}
+
+// TestTheDefaultPairAgreesWhicheverRuleApplies: the pair that ships is two
+// names, so each member settles its own emphasis — and the concrete outcome
+// the single-name policy was imposed for holds anyway, because catppuccin's two
+// members already agree. A comment leans in both appearances, and the pair
+// derives exactly what the one name does, entry for entry.
+func TestTheDefaultPairAgreesWhicheverRuleApplies(t *testing.T) {
+	p := DefaultBases()
+	for _, sc := range schemes() {
+		style := derivePair(p, sc.tok, Options{})
+		if e := style.Get(chroma.CommentSingle); e.Italic != chroma.Yes {
+			t.Errorf("%s: a line comment reads italic=%v under %s", sc.name, e.Italic, style.Name)
+		}
+		one := derive(DefaultBase, sc.tok, Options{})
+		if one.Name != style.Name {
+			t.Fatalf("%s: the pair derived %q and the single name %q", sc.name, style.Name, one.Name)
+		}
+		for _, tt := range style.Types() {
+			if a, b := style.Get(tt), one.Get(tt); a != b {
+				t.Errorf("%s/%s: the pair gives %+v and the single name %+v", sc.name, tt, a, b)
+			}
+		}
+	}
+}
+
+// TestAPairWithANameThisBuildLacks: a pair whose light member has left the
+// styles folder still colours a dark window. What it costs is the emphasis
+// policy that member was carrying, not the fence.
+func TestAPairWithANameThisBuildLacks(t *testing.T) {
+	p := BasePair{Light: "a-style-nobody-wrote", Dark: "dracula"}
+	got := derivePair(p, tokens.DefaultDark, Options{})
+	if want := p.Dark + "-adapted"; got.Name != want {
+		t.Errorf("derived %q, want %q", got.Name, want)
+	}
+}

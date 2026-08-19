@@ -45,10 +45,11 @@ const contrastFloor = 4.5
 // be darkened or lightened beyond what the floor actually demanded.
 const refitSteps = 256
 
-// DefaultBase names the syntax palette to derive from when nothing else is
-// chosen: chroma's catppuccin-latte, whose registered counterpart
-// catppuccin-mocha is the dark member the same name reaches. It is a default
-// and not a policy — [Adapt] takes any name in chroma's registry.
+// DefaultBase and DefaultDarkBase name the syntax palettes to derive from when
+// nothing else is chosen: chroma's catppuccin-latte under a light appearance
+// and catppuccin-mocha under a dark one, which are each other's registered
+// counterparts. They are defaults and not a policy — [Adapt] takes any name in
+// chroma's registry, and [AdaptPair] any two.
 //
 // The pair is picked for what survives the derivation. Its accents already sit
 // in one perceptual-lightness band, so hue is what tells its token types apart
@@ -59,7 +60,10 @@ const refitSteps = 256
 // agree entry for entry on bold and italic, so the one policy across the pair
 // changes nothing about it — comments are italic in both appearances rather
 // than in one.
-const DefaultBase = "catppuccin-latte"
+const (
+	DefaultBase     = "catppuccin-latte"
+	DefaultDarkBase = "catppuccin-mocha"
+)
 
 // Options are the dials on [AdaptWith]. The zero value is what [Adapt] uses:
 // the surface re-fit alone, which is not a dial — a style that cannot be read
@@ -85,12 +89,14 @@ type Options struct {
 // the base renders in its plain-text foreground still come back colourless, so
 // plain code follows [markdown.Style].CodeColor exactly as it does under [New].
 //
-// The base names a pair, not a side. Which member is derived from follows the
+// One base names a pair, not a side. Which member is derived from follows the
 // tokens: c's own code surface decides light or dark, and chroma's registered
 // counterpart supplies the other member, so Adapt([DefaultBase], …) yields the
 // catppuccin-latte inks on a light theme and the catppuccin-mocha inks on a
 // dark one from the one name. A base with no counterpart is derived from for
-// both.
+// both — and only 22 of the 74 embedded styles name one, so most names are a
+// side however they are asked. A caller that has chosen a base for each
+// appearance hands both over instead: see [AdaptPair].
 //
 // A name missing from chroma's style registry panics, as in [New].
 //
@@ -102,7 +108,35 @@ func Adapt(base string, c tokens.ColorTokens) markdown.Highlighter {
 
 // AdaptWith is [Adapt] with the dials exposed.
 func AdaptWith(base string, c tokens.ColorTokens, opt Options) markdown.Highlighter {
-	style := derive(base, c, opt)
+	return AdaptPairWith(BasePair{Light: base, Dark: base}, c, opt)
+}
+
+// AdaptPair is [Adapt] for a caller holding a base per appearance: c's own
+// code surface says which appearance is being drawn, and the pair's member for
+// that appearance is what the code is coloured from. Everything else is
+// [Adapt] — each entry keeps its hue, gives up its lightness, and comes back
+// legible on the surface these tokens put under a fence.
+//
+// A pair is what a person chooses when they choose twice, and the two members
+// owe each other nothing: a set of inks balanced against a near-white page is
+// not the set anybody would balance against a near-black one, so the light
+// member and the dark member are two artifacts and not two views of one.
+// Deriving through the pair rather than through one name is therefore what
+// makes a change of appearance a change of palette — the whole point of
+// keeping two.
+//
+// Each member settles its own emphasis, unlike the pair one name reaches: both
+// of these were chosen, so a member is drawn as its author wrote it rather than
+// re-typeset from the other half of somebody's pair. See [Options] for the
+// dials; a member naming nothing this package can resolve panics exactly as
+// [Adapt] does, if it is the member the appearance calls for.
+func AdaptPair(p BasePair, c tokens.ColorTokens) markdown.Highlighter {
+	return AdaptPairWith(p, c, Options{})
+}
+
+// AdaptPairWith is [AdaptPair] with the dials exposed.
+func AdaptPairWith(p BasePair, c tokens.ColorTokens, opt Options) markdown.Highlighter {
+	style := derivePair(p, c, opt)
 	return spanner(style, plainForeground(style))
 }
 
@@ -115,23 +149,39 @@ func codeSurface(c tokens.ColorTokens) stdcolor.NRGBA {
 	return markdown.FromTokens(c, tokens.DefaultTypography).CodeBackground
 }
 
-// derive builds the adapted style. It is unexported, and so is every other
-// signature in this package that names a chroma type: see the package comment
-// in highlight.go for why the dependency is confined here.
+// derive builds the adapted style from one name, which is the pair whose two
+// members are that name: chroma's own counterpart rule inside [forMode] is
+// what reaches the other appearance, exactly as it did before a caller could
+// name each appearance itself.
+//
+// It is unexported, and so is every other signature in this package that names
+// a chroma type: see the package comment in highlight.go for why the
+// dependency is confined here.
 func derive(name string, c tokens.ColorTokens, opt Options) *chroma.Style {
+	return derivePair(BasePair{Light: name, Dark: name}, c, opt)
+}
+
+// derivePair builds the adapted style from a base per appearance.
+func derivePair(p BasePair, c tokens.ColorTokens, opt Options) *chroma.Style {
 	surface := codeSurface(c)
-	mode := chroma.Light
+	mode, name := chroma.Light, p.Light
 	if isDarkSurface(surface) {
-		mode = chroma.Dark
+		mode, name = chroma.Dark, p.Dark
 	}
-	// The member the theme's own appearance calls for, and the member the
-	// emphasis policy comes from. They are the same style whenever the base
-	// is unpaired.
+	// The member the theme's own appearance calls for.
 	member, ok := forMode(name, mode)
 	if !ok {
 		panic(fmt.Sprintf("highlight: unknown style %q (Bases lists every name that resolves)", name))
 	}
-	policy, _ := forMode(name, chroma.Light)
+	policy := member
+	if p.Light == p.Dark {
+		// One name standing for both appearances. The other member is
+		// chroma's counterpart and not a choice, so the pair's light member
+		// settles the emphasis for both — see the entry loop below.
+		if s, ok := forMode(p.Light, chroma.Light); ok {
+			policy = s
+		}
+	}
 
 	var turn float64
 	if opt.AlignToBrand {
@@ -154,14 +204,24 @@ func derive(name string, c tokens.ColorTokens, opt Options) *chroma.Style {
 			ink = refit(ink, surface, contrastFloor)
 			e.Colour = chroma.NewColour(ink.R, ink.G, ink.B)
 		}
-		// One emphasis policy across the pair, taken from the light member.
-		// Chroma's two github styles disagree on this: the dark one italicises
-		// comments and bolds operators, functions, classes and constants where
-		// the light one asks for neither, so the same document changes its
-		// typographic emphasis when the appearance changes — a difference the
-		// reader has no way to read as meaning anything. The light member
-		// settles it because a light style is the one fitted to paper, where
-		// mono italics and synthetic bold cost the most and get used the least.
+		// The emphasis comes from the style that was chosen.
+		//
+		// Where one name stands for both appearances, the second style is
+		// chroma's counterpart rather than anybody's choice, and the two can
+		// disagree: chroma's dark github italicises comments and bolds
+		// operators, functions, classes and constants where its light one asks
+		// for neither, so the same document would change its typographic
+		// emphasis on a switch nobody made — a difference the reader has no way
+		// to read as meaning anything. The light member settles it for both,
+		// because a light style is the one fitted to paper, where mono italics
+		// and synthetic bold cost the most and get used the least.
+		//
+		// Where the pair is two names, both were chosen, for the ground each
+		// was fitted to. Then the member being drawn settles its own emphasis:
+		// a style rewritten to another style's idea of what leans is not the
+		// style that was picked, and the appearance on screen must be a
+		// function of the choice made for it and nothing else — otherwise a
+		// name chosen under one appearance quietly re-typesets the other.
 		//
 		// Written as an explicit yes or no rather than left to inherit, so a
 		// token type that takes no position cannot pick one up from its

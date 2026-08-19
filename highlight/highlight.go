@@ -31,6 +31,13 @@
 // perceptual-lightness band with the hues carrying the semantics, which is the
 // shape a lightness re-fit leaves intact.
 //
+// [AdaptPair] takes two names, one per appearance, for a caller whose person
+// has chosen a base for each. A base is fitted to a ground, so the two
+// appearances of one theme are two choices rather than one choice and a
+// counterpart rule — and most names have no counterpart to reach anyway.
+// [BasesOrDefault] turns a pair that was kept somewhere into a pair that can be
+// drawn, and [DefaultBases] is what stands in when nothing was chosen.
+//
 // It also takes the name of a style read from a folder. A chroma style is a
 // small XML document, and [LoadDir] reads a folder of them and makes each one
 // choosable by its own name; [Bases] is the whole list, embedded and loaded

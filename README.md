@@ -119,6 +119,26 @@ lightness re-fit leaves intact — a palette that told a keyword from a
 string by how dark it was would come out of the same fit with the two
 harder to tell apart.
 
+Where somebody has chosen a base for each appearance rather than one for
+both, hand over the pair and each appearance derives through its own member:
+
+```go
+p := highlight.BasesOrDefault(lightName, darkName) // resolved and measured
+st.Highlight = highlight.AdaptPair(p, c)           // c decides which member
+```
+
+`DefaultBases()` is the pair that stands in when nothing was chosen —
+`catppuccin-latte` and `catppuccin-mocha`. `BasesOrDefault` keeps a member
+only where it resolves and its own measured ground suits the appearance it
+is being kept for, so a name that has left the styles folder, and one fitted
+to the other ground, both fall back to that appearance's default. Passing one
+name as both members is therefore how a single stored choice migrates to a
+pair: it stays on the half it was fitted for. Each chosen member keeps the
+bold and italic its own author gave it — the single policy above is for a
+counterpart nobody picked, and rewriting a chosen style's emphasis from the
+other half of a pair would make one appearance depend on a choice made for
+the other.
+
 The choice is not limited to what ships embedded. A chroma style is a small
 XML document, and `highlight.LoadDir` reads a folder of them and makes each
 one choosable by its own name:
@@ -277,7 +297,8 @@ organization. What renders, renders well; these are the honest gaps.
   remain the chroma style's own, and a style whose author drew them on a
   near-white page may leave them short of AA on a tinted code fill —
   `highlight.Adapt` is the constructor that re-fits them, and it takes one
-  base name for both appearances where `New` needs one style per appearance.
+  base name for both appearances where `New` needs one style per appearance —
+  or `highlight.AdaptPair`, where a base was chosen per appearance.
   An unrecognised chroma style name panics in either — chroma's silent
   fallback is a dark-background style that fails visibly on only one of the
   two themes, so a typo fails at construction instead.
