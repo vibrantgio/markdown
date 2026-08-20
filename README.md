@@ -167,6 +167,31 @@ and named with its reason rather than thrown, so one bad file never costs
 the rest of the folder. Loaded styles are held beside chroma's registry and
 never inside it.
 
+Somebody who has picked one base has picked one appearance, and
+`CompletePair` finds the other half:
+
+```go
+p := highlight.CompletePair(chosen)   // both members, whichever side was picked
+ink := highlight.BasePalette(chosen)  // the colours it draws code with
+```
+
+A counterpart the style's own author declared wins — twenty-two of the
+seventy-four embedded styles name one. For the rest the other member is
+measured: of the bases fitted to the opposite ground, the one whose inks
+fall nearest, class against class, on the OKLCh hue circle, weighted by how
+much colour each ink actually carries. `BaseDistance` is that measure on
+its own. A base fitted to no ground at all is a pair by itself. The measure
+is held honest by a test that runs it over the declared pairs with the
+declarations hidden and requires it to find them anyway.
+
+`BasePalette` is a base as plain colours, for painting swatches or for
+pulling a brand seed out of a scheme somebody already curated — a style is
+a better source for one than a photograph, being a couple of dozen
+deliberate colours rather than a cloud of pixels. Colours repeat once per
+token type wearing them, so a reader ranking the list sees how much of the
+style each one is; the body colour, which a highlighter built here never
+emits, is left out.
+
 Derive once per theme, not once per frame: the walk over a base's entry
 table is cheap but not free. Stock styles are untouched by any of this —
 adaptation builds a new style beside the registry and never mutates it, so

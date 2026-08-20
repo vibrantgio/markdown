@@ -48,6 +48,13 @@
 // list at a time. Loaded styles are held beside chroma's registry and never
 // inside it — see bases.go.
 //
+// A person choosing one base has chosen one appearance, and [CompletePair]
+// finds the other: the counterpart the style's author declared, or — for the
+// majority who declared none — the opposite-appearance base whose palette
+// measures nearest, by [BaseDistance]. [BasePalette] is the other half of that
+// arithmetic made public: a base as plain colours, for a caller extracting a
+// brand seed from a scheme somebody already curated, or painting its swatches.
+//
 // Build a new Highlighter when the theme changes. Both constructors resolve
 // their style once and the returned func closes over it, so neither can follow
 // a theme observable.

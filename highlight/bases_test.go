@@ -309,6 +309,7 @@ func TestTheGroundDecidesTheAppearance(t *testing.T) {
 	if _, skipped := LoadDir(dir); len(skipped) > 0 {
 		t.Fatalf("the folder skipped %v", skipped)
 	}
+	forget(t, "lantern-day", "lantern-night", "lantern-night-in-name-only", "lantern-nowhere")
 	for _, tc := range []struct {
 		name        string
 		light, dark bool
