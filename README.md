@@ -64,7 +64,7 @@ The [organization page](https://github.com/vibrantgio) has the full stack.
 | package | what it does |
 | --- | --- |
 | `markdown` | `Parse` a source into a block model, `Document` to lay it out, `Style` to theme it. Carries goldmark, and nothing heavier. |
-| `markdown/highlight` | A chroma-backed `Highlighter` for fenced code — `New` to wear a stock style, `Adapt` to derive one fitted to your tokens. Importing this package is what pulls chroma into a build; no chroma type reaches its exported API. |
+| `markdown/highlight` | A chroma-backed `Highlighter` for fenced code — `New` for the highlighter alone, `Wear` to put a whole syntax base on the block, ground and all. Importing this package is what pulls chroma into a build; no chroma type reaches its exported API. |
 | `markdown/svgimage` | An image provider serving `.svg` destinations as vector widgets through `svg/driver/gio`. Importing this package is what pulls svg in. |
 | `markdown/obsidian` | Recognition of the Obsidian dialect around `Parse`: `SplitFrontMatter` before it, `WikiSpans` and `BlockAnchors` after it. Pure Go, no dependency beyond the parent package. |
 
@@ -96,41 +96,55 @@ func docsStyle(c tokens.ColorTokens, typo tokens.Typography) markdown.Style {
 
 `New` wears a stock style exactly as its author wrote it, which means its
 inks were fitted to that author's background rather than to the fill your
-theme puts under a fence. `Adapt` derives a style instead: it holds each
-entry's hue and chroma and re-fits the lightness against your own code
-surface, keeping the order the base's author drew — each ink placed by what
-it measures against the ground it was fitted to, that order stretched onto a
-band running from the WCAG AA ratio at the quiet end to an anchor well above
-it at the loud end. Ink already at or past its place keeps the colour it was
-drawn in, so no ink is ever made quieter than its author drew it and a
-palette fitted to a ground like yours comes through untouched. It also
-settles one bold and italic policy across the light and dark members of the
-pair, and keeps the plain-foreground fallback. One base name covers both appearances — which
-member is derived from follows the tokens — so a single line replaces the
-pair of highlighters above, and it re-derives with the theme rather than
-staying where it was built:
+theme puts under a fence. `Wear` puts that background there too:
 
 ```go
 st := markdown.FromTokens(c, typo)
-st.Highlight = highlight.Adapt(highlight.DefaultBase, c)
+highlight.Wear(&st, highlight.DefaultBase, c)
 ```
+
+A syntax base is a ground, a body ink and a couple of dozen accents chosen
+together, and which of them reads loudest — and by how much — only holds
+where the whole set is. So the fenced block shows the artifact: the author's
+own background under it, their own inks in the runs they coloured, their own
+body colour in the runs they left plain, and no ink altered by anything here.
+Nothing else on the page moves. The prose, and the chip an inline code span
+sits on, stay the theme's — one call writes four fields of a `Style`
+(`Highlight`, `CodeColor`, `CodeBackground`, `CodeBorder`) and leaves the
+rest exactly as you had it.
+
+The fourth of those is what keeps a block a block. A palette fitted to paper
+is drawn on a near-white and this page is a near-white too, so a ground alone
+can leave the reader guessing where the code begins: where a base's ground
+stands less far off the page than your theme's own code fill does, `Wear`
+also sets `CodeBorder`, and the block takes a hairline in the theme's divider
+colour. Where the ground stands off on its own, no line is drawn. A base that
+names no ground at all — four of the embedded styles — is drawn on the fill an
+inline chip uses, which is what a fence had before any base was chosen.
+
+Contrast inside the block is surfaced, not enforced. A style shows as its
+author drew it, quiet palettes included; what the library does is measure —
+the package's own test sweep records what every base's inks reach on the
+ground they were drawn on, and names the quietest.
+
+One base name covers both appearances: which member is worn follows the
+tokens, so the single line above replaces the pair of highlighters earlier,
+and it re-dresses with the theme rather than staying where it was built.
 
 `DefaultBase` is `catppuccin-latte`, whose registered counterpart
 `catppuccin-mocha` is the dark member that same name reaches. It is a
 default, not a policy: pass any name chroma's registry holds. It is the
-default because its accents already sit in one perceptual-lightness band
-with the hues carrying the semantics, so hue is what tells its token types
-apart and the re-fit costs it nothing it was using to carry meaning. A
-palette that told a keyword from a string by how dark it is keeps that
-difference too — the order is what the fit preserves — but it is the hues
-that survive a change of ground unchanged.
+default because its two members are one family drawn twice — the same token
+types on the same hues, at the two volumes their author set for paper and for
+slate — so a change of appearance changes the whole plate rather than the
+sheet it is on.
 
 Where somebody has chosen a base for each appearance rather than one for
-both, hand over the pair and each appearance derives through its own member:
+both, hand over the pair and each appearance wears its own member:
 
 ```go
 p := highlight.BasesOrDefault(lightName, darkName) // resolved and measured
-st.Highlight = highlight.AdaptPair(p, c)           // c decides which member
+highlight.WearPair(&st, p, c)                      // c decides which member
 ```
 
 `DefaultBases()` is the pair that stands in when nothing was chosen —
@@ -139,11 +153,8 @@ only where it resolves and its own measured ground suits the appearance it
 is being kept for, so a name that has left the styles folder, and one fitted
 to the other ground, both fall back to that appearance's default. Passing one
 name as both members is therefore how a single stored choice migrates to a
-pair: it stays on the half it was fitted for. Each chosen member keeps the
-bold and italic its own author gave it — the single policy above is for a
-counterpart nobody picked, and rewriting a chosen style's emphasis from the
-other half of a pair would make one appearance depend on a choice made for
-the other.
+pair: it stays on the half it was fitted for. Each member is drawn as its own
+author wrote it, italics and bold included.
 
 The choice is not limited to what ships embedded. A chroma style is a small
 XML document, and `highlight.LoadDir` reads a folder of them and makes each
@@ -192,10 +203,10 @@ token type wearing them, so a reader ranking the list sees how much of the
 style each one is; the body colour, which a highlighter built here never
 emits, is left out.
 
-Derive once per theme, not once per frame: the walk over a base's entry
-table is cheap but not free. Stock styles are untouched by any of this —
-adaptation builds a new style beside the registry and never mutates it, so
-`New("github")` still yields exactly what chroma ships.
+Dress the `Style` once per theme rather than once per frame: resolving a
+name is cheap but not free. Stock styles are untouched by any of this —
+nothing here writes to chroma's registry, so `New("github")` still yields
+exactly what chroma ships.
 
 Allocate the `Document` once and reuse it on every frame — it holds the scroll
 position and the per-block interaction state (link focus and hover, code block
@@ -244,6 +255,12 @@ page, padded horizontally, taking the code's own shaped height so it can
 never stretch the line it is quoted into. `FromTokens` sets it; a `Style`
 built by hand leaves it zero and inline code sits on the page, as it did
 before.
+
+`FromTokens` gives the chip and the fence the same fill, and they part company
+as soon as a fence wears a syntax base: the block takes that base's ground and
+the chip stays on the quiet one, in the body's own ink. A page of prose spotted
+with somebody else's grounds is a page arguing with itself; a block set apart
+from the prose is not.
 
 ## The Obsidian dialect
 
@@ -321,19 +338,21 @@ organization. What renders, renders well; these are the honest gaps.
 - **`doc.Layout`'s positional-shaper signature is unchanged.** The other
   half of the surface v0.1.0 was expected to re-cut stayed as it is; it
   costs nothing today and no consumer has asked.
-- **Highlight colours are chroma's, except the plain runs.** Runs a chroma
-  style would render in its plain-text foreground — whitespace, punctuation,
-  plain identifiers — are emitted colourless and take `Style.CodeColor`, so
-  plain code follows the token theme; keyword, string, and comment colours
-  remain the chroma style's own, and a style whose author drew them on a
-  near-white page may leave them short of AA on a tinted code fill, or leave
-  a whole palette bunched at one weight there —
-  `highlight.Adapt` is the constructor that re-fits them, and it takes one
-  base name for both appearances where `New` needs one style per appearance —
-  or `highlight.AdaptPair`, where a base was chosen per appearance.
-  An unrecognised chroma style name panics in either — chroma's silent
-  fallback is a dark-background style that fails visibly on only one of the
-  two themes, so a typo fails at construction instead.
+- **Highlight colours are the chroma style's, and are never re-fitted.** Runs
+  a chroma style would render in its plain-text foreground — whitespace,
+  punctuation, plain identifiers — are emitted colourless and take
+  `Style.CodeColor`; keyword, string, and comment colours are the style's own,
+  byte for byte. With `New` those inks land on whatever fill your `Style` puts
+  under a fence, which is not the fill their author drew them on, and a
+  palette fitted to a near-white page can measure short of AA on a tinted one.
+  `highlight.Wear` answers that by moving the ground rather than the ink — the
+  author's own background under the author's own inks — and it takes one base
+  name for both appearances where `New` needs one style per appearance, or
+  `highlight.WearPair` where a base was chosen per appearance. Neither
+  enforces a contrast floor on somebody else's palette. An unrecognised style
+  name panics in both — chroma's silent fallback is a dark-background style
+  that fails visibly on only one of the two themes, so a typo fails at
+  construction instead.
 - **Text is not selectable or copyable.** Neither this module nor
   `components/richtext` implements selection — the same gap the comparison above
   notes in `x/markdown`. Links are clickable and focusable; that is all.

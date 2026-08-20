@@ -337,6 +337,14 @@ func (d *Document) tableState(b *Table) *layout.List {
 // quoteBarWidth is the width of the bar leading a blockquote.
 const quoteBarWidth = unit.Dp(3)
 
+// codeEdge is how wide the hairline around a fence is drawn when
+// [Style].CodeBorder asks for one. It is the width every other line in a
+// document is drawn at — a thematic break, a table's rules — because an edge
+// that has to be seen is not the same thing as an edge that has to be
+// noticed: the block is already a block, and the line only has to say where
+// it ends.
+const codeEdge = unit.Dp(1)
+
 // blockquote renders a quoted group as an inset column with a leading
 // token-coloured bar spanning the content height. Text inside the quote uses
 // the muted QuoteColor; nested quotes recurse.
@@ -375,6 +383,14 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 // area draws while it scrolls lands in the bottom padding, where it covers no
 // code. A block that fits lays out exactly as it would with no scroll area at
 // all — same height, same clip, no bar, no dissolve.
+//
+// A Style.CodeBorder with any alpha in it edges the fence: the border colour
+// fills the block's whole rounded box and the ground fills a box one hairline
+// smaller, concentric with it, so the rim is drawn without a stroke and
+// without a seam. The ground's box is also what the content is clipped to,
+// which is what keeps the dissolve at a cut edge off the rim it would
+// otherwise paint over. The block's own size is the outer box either way, so
+// edging one moves nothing below it.
 func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Style, cb *CodeBlock) layout.Dimensions {
 	pad := unit.Dp(tokens.Spacing.S3)
 	radius := gtx.Dp(unit.Dp(tokens.Radius.Base))
@@ -404,7 +420,13 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	call := macro.Stop()
 
 	total := image.Pt(gtx.Constraints.Max.X, content.Size.Y)
-	fence := clip.UniformRRect(image.Rectangle{Max: total}, radius)
+	box := image.Rectangle{Max: total}
+	fence := clip.UniformRRect(box, radius)
+	if style.CodeBorder.A > 0 {
+		edge := max(gtx.Dp(codeEdge), 1)
+		paint.FillShape(gtx.Ops, style.CodeBorder, fence.Op(gtx.Ops))
+		fence = clip.UniformRRect(box.Inset(edge), max(radius-edge, 0))
+	}
 	paint.FillShape(gtx.Ops, style.CodeBackground, fence.Op(gtx.Ops))
 	if state.Overflows() {
 		// The dissolve at a cut edge is opaque where it meets that edge, so

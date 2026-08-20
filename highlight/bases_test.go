@@ -1,6 +1,7 @@
 package highlight
 
 import (
+	stdcolor "image/color"
 	"os"
 	"path/filepath"
 	"slices"
@@ -84,13 +85,13 @@ func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 	if !slices.Contains(Bases(), "lantern-day") {
 		t.Error("the loaded style is not among the names a base can be chosen by")
 	}
-	// The proof it is a base and not just a name: deriving from it colours
-	// code, and colours it differently from the default.
+	// The proof it is a base and not just a name: wearing it colours code,
+	// and colours it differently from the default.
 	const snippet = "// hello\nfunc greet() {}\n"
-	mine := Adapt("lantern-day", tokens.DefaultLight)("go", snippet)
-	theirs := Adapt(DefaultBase, tokens.DefaultLight)("go", snippet)
+	mine := worn(t, "lantern-day", tokens.DefaultLight).Highlight("go", snippet)
+	theirs := worn(t, DefaultBase, tokens.DefaultLight).Highlight("go", snippet)
 	if len(mine) == 0 {
-		t.Fatal("deriving from the loaded style coloured nothing")
+		t.Fatal("wearing the loaded style coloured nothing")
 	}
 	same := true
 	for i := range mine {
@@ -106,7 +107,9 @@ func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 
 // TestALoadedPairHasTwoSides: a style naming a counterpart that is also in the
 // folder behaves the way an embedded pair does — the light member on a light
-// theme, the dark one on a dark theme, from the one name.
+// theme, the dark one on a dark theme, from the one name. The ground on the
+// fence is what says which member arrived, the two fixtures being fitted to
+// paper and to slate.
 func TestALoadedPairHasTwoSides(t *testing.T) {
 	forget(t, "lantern-day", "lantern-night")
 	dir := folder(t, map[string]string{"day.xml": lanternXML, "night.xml": lanternNightXML})
@@ -116,14 +119,14 @@ func TestALoadedPairHasTwoSides(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		tok  tokens.ColorTokens
-		want string
+		want stdcolor.NRGBA
 	}{
-		{"light", tokens.DefaultLight, "lantern-day"},
-		{"dark", tokens.DefaultDark, "lantern-night"},
+		{"light", tokens.DefaultLight, stdcolor.NRGBA{R: 0xfd, G: 0xf6, B: 0xe3, A: 0xff}},
+		{"dark", tokens.DefaultDark, stdcolor.NRGBA{R: 0x00, G: 0x2b, B: 0x36, A: 0xff}},
 	} {
-		got := derive("lantern-day", tc.tok, Options{})
-		if !strings.HasPrefix(got.Name, tc.want) {
-			t.Errorf("%s theme derived from %s, want the pair's %s member", tc.name, got.Name, tc.want)
+		if got := worn(t, "lantern-day", tc.tok).CodeBackground; got != tc.want {
+			t.Errorf("%s theme put %v under the fence, want the pair's %s member's own ground %v",
+				tc.name, got, tc.name, tc.want)
 		}
 	}
 }

@@ -74,23 +74,49 @@ type Style struct {
 	Mono font.Typeface
 	// CodeSize is the text size of code blocks.
 	CodeSize unit.Sp
-	// CodeColor is the code block text colour.
+	// CodeColor is the code block text colour: what plain code is set in, and
+	// what a highlighted run with no colour of its own falls back to. A fence
+	// dressed in a syntax palette takes that palette's own body ink here, so
+	// the runs its author left plain are the ones they drew plain.
 	CodeColor color.NRGBA
-	// CodeBackground fills the code block surface. It is a near-white in a
-	// light scheme and a near-black in a dark one: a fence is a panel inset
-	// into the page, and a panel separates by a step, not by a drop.
+	// CodeBackground is the fenced block's ground. [FromTokens] gives it the
+	// theme's own step off the page — a near-white in a light scheme and a
+	// near-black in a dark one, because a fence is a panel inset into the page
+	// and a panel separates by a step, not by a drop.
+	//
+	// It is a field rather than a constant because a fence may be dressed in a
+	// syntax palette instead, and a palette is a ground and a set of inks
+	// together: put the inks on a ground their author never drew them against
+	// and the relations between them stop being the ones that were chosen.
+	// Then this holds that author's own background, CodeColor their own body
+	// ink, and CodeBorder whatever it takes to keep the result an island.
 	CodeBackground color.NRGBA
+	// CodeBorder strokes a hairline just inside the fence's rounded edge. The
+	// zero value — zero alpha — draws none, which is what a ground that stands
+	// off the page on its own needs.
+	//
+	// It is for the ground that does not. A syntax palette fitted to paper is
+	// drawn on a near-white, and this page is a near-white too: laid on it
+	// unbounded, the block stops being a block and the code reads as a
+	// paragraph in a monospace face. The line is what says where the fence is
+	// when its fill no longer does.
+	CodeBorder color.NRGBA
 	// CodeChip fills the rounded chip an inline code span sits on. A zero
 	// alpha — a Style built by hand rather than by [FromTokens] — sets inline
 	// code on the page itself, as it always was, and the span is still set in
 	// Mono at the code size.
 	//
-	// [FromTokens] gives it and CodeBackground the same value, which is the
-	// measured behaviour of the reading application this library is judged
-	// against: quoted code is one surface, whether a word of it is set in a
-	// sentence or a screenful of it is set apart. The two fields stay separate
-	// so a hand-built Style can still hold them apart, and because the chip is
-	// the one of the two that may be switched off.
+	// [FromTokens] gives it and CodeBackground the same value: quoted code is
+	// one surface, whether a word of it is set in a sentence or a screenful of
+	// it is set apart, which is how the reading surface this library is judged
+	// against draws it.
+	//
+	// The two part company as soon as a fence is dressed in a syntax palette,
+	// and deliberately: a page of prose spotted with somebody else's grounds
+	// would be a page arguing with itself, so a chip stays on the quiet fill
+	// and in the body's own ink while the block down the page shows the
+	// palette whole. That is a departure from the reading surface, which puts
+	// one fill under both, and it is the chip that keeps the old behaviour.
 	CodeChip color.NRGBA
 	// CodeScrollbar styles the slim horizontal bar a code block whose widest
 	// line overflows the column shows while it scrolls. It sits in the

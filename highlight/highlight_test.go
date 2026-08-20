@@ -170,26 +170,26 @@ func TestGoSnippetGolden(t *testing.T) {
 	}
 }
 
-// TestAdaptedSnippetGolden records or diffs the same fenced snippet coloured
-// by a style derived from the default base and fitted to each theme's own code
-// surface. Beside the two images above — the same code in a stock style worn
-// verbatim — it is what the derivation buys: inks that were fitted to somebody
-// else's page, re-fitted to this one, on their own hues, with the comment
-// italic in both appearances rather than in one.
-func TestAdaptedSnippetGolden(t *testing.T) {
+// TestWornSnippetGolden records or diffs the same fenced snippet with the
+// default base on it: the palette's own ground under the block, its own inks
+// in the runs it colours, its own body colour in the runs it leaves plain, and
+// the edge that keeps a ground this near the page a block. Beside the two
+// images above — a stock style's inks on the theme's own fill — it is what
+// wearing a base buys: a plate, rather than a set of hues borrowed from one.
+func TestWornSnippetGolden(t *testing.T) {
 	code := "// greet returns a greeting\n" + goSnippet
 	for _, tc := range []struct {
 		name   string
 		colors tokens.ColorTokens
 	}{
-		{"go-snippet-adapted-light", tokens.DefaultLight},
-		{"go-snippet-adapted-dark", tokens.DefaultDark},
+		{"go-snippet-worn-light", tokens.DefaultLight},
+		{"go-snippet-worn-dark", tokens.DefaultDark},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			shaper := tokens.DefaultTypography.DeterministicShaper()
 			blocks := markdown.Parse([]byte("```go\n" + code + "\n```\n"))
 			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
-			style.Highlight = highlight.Adapt(highlight.DefaultBase, tc.colors)
+			highlight.Wear(&style, highlight.DefaultBase, tc.colors)
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, image.Pt(560, 140), func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
@@ -197,6 +197,53 @@ func TestAdaptedSnippetGolden(t *testing.T) {
 					return d.Layout(gtx, shaper, style)
 				})
 			})
+		})
+	}
+}
+
+// TestInlineChipsStayOnTheQuietFill is the other half of a worn fence: the
+// document around it does not change. A chip is a word of code inside a
+// sentence, and giving it a foreign ground would spot a page of prose with
+// grounds that belong to a palette rather than to this theme — so the chip
+// keeps the theme's fill and the body's own ink while the block down the page
+// shows the base whole. Measured on a document holding both, by counting the
+// pixels of each fill.
+func TestInlineChipsStayOnTheQuietFill(t *testing.T) {
+	const source = "A sentence with an `inline chip` in it.\n\n" +
+		"```go\n" + goSnippet + "\n```\n"
+	size := image.Pt(560, 160)
+	for _, tc := range []struct {
+		name   string
+		colors tokens.ColorTokens
+	}{
+		{"light", tokens.DefaultLight},
+		{"dark", tokens.DefaultDark},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			shaper := tokens.DefaultTypography.DeterministicShaper()
+			blocks := markdown.Parse([]byte(source))
+			plain := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := plain
+			highlight.Wear(&style, highlight.DefaultBase, tc.colors)
+			if style.CodeChip != plain.CodeChip {
+				t.Errorf("the chip's fill moved to %v; the theme fills it with %v", style.CodeChip, plain.CodeChip)
+			}
+			if style.CodeBackground == plain.CodeChip {
+				t.Fatal("the fence's ground is the chip's fill, so counting the two apart proves nothing")
+			}
+			d := markdown.NewDocument(blocks)
+			img := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
+				paint.FillShape(gtx.Ops, tc.colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+				return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return d.Layout(gtx, shaper, style)
+				})
+			})
+			if n := countPixels(img, plain.CodeChip); n == 0 {
+				t.Errorf("nothing on the page is filled with the chip's %v", plain.CodeChip)
+			}
+			if n := countPixels(img, style.CodeBackground); n == 0 {
+				t.Errorf("nothing on the page is filled with the base's ground %v", style.CodeBackground)
+			}
 		})
 	}
 }

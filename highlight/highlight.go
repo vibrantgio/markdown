@@ -16,24 +16,22 @@
 // runs the style genuinely colours (keywords, strings, comments) carry a
 // colour of their own.
 //
-// There are two constructors, and they differ in whether the style is worn or
-// derived. [New] wears a stock style verbatim: pass the name that matches the
-// theme, github against a light one and github-dark against a dark one. [Adapt]
-// derives a new style from a named base and fits it to the theme's own
-// colours — the base's hues and chromas held, and its lightnesses re-fitted
-// against the actual code surface so that the order its author ranked them in
-// is drawn at a volume this theme reads: the quietest ink on a contrast floor,
-// the loudest on an anchor well above it. Stock
-// styles stay curated artifacts either way: adaptation builds beside the
-// registry and never mutates it.
+// There are two constructors, and they differ in how much of the style
+// arrives. [New] returns the highlighter alone, colouring runs with a stock
+// style's inks on whatever fill the caller's own Style puts under a fence:
+// pass the name that matches the theme, github against a light one and
+// github-dark against a dark one. [Wear] dresses the whole block instead —
+// the base's own background under it, its own inks in the runs it colours, its
+// own body colour in the runs it leaves plain, and an edge where a ground that
+// close to the page needs one to still read as a block. Neither alters an ink
+// or a registry entry: a style is a curated artifact and is shown as one.
 //
-// Adapt takes any name chroma's registry holds. The default, [DefaultBase], is
+// Wear takes any name chroma's registry holds. The default, [DefaultBase], is
 // catppuccin-latte, whose registered counterpart catppuccin-mocha is the dark
-// member the same name reaches: a pair whose accents sit in one
-// perceptual-lightness band with the hues carrying the semantics, which is the
-// shape a lightness re-fit leaves intact.
+// member the same name reaches: one family drawn twice, for paper and for
+// slate, so a change of appearance changes the whole plate.
 //
-// [AdaptPair] takes two names, one per appearance, for a caller whose person
+// [WearPair] takes two names, one per appearance, for a caller whose person
 // has chosen a base for each. A base is fitted to a ground, so the two
 // appearances of one theme are two choices rather than one choice and a
 // counterpart rule — and most names have no counterpart to reach anyway.
@@ -55,9 +53,9 @@
 // arithmetic made public: a base as plain colours, for a caller extracting a
 // brand seed from a scheme somebody already curated, or painting its swatches.
 //
-// Build a new Highlighter when the theme changes. Both constructors resolve
-// their style once and the returned func closes over it, so neither can follow
-// a theme observable.
+// Dress the Style again when the theme changes. Both constructors resolve
+// their style once and the highlighter closes over it, so neither can follow a
+// theme observable.
 //
 // An unrecognised style name panics in both. Chroma's own fallback is a
 // dark-background style whose runs come out near-white — on the light token
@@ -88,8 +86,8 @@ import (
 // rendering the block plain. Assign the result to [markdown.Style].Highlight.
 //
 // A stock style's inks were fitted to the background its author drew them on.
-// Where that is not the background the theme puts under a fence, [Adapt] fits
-// them to the one that is.
+// Where that background is wanted under them too — which is where a palette's
+// relations actually hold — [Wear] puts it there.
 func New(styleName string) markdown.Highlighter {
 	style, ok := lookup(styleName)
 	if !ok {

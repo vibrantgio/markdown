@@ -8,7 +8,7 @@
 // turned out to be.
 //
 // Loaded styles are held HERE and not put into chroma's registry. The registry
-// is a curated set that this package promises not to touch (see adapt.go), and
+// is a curated set that this package promises not to touch (see fence.go), and
 // a file appearing in it would make the promise conditional on what happens to
 // be in somebody's folder. The lookups below read this map first and the
 // registry after, so a loaded style is reachable everywhere a name is, and
@@ -216,8 +216,8 @@ func BaseOrDefault(name string) string {
 
 // BasePair is a base per appearance: the palette code is coloured from under a
 // light one, and the palette it is coloured from under a dark one. It is what
-// a person has chosen when they have chosen twice, and what [AdaptPair]
-// derives through.
+// a person has chosen when they have chosen twice, and what [WearPair]
+// draws through.
 type BasePair struct {
 	Light string
 	Dark  string
