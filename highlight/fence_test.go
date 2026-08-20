@@ -227,6 +227,50 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 	}
 }
 
+// TestTheEdgeFollowsThePaper: what the edge answers is whether the block can
+// be told from the ground the document is read on, so the answer moves when
+// that ground moves. One theme and one base, on two papers — the theme's own
+// page, and a dark panel a holder has inset the document into. On the page the
+// base's near-white ground is within a step and takes a line; on the dark
+// panel the same ground stands off plainly and takes none.
+func TestTheEdgeFollowsThePaper(t *testing.T) {
+	c := tokens.DefaultLight
+	onPage := worn(t, DefaultBase, c)
+	if onPage.CodeBorder.A == 0 {
+		t.Fatalf("%s takes no edge on this theme's own page, so there is nothing here to move", DefaultBase)
+	}
+
+	inset := markdown.FromTokens(c, tokens.DefaultTypography)
+	inset.Paper = tokens.DefaultDark.Background
+	Wear(&inset, DefaultBase, c)
+	if inset.CodeBorder.A != 0 {
+		t.Errorf("a fence on %v, %.3f:1 off the ground its document is read on, is edged in %v anyway",
+			inset.CodeBackground, color.ContrastRatio(inset.CodeBackground, inset.Paper), inset.CodeBorder)
+	}
+}
+
+// TestAStyleNamingNoPaperTakesTheThemesPage: the paper is a record and a Style
+// built by hand carries none, so the measure falls back to the theme's own
+// background — which is what the constructor would have written there. A
+// caller who never heard of the field sees exactly the fence they saw before
+// there was one.
+func TestAStyleNamingNoPaperTakesTheThemesPage(t *testing.T) {
+	for _, sc := range schemes() {
+		t.Run(sc.name, func(t *testing.T) {
+			stated := worn(t, DefaultBase, sc.tok)
+
+			silent := markdown.FromTokens(sc.tok, tokens.DefaultTypography)
+			silent.Paper = stdcolor.NRGBA{}
+			Wear(&silent, DefaultBase, sc.tok)
+
+			if silent.CodeBorder != stated.CodeBorder {
+				t.Errorf("a Style naming no paper takes the edge %v where one on the theme's page takes %v",
+					silent.CodeBorder, stated.CodeBorder)
+			}
+		})
+	}
+}
+
 // TestThreeFlavoursShowThreeGrounds is the case that says what a verbatim
 // fence is worth. Three dark flavours of one family differ from each other
 // mostly by the ground they are drawn on: re-fitted onto one surface they came
@@ -423,7 +467,7 @@ func TestWearLeavesTheRegistryAlone(t *testing.T) {
 }
 
 // TestWearTouchesOnlyTheCodeFields: the fence is content and the rest of the
-// document is chrome, so a base reaches four fields and no others. The chip an
+// document is paper, so a base reaches four fields and no others. The chip an
 // inline code span sits on is the one this is most about — a page of prose
 // spotted with somebody else's grounds is the thing not being built.
 func TestWearTouchesOnlyTheCodeFields(t *testing.T) {

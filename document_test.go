@@ -786,13 +786,25 @@ func TestCodeReadsAtItsPagesWeight(t *testing.T) {
 	}
 }
 
-// TestFromTokensDefaults pins the FromTokens contract: heading levels take
-// the typography's document heading scale, code shapes in the theme Code
-// role's typeface and size on the Neutral 200 fill, the quote bar is Primary
-// with Neutral 700 text, and rules are separators using Divider.
+// TestFromTokensDefaults pins the FromTokens contract: the paper is the
+// theme's page, heading levels take the typography's document heading scale,
+// code shapes in the theme Code role's typeface and size on the Neutral 200
+// fill, the quote bar is Primary with Neutral 700 text, and rules are
+// separators using Divider.
 func TestFromTokensDefaults(t *testing.T) {
 	c, typo := tokens.DefaultLight, tokens.DefaultTypography
 	st := markdown.FromTokens(c, typo)
+
+	// The ground a document is read on is a role of the document's, and its
+	// value is the theme's page — the same colour the furniture round it
+	// fills a window with, held in the document's own name so that the two
+	// can part later without either being renamed for it.
+	if st.Paper != c.Background {
+		t.Errorf("Paper = %v, want the theme's background %v", st.Paper, c.Background)
+	}
+	if dark := markdown.FromTokens(tokens.DefaultDark, typo); dark.Paper != tokens.DefaultDark.Background {
+		t.Errorf("dark Paper = %v, want that theme's background %v", dark.Paper, tokens.DefaultDark.Background)
+	}
 
 	var wantSizes [6]unit.Sp
 	for i := range wantSizes {

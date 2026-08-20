@@ -59,11 +59,64 @@ type WidgetImageProvider interface {
 
 // Style holds the themed rendering defaults for a document. Derive the
 // token-themed default with [FromTokens], then set Text.OnLinkClick.
+//
+// # Paper
+//
+// The surface a Style describes has a name: paper. It is the quiet ground
+// running text is read on, and it is not chrome — chrome being the furniture
+// a screen is assembled from, the rails and bars and cards and controls that
+// answer to the theme directly. Paper answers to the theme too, but through
+// roles of its own, and the four that make it paper are:
+//
+//   - [Style.Paper], the ground the document is read on;
+//   - [Style.Text]'s colours, the prose inks — the body, its links, its focus
+//     ring;
+//   - [Style.HeadingSizes] with [Style.HeadingLineHeights], the heading
+//     ladder a document is broken up by;
+//   - [Style.CodeChip], the fill under a word of code quoted into a sentence.
+//
+// The rest of the fields dress the blocks standing on that paper — a fence, a
+// quote, a rule, a table, a task box — and they are paper's as well: every
+// colour this package draws comes from a field of this struct and from
+// nowhere else. The layout code reads the theme for spacing and for radii and
+// for no colour at all, so a document looks like what its Style says and
+// nothing reaches around it.
+//
+// The roles are paper's own even where the values are chrome's today.
+// [FromTokens] takes the ground from the theme's page, the prose ink from its
+// body text pin, the chip from the neutral step a fence is filled with — the
+// same numbers a card or a toolbar would reach for, held here in paper's own
+// name. Naming them separately costs nothing now and is what lets the reading
+// surface move later without the furniture moving with it, or the other way
+// about. Deriving a paper role from a theme token is not chrome leaking onto
+// the page; drawing a document with a token instead of with a role would be,
+// and nothing here does.
 type Style struct {
+	// Paper is the ground the document is read on: what lies behind the
+	// prose, under every block, out to the edges of whatever holds it.
+	//
+	// Nothing in this package paints it. A document is laid out into a space
+	// somebody else owns, and that owner fills the ground — so this is a
+	// record rather than a draw, the Style's statement of what the document
+	// is lying on. It is what the library measures against when something on
+	// the page has to be told apart from the page: a fence wearing a syntax
+	// palette takes its edge from exactly that question (see
+	// markdown/highlight), and "too near the page to be seen against it" is
+	// unanswerable without knowing which page.
+	//
+	// [FromTokens] sets it to the theme's own background, which is where a
+	// document nearly always lies. A holder that mounts one somewhere else
+	// says so here, and the measurements follow the ground the reader is
+	// actually looking at. The zero value states nothing, and what needs an
+	// answer falls back to the theme's background.
+	Paper color.NRGBA
 	// Text is the paragraph default: body colour and size, link and focus
-	// colours, and the link callback (richtext.Style.OnLinkClick).
+	// colours, and the link callback (richtext.Style.OnLinkClick). Its
+	// colours are paper's prose inks.
 	Text richtext.Style
-	// HeadingSizes maps heading levels 1..6 (index 0..5) onto text sizes.
+	// HeadingSizes maps heading levels 1..6 (index 0..5) onto text sizes: the
+	// ladder paper ranks its sections by, which is a reading ladder and not
+	// the roles that size the one big line at the top of a screen.
 	HeadingSizes [6]unit.Sp
 	// HeadingLineHeights maps the same levels onto the line box each heading's
 	// lines occupy, the way [richtext.Style].LineHeight means it. A zero entry
@@ -257,7 +310,8 @@ type Style struct {
 }
 
 // FromTokens derives the default document style from colour tokens and a
-// typography: headings take the six stops of the typography's document
+// typography: the paper is the theme's own background, headings take the six
+// stops of the typography's document
 // heading scale, body text follows richtext.FromTokens on the BodyLarge
 // role, code sits on the Neutral 200 surface — one step off the page in either
 // scheme — with the low-contrast Neutral 700 text step, inline code on the same
@@ -266,6 +320,13 @@ type Style struct {
 // grid lines are separators and use Divider, and the table header row sits on
 // the Neutral 300 tinted fill. Highlight and Images stay nil — both are opt-in.
 // Pass tokens.DefaultTypography for the default look.
+//
+// Every one of those is a role of paper's, derived from the theme rather than
+// borrowed from it — see the [Style] doc comment for the distinction and what
+// keeping it is worth. The ground is the theme's background because that is
+// where a document lies, and a holder that mounts one somewhere else says so
+// by setting Paper afterwards: this constructor answers for the theme and not
+// for the composition.
 //
 // The code surface is one step and not three. A fence covers a good deal of
 // the column, and area amplifies a fill: the tinted-fill step that reads as a
@@ -317,6 +378,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	gap := blockRhythm - lineLeading
 	above, below := headingSpacing(gap, sizes)
 	return Style{
+		Paper:                 c.Background, // the ground a document lies on
 		Text:                  richtext.FromTokens(c, typo.BodyLarge),
 		HeadingSizes:          sizes,
 		HeadingLineHeights:    boxes,

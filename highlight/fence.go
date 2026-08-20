@@ -12,11 +12,11 @@
 // statement of what a re-fit is discarding.
 //
 // So the block shows the base whole: the author's own background under the
-// author's own inks, neither of them touched. A document's chrome — its page,
-// its prose, the chip an inline span sits on — stays the theme's; the fence is
+// author's own inks, neither of them touched. The paper around it — the page,
+// the prose, the chip an inline span sits on — stays the theme's; the fence is
 // content, and content is shown as it was made. What the theme still decides
 // is which member of the pair is on screen, and that a block on a page is
-// bounded: a ground too near the page to be seen against it takes an edge.
+// bounded: a ground too near the paper to be seen against it takes an edge.
 //
 // Contrast here is surfaced, not enforced. A base whose author drew a quiet
 // palette is drawn quiet; the sweep in the tests records what every base
@@ -73,7 +73,9 @@ const (
 // It is st's four code fields that are written: Highlight, CodeColor,
 // CodeBackground and CodeBorder. Everything a Style says about anything else
 // is left exactly as the caller had it, so the ordinary shape of this is
-// [markdown.FromTokens] followed by one call.
+// [markdown.FromTokens] followed by one call. One more field is read and not
+// written — st.Paper, the ground the document is read on, which is what the
+// block's edge is decided against.
 //
 // A name missing from chroma's style registry panics, as in [New].
 //
@@ -126,7 +128,24 @@ func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 		fallback = surface
 	}
 	st.CodeBackground = fenceGround(member, fallback)
-	st.CodeBorder = fenceEdge(st.CodeBackground, surface, c)
+	st.CodeBorder = fenceEdge(st.CodeBackground, surface, paper(st, c), c)
+}
+
+// paper is the ground the document being dressed is read on: the Style's own,
+// or the theme's background for a Style that names none — which is what
+// [markdown.FromTokens] puts there anyway, so the two answers differ only for
+// a Style built by hand or mounted deliberately somewhere else.
+//
+// It is asked rather than assumed because the page a fence has to be seen
+// against is the page the fence is actually on. A document laid into a card
+// or a bubble is read on that fill, and an edge measured off the window's
+// background instead would be answering about a surface the reader is not
+// looking at.
+func paper(st *markdown.Style, c tokens.ColorTokens) stdcolor.NRGBA {
+	if st.Paper.A == 0 {
+		return c.Background
+	}
+	return st.Paper
 }
 
 // fenceGround is the fence's fill under one member: the background its author
@@ -139,30 +158,34 @@ func fenceGround(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRGBA {
 	return fallback
 }
 
-// fenceEdge is the hairline a fence needs to read as a block on this page,
+// fenceEdge is the hairline a fence needs to read as a block on this paper,
 // and the zero colour for a fence that reads as one without it.
 //
 // The measure is the theme's own. A fence drawn in nothing but these tokens
-// separates from the page by exactly one ramp step, and that step is this
+// separates from the paper by exactly one ramp step, and that step is this
 // design system's answer to "how far off the page is a panel": ground and
-// page measure 1.13:1 apart in the light scheme and 1.12:1 in the dark one. A
-// base's ground that reaches at least as far stands off the page the way a
+// paper measure 1.13:1 apart in the light scheme and 1.12:1 in the dark one. A
+// base's ground that reaches at least as far stands off the paper the way a
 // panel here is supposed to, and takes no line. One that does not is edged,
 // and both halves of the default pair are — a palette fitted to paper is
 // within 1.05:1 of this page, and one fitted to slate within 1.09:1 of it,
 // which is a block whose ground alone would leave the reader guessing where
 // the code begins.
 //
+// Both ratios are measured against the paper the document is actually read
+// on, which is the Style's to say and not the window's; see [paper].
+//
 // The line is the theme's divider, the colour this system draws a separator
 // in: 1.37:1 off the light page and 1.31:1 off the dark one, which is what a
-// hairline here has always been weighted at. Its weight is chrome's business
-// and the ground's is the author's, and the two do not have to agree — a rim
-// only fires where ground and page are within a step of each other anyway, so
-// a divider that reads against the page reads against the ground as well
-// (1.31:1 and 1.21:1 for the two default members).
-func fenceEdge(fence, surface stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
-	step := color.ContrastRatio(surface, c.Background)
-	if color.ContrastRatio(fence, c.Background) >= step {
+// hairline here has always been weighted at. The weight is a loan from the
+// furniture — a separator is a separator — while the ground is the author's,
+// and the two do not have to agree: a rim only fires where ground and paper
+// are within a step of each other anyway, so a divider that reads against the
+// paper reads against the ground as well (1.31:1 and 1.21:1 for the two
+// default members).
+func fenceEdge(fence, surface, page stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
+	step := color.ContrastRatio(surface, page)
+	if color.ContrastRatio(fence, page) >= step {
 		return stdcolor.NRGBA{}
 	}
 	return c.Divider

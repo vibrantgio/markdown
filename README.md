@@ -218,6 +218,50 @@ doc := markdown.NewDocument(markdown.Parse(source))
 doc.Layout(gtx, shaper, docsStyle(colors, typography))
 ```
 
+## The document is paper
+
+The surface a `Style` describes has a name: paper — the quiet ground running
+text is read on. It is not chrome, chrome being the furniture a screen is
+assembled from, the rails and bars and cards and controls that answer to the
+theme directly. Paper answers to the theme too, but through roles of its own:
+
+| paper role | field |
+| --- | --- |
+| the ground the document is read on | `Style.Paper` |
+| the prose inks — body, link, focus ring | `Style.Text`'s colours |
+| the heading ladder | `Style.HeadingSizes`, `Style.HeadingLineHeights` |
+| the fill under a word of code quoted into a sentence | `Style.CodeChip` |
+
+The remaining fields dress the blocks standing on that paper — a fence, a
+quote, a rule, a table, a task box — and they are paper's as well. Every colour
+this library draws comes from a field of `Style` and from nowhere else: the
+layout code reads the theme for spacing and for radii and for no colour at all,
+so a document looks like what its `Style` says and nothing reaches around it.
+
+The roles are paper's own even where the values are chrome's today.
+`FromTokens` takes the ground from the theme's background, the prose ink from
+its body-text pin, the chip from the same neutral step a fence is filled with —
+the numbers a card or a toolbar would reach for, held here in paper's name.
+Naming them apart costs nothing now and is what lets the reading surface move
+later without the furniture moving with it.
+
+`Style.Paper` is a record rather than a draw. Nothing here fills the page: a
+document is laid into a space its holder owns and the holder paints the ground.
+But the library measures against it — a fence wearing a syntax base takes its
+edge from whether that base's ground can be told from the paper, and "too near
+to be seen against it" is unanswerable without knowing which surface. A
+document mounted on something other than the theme's background says so:
+
+```go
+st := markdown.FromTokens(c, typo)
+st.Paper = panelFill // inset into a panel rather than laid on the page
+highlight.Wear(&st, highlight.DefaultBase, c)
+```
+
+A `Style` built by hand names no paper, and the measure falls back to the
+theme's background — which is what the constructor would have written there,
+so nothing about a fence changes for a caller who never sets the field.
+
 ## The monospace font comes from the theme
 
 `FromTokens` resolves `Style.Mono` and `Style.CodeSize` from the Code role of
