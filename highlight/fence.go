@@ -139,8 +139,8 @@ func fenceGround(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRGBA {
 	return fallback
 }
 
-// fenceEdge is the hairline a fence needs to read as a block on this page, and the
-// zero colour for a fence that reads as one without it.
+// fenceEdge is the hairline a fence needs to read as a block on this page,
+// and the zero colour for a fence that reads as one without it.
 //
 // The measure is the theme's own. A fence drawn in nothing but these tokens
 // separates from the page by exactly one ramp step, and that step is this

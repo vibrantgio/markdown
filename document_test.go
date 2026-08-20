@@ -373,6 +373,67 @@ func TestCodeOffsetBounds(t *testing.T) {
 	}
 }
 
+// TestCodeBorderEdgesTheFenceWithoutMovingIt: a fence whose ground is too
+// near the page to be seen against it takes a hairline, and taking one costs
+// the document nothing. The block occupies the same box either way — the rim
+// is drawn inside it, not around it — so a border can be switched on without
+// anything below the block moving; the ground still fills the middle, and the
+// line is on screen where it was not before.
+//
+// The probe is one fence rendered twice, differing in CodeBorder alone, on a
+// ground deliberately set to the page's own colour: with no line that block is
+// invisible, which is the case the field exists for.
+func TestCodeBorderEdgesTheFenceWithoutMovingIt(t *testing.T) {
+	shaper := defaultShaper(t)
+	c := tokens.DefaultLight
+	size := image.Pt(420, 120)
+	blocks := markdown.Parse([]byte("```\nfits\n```\n"))
+
+	style := markdown.FromTokens(c, tokens.DefaultTypography)
+	style.CodeBackground = c.Background
+	edged := style
+	edged.CodeBorder = c.Divider
+
+	measure := func(st markdown.Style) int {
+		var ops op.Ops
+		gtx := layout.Context{
+			Metric:      unit.Metric{PxPerDp: 1, PxPerSp: 1},
+			Constraints: layout.Constraints{Max: size},
+			Ops:         &ops,
+		}
+		return markdown.NewDocument(blocks).Layout(gtx, shaper, st).Size.Y
+	}
+	if a, b := measure(style), measure(edged); a != b {
+		t.Errorf("the edged fence is %d px tall and the unedged one %d; an edge is drawn inside the block", b, a)
+	}
+
+	plain := golden.Capture(t, size, themed(markdown.NewDocument(blocks), shaper, style, c))
+	rimmed := golden.Capture(t, size, themed(markdown.NewDocument(blocks), shaper, edged, c))
+	if n := golden.PixelDiff(plain, rimmed); n == 0 {
+		t.Fatal("the edged fence is pixel-identical to the unedged one; no line was drawn")
+	}
+	count := func(img *image.RGBA, want color.NRGBA) int {
+		n := 0
+		for i := 0; i+3 < len(img.Pix); i += 4 {
+			if img.Pix[i] == want.R && img.Pix[i+1] == want.G && img.Pix[i+2] == want.B && img.Pix[i+3] == want.A {
+				n++
+			}
+		}
+		return n
+	}
+	// The document is inset by the themed helper, so the block is this wide;
+	// a rim runs at least twice that far around it. Counting the difference
+	// rather than the total ignores the odd anti-aliased glyph pixel that
+	// happens to land on the same value.
+	width := size.X - 16
+	if got := count(rimmed, c.Divider) - count(plain, c.Divider); got < width {
+		t.Errorf("%d pixels came out in the border colour; a rim around a block %d px wide is more than that", got, width)
+	}
+	if n := count(rimmed, style.CodeBackground); n == 0 {
+		t.Error("the ground no longer fills the block")
+	}
+}
+
 // TestShortCodeBlockDrawsNoScroller asserts the untouched half of the
 // contract in pixels: a fence that fits draws nothing the scroll treatment
 // brought. The probe is the same fence rendered with the bar style cleared —

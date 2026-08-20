@@ -104,8 +104,8 @@ highlight.Wear(&st, highlight.DefaultBase, c)
 ```
 
 A syntax base is a ground, a body ink and a couple of dozen accents chosen
-together, and which of them reads loudest — and by how much — only holds
-where the whole set is. So the fenced block shows the artifact: the author's
+together, and which of them reads loudest — and by how much — is a set of
+relations that only holds where the whole set is. So the fenced block shows the artifact: the author's
 own background under it, their own inks in the runs they coloured, their own
 body colour in the runs they left plain, and no ink altered by anything here.
 Nothing else on the page moves. The prose, and the chip an inline code span
