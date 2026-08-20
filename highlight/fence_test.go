@@ -340,30 +340,38 @@ func TestAPairWearsTheAppearancesOwnMember(t *testing.T) {
 // imposed from the other member would show here and nowhere else.
 func TestAWornMemberKeepsItsOwnEmphasis(t *testing.T) {
 	p := BasePair{Light: "solarized-light", Dark: "github-dark"}
-	m := member(t, p.Dark, true)
 	st := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypography)
 	WearPair(&st, p, tokens.DefaultDark)
 
-	lexed := 0
-	for _, sp := range st.Highlight("go", specimen) {
-		if sp.Bold || sp.Italic {
-			lexed++
+	got := st.Highlight("go", specimen)
+	mine := worn(t, p.Dark, tokens.DefaultDark).Highlight("go", specimen)
+	theirs := worn(t, p.Light, tokens.DefaultLight).Highlight("go", specimen)
+	if len(got) != len(mine) || len(got) != len(theirs) {
+		t.Fatalf("the specimen split into %d, %d and %d runs; the three have to line up to be compared",
+			len(got), len(mine), len(theirs))
+	}
+
+	leaning, apart := 0, 0
+	for i := range got {
+		if got[i].Bold != mine[i].Bold || got[i].Italic != mine[i].Italic {
+			t.Errorf("run %d reads bold=%t italic=%t; %s itself sets bold=%t italic=%t",
+				i, got[i].Bold, got[i].Italic, p.Dark, mine[i].Bold, mine[i].Italic)
+		}
+		if got[i].Bold || got[i].Italic {
+			leaning++
+		}
+		if got[i].Bold != theirs[i].Bold || got[i].Italic != theirs[i].Italic {
+			apart++
 		}
 	}
-	if lexed == 0 {
+	if leaning == 0 {
 		t.Fatalf("%s emphasises nothing in the specimen — this fixture cannot show whose emphasis was used", p.Dark)
 	}
-	// And it is the member's own table that says so, entry for entry.
-	types := slices.Clone(m.Types())
-	slices.Sort(types)
-	for _, tt := range types {
-		e := m.Get(tt)
-		if e.Bold == chroma.Yes || e.Italic == chroma.Yes {
-			t.Logf("%s leans or thickens %d token types; %d runs of the specimen carry it", p.Dark, len(types), lexed)
-			return
-		}
+	if apart == 0 {
+		t.Fatalf("%s and %s emphasise the specimen identically — this fixture cannot tell the two apart", p.Dark, p.Light)
 	}
-	t.Fatalf("%s emphasises no token type at all", p.Dark)
+	t.Logf("%d runs of the specimen lean or thicken; %d runs carry an emphasis %s would have set differently",
+		leaning, apart, p.Light)
 }
 
 // TestAPairWithANameThisBuildLacks: a pair whose light member has left the
