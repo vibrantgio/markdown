@@ -214,12 +214,13 @@ func TestTheAuthorsOrderSurvivesTheFit(t *testing.T) {
 							name, r.tt, r.before, r.target)
 					}
 					if last != nil && r.native > last.native+0.01 {
-						if slack := last.after - r.after; slack > worstSlack {
+						slack := last.after - r.after
+						if slack > worstSlack {
 							worstSlack = slack
-							if slack > orderSlack && BaseSuits(name, dark) {
-								t.Errorf("%s: %s ranks %.2f:1 under %s in its own palette and comes out %.2f:1 over it",
-									name, r.tt, r.native, last.tt, slack)
-							}
+						}
+						if slack > orderSlack && BaseSuits(name, dark) {
+							t.Errorf("%s: %s ranks %.2f:1 under %s in its own palette and comes out %.2f of a ratio point over it",
+								name, r.tt, r.native, last.tt, slack)
 						}
 					}
 					last = &rank[i]
