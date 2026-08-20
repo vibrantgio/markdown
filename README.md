@@ -70,7 +70,7 @@ The [organization page](https://github.com/vibrantgio) has the full stack.
 
 ## Usage
 
-From `sitedocs`, the workbench documentation browser:
+A documentation browser, wiring one highlighter per appearance:
 
 ```go
 // Built once and shared by every page. FromTokens leaves Highlight nil, so
