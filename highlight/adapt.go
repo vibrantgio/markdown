@@ -113,10 +113,12 @@ const atTarget = 0.1
 //
 // The pair is picked for what survives the derivation. Its accents already sit
 // in one perceptual-lightness band, so hue is what tells its token types apart
-// rather than lightness; re-fitting lightness against a surface therefore
-// costs it nothing it was using to carry meaning, where a palette that
-// distinguished a keyword from a string by how dark it is would come out of
-// the same fit with the two harder to tell apart. Its two members also already
+// rather than lightness, and hue is the one thing a change of ground cannot
+// touch: re-fitting against a surface costs this pair nothing at all, where a
+// palette that tells a keyword from a string by how dark it is has that
+// difference re-drawn — preserved in order and in proportion, but at the
+// volume this theme reads at rather than at the one its author set.
+// Its two members also already
 // agree entry for entry on bold and italic, so the one policy across the pair
 // changes nothing about it — comments are italic in both appearances rather
 // than in one.
@@ -175,8 +177,9 @@ func AdaptWith(base string, c tokens.ColorTokens, opt Options) markdown.Highligh
 // AdaptPair is [Adapt] for a caller holding a base per appearance: c's own
 // code surface says which appearance is being drawn, and the pair's member for
 // that appearance is what the code is coloured from. Everything else is
-// [Adapt] — each entry keeps its hue, gives up its lightness, and comes back
-// legible on the surface these tokens put under a fence.
+// [Adapt] — each entry keeps its hue, takes the lightness its place in the
+// base's own ordering asks for, and comes back legible on the surface these
+// tokens put under a fence.
 //
 // A pair is what a person chooses when they choose twice, and the two members
 // owe each other nothing: a set of inks balanced against a near-white page is
