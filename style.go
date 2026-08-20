@@ -10,6 +10,7 @@ import (
 
 	"github.com/vibrantgio/components/richtext"
 	"github.com/vibrantgio/components/scrollbar"
+	themecolor "github.com/vibrantgio/theme/color"
 	"github.com/vibrantgio/theme/tokens"
 )
 
@@ -297,7 +298,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		HeadingSpaceBelow:     below,
 		Mono:                  font.Typeface(typo.Code.Typeface),
 		CodeSize:              unit.Sp(typo.Code.Size),
-		CodeColor:             c.Ramps.Neutral.Step(700), // low-contrast text
+		CodeColor:             codeInk(c),                // see codeInk
 		CodeBackground:        c.Ramps.Neutral.Step(200), // the step off the page
 		CodeChip:              c.Ramps.Neutral.Step(200), // one code surface, not two
 		CodeScrollbar:         codeScrollbar(c),
@@ -314,6 +315,42 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	}
 }
 
+// codeInk is what plain code is set in: the runs a highlighter leaves
+// colourless, and the whole of a block nothing highlights.
+//
+// It is the one colour in this constructor the two appearances take a different
+// ramp step for, and the reason is measured. A ramp's steps are paired scales —
+// the same step does the same job in both appearances — but contrast is not
+// linear in them, and at the text end of the ramp the pairing stops holding.
+// The dark ramp's low-contrast text step inks code at 9.91:1 on the fence's
+// fill, 80% of the way from that fill to the weight the same document's prose
+// is set at; the light ramp's same step inks it at 5.46:1 and 58%. Code set
+// against paper was therefore a third quieter, relative to its own page, than
+// the identical document's code set against slate — which is what a screenful
+// of light-scheme code reads as: washed.
+//
+// One step further along the light ramp lands at 8.20:1 and 70%, which is as
+// near the dark scheme's relationship as the ramp goes: the step after it is
+// the prose colour itself, and code is not prose. So the light appearance takes
+// the step below the body text and the dark one keeps the low-contrast text
+// step, and the two schemes set code at 70% and 80% of their own prose weight
+// where they set it at 58% and 80%.
+func codeInk(c tokens.ColorTokens) color.NRGBA {
+	if darkScheme(c) {
+		return c.Ramps.Neutral.Step(700) // low-contrast text
+	}
+	return c.Ramps.Neutral.Step(800) // the step below body text
+}
+
+// darkScheme reports which appearance these tokens describe. A ColorTokens
+// value carries no flag saying which of the two it is, so the page itself is
+// the fact — read on the perceptual lightness axis rather than a luma sum,
+// because mid-grey is perceptually mid and a luma threshold calls it dark.
+func darkScheme(c tokens.ColorTokens) bool {
+	l, _, _ := themecolor.OKLChFromNRGBA(c.Background)
+	return l < 0.5
+}
+
 // codeScrollbar is the design system's bar weighted for the ground a fence
 // puts it on. Everything else about it — the width, the radius, the minimum
 // thumb, the fade a second after the content stops — is the shared style's.
@@ -326,9 +363,14 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 // translucency all but disappears — about 1.5:1 in the light scheme, which
 // leaves the one affordance that can be dragged effectively invisible.
 //
-// So the thumb is opaque, and it is the step the code itself is inked in: the
-// bar is exactly as present as the fence it belongs to, and it darkens to the
-// ramp's far end while hovered or dragged. The translucency it gives up is the
+// So the thumb is opaque, and it is the ramp's low-contrast text step: as
+// present against the fence's fill as text on it would be, and it darkens to
+// the ramp's far end while hovered or dragged. That is a weight against a
+// ground and not a match to the code's own ink, which is why it stays on this
+// step in both appearances while the light appearance's code sits one step past
+// it (see codeInk) — the bar lies on the code surface, it is not a run of code,
+// and a fence's one draggable affordance does not get heavier because the
+// reading got heavier. The translucency it gives up is the
 // shared bar's identity because a column's bar lies over the column's own
 // text; a fence's lies over the fence's bottom padding, where nothing shows
 // through it either way.

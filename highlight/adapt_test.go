@@ -6,6 +6,7 @@
 package highlight
 
 import (
+	"cmp"
 	"fmt"
 	stdcolor "image/color"
 	"math"
@@ -16,6 +17,7 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/styles"
 
+	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/color"
 	"github.com/vibrantgio/theme/tokens"
 )
@@ -103,6 +105,271 @@ func TestAdaptedContrastSweep(t *testing.T) {
 			t.Logf("%d bases swept on %v; worst emitted entry %.2f:1 (%s), floor %.1f:1",
 				len(names), surface, worst, worstAt, contrastFloor)
 		})
+	}
+}
+
+// orderSlack is how far out of the author's order a pair of inks may come, in
+// ratio points. The walk stops at the first 1/256 step of lightness that
+// reaches an ink's target, so two inks a hundredth apart in their author's
+// palette can overshoot by different fractions of a step and swap. The measured
+// worst across every base in both appearances is 0.07; a fifth of a point is
+// well under what any reader could see and well over what the quantisation can
+// produce.
+const orderSlack = 0.2
+
+// minSpread is the least a palette with an order in it may span after the fit,
+// from its quietest emitted ink to its loudest. The band is 5.5 points wide, so
+// a base whose inks all needed lifting spans all of it; the gate sits lower
+// because the never-quieter rule can hold a base's quiet end up — the two
+// accessibility bases in the embedded set are drawn at a uniformly high
+// contrast their author chose, and they come out spanning about 3.5 rather than
+// being pulled down to the floor to make room.
+//
+// Before the normalisation the same measurement on the default light base was
+// 0.07: keyword, string, number and comment within a rounding error of each
+// other, all sitting on the floor.
+const minSpread = 3.4
+
+// nativeRanking is the base's own ordering: each emitted entry's contrast
+// against the ground its author fitted the palette to, which is what the fit
+// preserves. It is the measurement the tests below share.
+type nativeRanking struct {
+	tt             chroma.TokenType
+	native, target float64 // against the base's own ground; the band's answer
+	before, after  float64 // against this theme's surface, stock and derived
+	moved          bool
+}
+
+// ranking measures one base derived for one scheme, entry by entry, sorted by
+// where its author ranked it.
+func ranking(name, scheme string, c tokens.ColorTokens) []nativeRanking {
+	stockStyle := stock(name, scheme)
+	adapted := derive(name, c, Options{})
+	surface := codeSurface(c)
+	fit := bandFor(stockStyle, surface)
+	var out []nativeRanking
+	for _, tt := range emitted(adapted) {
+		b := stockStyle.Get(tt).Colour
+		if !b.IsSet() {
+			continue
+		}
+		was, now := fromChroma(b), fromChroma(adapted.Get(tt).Colour)
+		out = append(out, nativeRanking{
+			tt:     tt,
+			native: color.ContrastRatio(was, fit.ground),
+			target: fit.target(was),
+			before: color.ContrastRatio(was, surface),
+			after:  color.ContrastRatio(now, surface),
+			moved:  was != now,
+		})
+	}
+	slices.SortFunc(out, func(a, b nativeRanking) int {
+		if a.native != b.native {
+			return cmp.Compare(a.native, b.native)
+		}
+		return cmp.Compare(a.tt.String(), b.tt.String())
+	})
+	return out
+}
+
+// TestTheAuthorsOrderSurvivesTheFit is the gate the normalisation exists for.
+// Across every embedded base in both appearances: an ink the fit moved sits no
+// quieter than any ink its author ranked below it, an ink already at or past
+// its place comes back exactly as it was drawn, and no ink anywhere comes back
+// quieter than its author drew it.
+//
+// The order claim is made about the inks the fit moved, and that is the whole
+// of what an order can be claimed about. Where an ink is left alone it carries
+// its author's own colour, which is a stronger promise than any placement — and
+// on a base fitted to the opposite appearance those two promises can disagree:
+// a dark base's near-black comment measures loud on a light fill, so leaving it
+// as drawn puts it above keywords its author ranked above it. Recoloured, it
+// would be quieter than it was drawn, and that is the one thing the fit never
+// does. The chooser offers each base under the appearance it was fitted to for
+// this reason among others; the cross-appearance case is derivable and gated on
+// the floor, not on an order that cannot be honoured twice.
+func TestTheAuthorsOrderSurvivesTheFit(t *testing.T) {
+	for _, sc := range schemes() {
+		t.Run(sc.name, func(t *testing.T) {
+			dark := sc.name == "dark"
+			var moved, untouched, worstSlack float64
+			for _, name := range styles.Names() {
+				rank := ranking(name, sc.name, sc.tok)
+				var last *nativeRanking
+				for i := range rank {
+					r := rank[i]
+					if r.after < r.before-0.01 {
+						t.Errorf("%s/%s: the fit lowered contrast, %.2f:1 -> %.2f:1", name, r.tt, r.before, r.after)
+					}
+					if !r.moved {
+						untouched++
+						if r.before < r.target-atTarget && r.before >= contrastFloor {
+							t.Errorf("%s/%s: left at %.2f:1 with a target of %.2f:1", name, r.tt, r.before, r.target)
+						}
+						continue
+					}
+					moved++
+					if r.before >= r.target-atTarget && r.before >= contrastFloor {
+						t.Errorf("%s/%s: moved from %.2f:1 though its target is %.2f:1; ink at its place keeps its colour",
+							name, r.tt, r.before, r.target)
+					}
+					if last != nil && r.native > last.native+0.01 {
+						if slack := last.after - r.after; slack > worstSlack {
+							worstSlack = slack
+							if slack > orderSlack && BaseSuits(name, dark) {
+								t.Errorf("%s: %s ranks %.2f:1 under %s in its own palette and comes out %.2f:1 over it",
+									name, r.tt, r.native, last.tt, slack)
+							}
+						}
+					}
+					last = &rank[i]
+				}
+			}
+			t.Logf("%d entries fitted and %d left exactly as drawn (%.0f%% untouched); worst pair out of order by %.2f of a ratio point",
+				int(moved), int(untouched), 100*untouched/(moved+untouched), worstSlack)
+		})
+	}
+}
+
+// TestANonFlatPaletteComesOutWithAHierarchy: every base whose author drew an
+// order into it comes out of the fit with one — its loudest ink on the anchor
+// or past it, and quiet and loud separated by a spread a reader can see. The
+// bases measured are the ones offered under each appearance, because a base
+// fitted to the other one is held to the floor and to its author's own colours
+// and not to this (see TestTheAuthorsOrderSurvivesTheFit).
+func TestANonFlatPaletteComesOutWithAHierarchy(t *testing.T) {
+	for _, sc := range schemes() {
+		t.Run(sc.name, func(t *testing.T) {
+			dark := sc.name == "dark"
+			surface := codeSurface(sc.tok)
+			flattest, flattestAt, checked := math.Inf(1), "", 0
+			var flat []string
+			for _, name := range styles.Names() {
+				if !BaseSuits(name, dark) {
+					continue
+				}
+				mode := chroma.Light
+				if dark {
+					mode = chroma.Dark
+				}
+				member, _ := forMode(name, mode)
+				fit := bandFor(member, surface)
+				if !(fit.hi >= fit.lo*flatSpan) {
+					flat = append(flat, name)
+					continue
+				}
+				rank := ranking(name, sc.name, sc.tok)
+				if len(rank) == 0 {
+					continue
+				}
+				checked++
+				lo, hi := math.Inf(1), 0.0
+				for _, r := range rank {
+					lo, hi = math.Min(lo, r.after), math.Max(hi, r.after)
+				}
+				if hi < contrastAnchor-orderSlack {
+					t.Errorf("%s: its loudest ink comes out %.2f:1, under the %.1f:1 anchor", name, hi, contrastAnchor)
+				}
+				if hi-lo < minSpread {
+					t.Errorf("%s: quietest %.2f:1 and loudest %.2f:1 are %.2f apart, under the %.1f the palette needs to read as tiers",
+						name, lo, hi, hi-lo, minSpread)
+				}
+				if hi-lo < flattest {
+					flattest, flattestAt = hi-lo, name
+				}
+			}
+			t.Logf("%d bases with an order of their own; flattest genuine palette %s at %.2f between its quietest and loudest; flat by design: %v",
+				checked, flattestAt, flattest, flat)
+		})
+	}
+}
+
+// TestAFlatBaseStaysFlat: a palette drawn at one weight is not given tiers it
+// never had. One embedded base sets every token type at a single lightness and
+// tells them apart by hue alone — its inks measure within a hundredth of a
+// ratio point of each other on its own ground — and the fit reads that as no
+// order rather than as an order a hundredth of a point tall.
+func TestAFlatBaseStaysFlat(t *testing.T) {
+	surface := codeSurface(tokens.DefaultDark)
+	found := ""
+	for _, name := range styles.Names() {
+		s := styles.Registry[name]
+		fit := bandFor(s, surface)
+		if !math.IsInf(fit.lo, 1) && fit.hi < fit.lo*flatSpan && fit.hi > 0 {
+			found = name
+			for _, tt := range s.Types() {
+				e := s.Get(tt)
+				if !e.Colour.IsSet() {
+					continue
+				}
+				if got := fit.target(fromChroma(e.Colour)); got != contrastFloor {
+					t.Errorf("%s/%s: a flat base's ink targets %.2f:1; every one of them targets the floor", name, tt, got)
+				}
+			}
+			t.Logf("%s spans %.2f:1 to %.2f:1 on its own ground — no order to preserve, so every ink targets the floor and the loud ones stay where they were drawn",
+				name, fit.lo, fit.hi)
+		}
+	}
+	if found == "" {
+		t.Skip("no embedded base is flat by design; the rule has nothing to demonstrate on")
+	}
+}
+
+// TestPlainCodeSitsWhereTheBandExpectsIt: the theme's own plain code ink lands
+// inside the band, in the same place in both appearances. That is the join
+// between the two halves of this change — the band's anchor is judged against
+// the plain weight, and the plain weight against the band — and it is what
+// makes a keyword read as louder than the identifier beside it and a comment as
+// quieter, in a light document exactly as in a dark one.
+func TestPlainCodeSitsWhereTheBandExpectsIt(t *testing.T) {
+	var place [2]float64
+	for i, sc := range schemes() {
+		style := markdown.FromTokens(sc.tok, tokens.DefaultTypography)
+		surface := codeSurface(sc.tok)
+		plain := color.ContrastRatio(style.CodeColor, surface)
+		adapted := derive(DefaultBase, sc.tok, Options{})
+		lo, hi := math.Inf(1), 0.0
+		for _, tt := range emitted(adapted) {
+			r := color.ContrastRatio(fromChroma(adapted.Get(tt).Colour), surface)
+			lo, hi = math.Min(lo, r), math.Max(hi, r)
+		}
+		comment := color.ContrastRatio(fromChroma(adapted.Get(chroma.CommentSingle).Colour), surface)
+		if comment >= plain {
+			t.Errorf("%s: a comment reads %.2f:1 and plain code %.2f:1; comments recede", sc.name, comment, plain)
+		}
+		if hi <= plain {
+			t.Errorf("%s: the loudest ink reads %.2f:1 and plain code %.2f:1; the loud end has to carry", sc.name, hi, plain)
+		}
+		place[i] = (plain - lo) / (hi - lo)
+		t.Logf("%s: comment %.2f:1, plain code %.2f:1, loudest %.2f:1 — plain sits %.0f%% up a band from %.2f to %.2f",
+			sc.name, comment, plain, hi, 100*place[i], lo, hi)
+	}
+	if d := math.Abs(place[0] - place[1]); d > 0.1 {
+		t.Errorf("plain code sits %.0f%% up the band in one appearance and %.0f%% in the other", 100*place[0], 100*place[1])
+	}
+}
+
+// TestTheDefaultLightPaletteReadsInTiers pins the outcome on the palette that
+// ships, token by token: a comment, a string and a keyword come out at three
+// separated weights rather than at one. The numbers are the ones a reader sees,
+// so they are asserted as gaps and not as colours — a base's author may revise
+// an ink, and what must not come back is the flatness.
+func TestTheDefaultLightPaletteReadsInTiers(t *testing.T) {
+	surface := codeSurface(tokens.DefaultLight)
+	style := derive(DefaultBase, tokens.DefaultLight, Options{})
+	at := func(tt chroma.TokenType) float64 {
+		return color.ContrastRatio(fromChroma(style.Get(tt).Colour), surface)
+	}
+	comment, str, keyword := at(chroma.CommentSingle), at(chroma.LiteralString), at(chroma.Keyword)
+	t.Logf("comment %.2f:1, string %.2f:1, keyword %.2f:1 on %v", comment, str, keyword, surface)
+	if str < comment+1 {
+		t.Errorf("a string reads %.2f:1 against a comment's %.2f:1; the tiers are not separated", str, comment)
+	}
+	if keyword < str+1 {
+		t.Errorf("a keyword reads %.2f:1 against a string's %.2f:1; the tiers are not separated", keyword, str)
+	}
+	if keyword < contrastAnchor-orderSlack {
+		t.Errorf("the loudest tier reads %.2f:1, under the %.1f:1 anchor", keyword, contrastAnchor)
 	}
 }
 

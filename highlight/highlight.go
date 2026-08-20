@@ -20,8 +20,10 @@
 // derived. [New] wears a stock style verbatim: pass the name that matches the
 // theme, github against a light one and github-dark against a dark one. [Adapt]
 // derives a new style from a named base and fits it to the theme's own
-// colours — the base's hues and chromas held, its lightness re-fitted against
-// the actual code surface until every ink clears a contrast floor. Stock
+// colours — the base's hues and chromas held, and its lightnesses re-fitted
+// against the actual code surface so that the order its author ranked them in
+// is drawn at a volume this theme reads: the quietest ink on a contrast floor,
+// the loudest on an anchor well above it. Stock
 // styles stay curated artifacts either way: adaptation builds beside the
 // registry and never mutates it.
 //

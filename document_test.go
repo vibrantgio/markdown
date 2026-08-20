@@ -3,6 +3,8 @@ package markdown_test
 import (
 	"fmt"
 	"image"
+	"image/color"
+	"math"
 	"strings"
 	"testing"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/vibrantgio/components/list"
 	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/markdown"
+	themecolor "github.com/vibrantgio/theme/color"
 	"github.com/vibrantgio/theme/tokens"
 )
 
@@ -675,12 +678,57 @@ func TestDocumentLiveFrame(t *testing.T) {
 
 // ---- Token defaults ----
 
+// TestCodeReadsAtItsPagesWeight is the measurement behind codeInk, kept as a
+// gate so the two appearances cannot drift apart again.
+//
+// A document's code is quieter than its prose in both appearances, deliberately
+// — a fence is quoted matter, and it is set on its own fill besides. What must
+// not differ is how much quieter, because a reader who switches appearance is
+// reading the same document: code that recedes a step in one and half a page in
+// the other is two different documents.
+//
+// The measurement is the travel from the fence's own fill to the code's ink,
+// against the travel from the page to the prose's, on the perceptual lightness
+// axis — "how far into the page's own range does this text go" — with the WCAG
+// ratios logged beside it because the floor the syntax palette is fitted to is
+// stated in those. Before the light half was moved a step it travelled 58% of
+// its page's range where the dark half travelled 80%.
+func TestCodeReadsAtItsPagesWeight(t *testing.T) {
+	const wantAtLeast = 0.66
+	travel := func(from, to color.NRGBA) float64 {
+		a, _, _ := themecolor.OKLChFromNRGBA(from)
+		b, _, _ := themecolor.OKLChFromNRGBA(to)
+		return math.Abs(a - b)
+	}
+	var share [2]float64
+	for i, tc := range []struct {
+		name string
+		c    tokens.ColorTokens
+	}{{"light", tokens.DefaultLight}, {"dark", tokens.DefaultDark}} {
+		st := markdown.FromTokens(tc.c, tokens.DefaultTypography)
+		prose := travel(tc.c.Background, st.Text.Color)
+		code := travel(st.CodeBackground, st.CodeColor)
+		share[i] = code / prose
+		t.Logf("%s: prose %.2f:1 on the page, code %.2f:1 on the fence — code travels %.0f%% of the page's own range",
+			tc.name, themecolor.ContrastRatio(st.Text.Color, tc.c.Background),
+			themecolor.ContrastRatio(st.CodeColor, st.CodeBackground), 100*share[i])
+		if share[i] < wantAtLeast {
+			t.Errorf("%s: code travels %.0f%% of the range its prose does; under %.0f%% a screenful of it reads washed",
+				tc.name, 100*share[i], 100*wantAtLeast)
+		}
+		if st.CodeColor == st.Text.Color {
+			t.Errorf("%s: code is inked in the prose colour; a fence is quoted matter and reads as such", tc.name)
+		}
+	}
+	if d := math.Abs(share[0] - share[1]); d > 0.15 {
+		t.Errorf("code travels %.0f%% of its page's range in one appearance and %.0f%% in the other", 100*share[0], 100*share[1])
+	}
+}
+
 // TestFromTokensDefaults pins the FromTokens contract: heading levels take
 // the typography's document heading scale, code shapes in the theme Code
-// role's typeface and
-// size on the Neutral 300 tinted fill with Neutral 700 low-contrast text,
-// the quote bar is Primary with Neutral 700 text, and rules are separators
-// using Divider.
+// role's typeface and size on the Neutral 200 fill, the quote bar is Primary
+// with Neutral 700 text, and rules are separators using Divider.
 func TestFromTokensDefaults(t *testing.T) {
 	c, typo := tokens.DefaultLight, tokens.DefaultTypography
 	st := markdown.FromTokens(c, typo)
@@ -702,8 +750,19 @@ func TestFromTokensDefaults(t *testing.T) {
 	if st.Text.Color != c.Text || st.Text.LinkColor != c.Primary {
 		t.Errorf("Text colours = %v/%v, want Text/Primary", st.Text.Color, st.Text.LinkColor)
 	}
-	if st.CodeBackground != c.Ramps.Neutral.Step(200) || st.CodeColor != c.Ramps.Neutral.Step(700) {
-		t.Errorf("code colours = %v/%v, want Neutral 200/700", st.CodeBackground, st.CodeColor)
+	if st.CodeBackground != c.Ramps.Neutral.Step(200) {
+		t.Errorf("CodeBackground = %v, want Neutral 200 %v", st.CodeBackground, c.Ramps.Neutral.Step(200))
+	}
+	// Plain code is the one colour the two appearances take a different step
+	// for, and it is a measured difference rather than a taste: see codeInk.
+	// A light document sets code the step below its body text and a dark one
+	// the low-contrast text step, which is where both had it before the light
+	// half was measured against the dark half.
+	if st.CodeColor != c.Ramps.Neutral.Step(800) {
+		t.Errorf("light CodeColor = %v, want Neutral 800 %v", st.CodeColor, c.Ramps.Neutral.Step(800))
+	}
+	if dark := markdown.FromTokens(tokens.DefaultDark, typo); dark.CodeColor != tokens.DefaultDark.Ramps.Neutral.Step(700) {
+		t.Errorf("dark CodeColor = %v, want Neutral 700 %v", dark.CodeColor, tokens.DefaultDark.Ramps.Neutral.Step(700))
 	}
 	// A fence and an inline chip are one surface, so the constructor may not
 	// quietly drift them apart.

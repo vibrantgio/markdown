@@ -8,7 +8,25 @@
 // theme puts under a fence, and its comment grey 4.31:1; both read as
 // deliberate ink on the near-white the style was fitted to and as washed-out
 // ink here. So the derivation holds each entry's hue and chroma and re-fits
-// only its lightness, against the actual surface, until it clears the floor.
+// only its lightness against the actual surface.
+//
+// Two things are kept, not one. Each ink's hue and chroma are the first. The
+// second is the order the author drew them in — which token type reads loudest
+// against the ground it was fitted to, which recedes, and by how much — and
+// keeping it takes more than a floor. A fit that lifted only the inks failing a
+// contrast floor kept every ink that passed exactly as drawn, which is most of
+// a palette fitted to a near-black ground and almost none of one fitted to
+// paper: on a light base nearly every ink fails against a light slab, so
+// keyword, string, number and comment all landed within a hundredth of a ratio
+// point of the floor and the palette came out flat.
+//
+// So the fit is a normalisation. Each ink is placed by what it measures against
+// its own author's ground, and that ordering is stretched onto the band this
+// theme reads code in: the floor at the quiet end, an anchor far above it at
+// the loud end. The map only ever pushes ink away from the surface — an ink
+// already at or past its place keeps the colour its author chose, so a palette
+// drawn for a ground like this one comes through untouched, and no ink is ever
+// made quieter than it was drawn.
 //
 // Nothing in the registry is touched. The result is a new style built beside
 // the stock one, which stays selectable and unmodified.
@@ -40,10 +58,52 @@ import (
 // on this fill" without a second opinion about the type.
 const contrastFloor = 4.5
 
+// contrastAnchor is where the loudest ink of a palette lands: the top of the
+// band the fit stretches a base onto, as the floor is its bottom.
+//
+// It is set high deliberately. A band ending just above the floor would pass
+// the gate and still read as one weight of ink, which is the defect the
+// normalisation answers; and plain code — the uncoloured text between the
+// coloured runs, which the theme inks itself — sits about two thirds of the way
+// up this band in both appearances, so an anchor much lower would leave a
+// keyword quieter than the identifier beside it.
+//
+// Ten is where it stops rather than higher, because a light ground charges for
+// contrast in chroma. An accent walked to 10:1 on a near-white slab keeps most
+// of the saturation its author gave it; the same accent walked to 12:1 has
+// given up a third of it to the gamut and reads as dark ink with a tint in it
+// rather than as a colour. Above the anchor is not forbidden — an ink drawn
+// louder than its place stays where it was drawn — it is simply not somewhere
+// the fit pushes ink to.
+const contrastAnchor = 10.0
+
+// flatSpan is the ratio between a palette's loudest and quietest ink below
+// which it has no order to preserve: a base whose loudest reaches less than a
+// quarter more contrast than its quietest was drawn as one weight of ink.
+//
+// The threshold is there because the alternative is inventing a hierarchy out
+// of arithmetic. One embedded base sets every token type at one lightness and
+// tells them apart by hue alone; its inks measure 4.57:1 and 4.58:1 against its
+// own ground, and a stretch that took that hundredth of a point for an author's
+// intent would spread it across the whole band. The measured gap either side of
+// this value is wide — the flat base spans 1.00x and the next flattest 1.49x —
+// so nothing sits near the line.
+const flatSpan = 1.25
+
 // refitSteps is how finely the re-fit walks lightness. The walk stops at the
-// first step that clears the floor, so the step size is the most an entry can
-// be darkened or lightened beyond what the floor actually demanded.
+// first step that reaches an ink's target, so the step size is the most an
+// entry can be darkened or lightened beyond what its target actually demanded.
 const refitSteps = 256
+
+// atTarget is how close to its target an ink counts as being at it. A target is
+// a placement in a band rather than a measurement, and a tenth of a ratio point
+// is about what one 8-bit step of lightness is worth at these levels — so an
+// ink already inside the last step a display can express is left exactly as its
+// author drew it instead of being recoloured by a rounding difference.
+//
+// The floor is not softened by it. An ink under 4.5:1 is re-fitted whatever its
+// target says, because the floor is the one number here that is a measurement.
+const atTarget = 0.1
 
 // DefaultBase and DefaultDarkBase name the syntax palettes to derive from when
 // nothing else is chosen: chroma's catppuccin-latte under a light appearance
@@ -84,8 +144,9 @@ type Options struct {
 
 // Adapt returns a Highlighter that colours code with a style derived from the
 // named chroma base and fitted to c: every entry keeps its hue and as much of
-// its chroma as sRGB still holds, and takes the lightness that clears the
-// contrast floor against the code surface these tokens put under a fence. Runs
+// its chroma as sRGB still holds, and takes the lightness that puts it where
+// its author ranked it, on a band from the contrast floor to an anchor well
+// above it, against the code surface these tokens put under a fence. Runs
 // the base renders in its plain-text foreground still come back colourless, so
 // plain code follows [markdown.Style].CodeColor exactly as it does under [New].
 //
@@ -193,15 +254,22 @@ func derivePair(p BasePair, c tokens.ColorTokens, opt Options) *chroma.Style {
 		}
 	}
 
+	fit := bandFor(member, surface)
 	b := chroma.NewStyleBuilder(member.Name + "-adapted")
 	for _, tt := range member.Types() {
 		e := member.Get(tt)
 		if e.Colour.IsSet() {
 			ink := fromChroma(e.Colour)
+			// The band places the ink the author drew, before any rotation:
+			// the ordering being preserved is theirs, and turning a palette
+			// toward the brand is not meant to re-rank it. Two hues at one
+			// lightness measure slightly different contrasts, and letting that
+			// difference decide the order would make the dial a reordering.
+			target := fit.target(ink)
 			if turn != 0 {
 				ink = rotateHue(ink, turn)
 			}
-			ink = refit(ink, surface, contrastFloor)
+			ink = refit(ink, surface, target)
 			e.Colour = chroma.NewColour(ink.R, ink.G, ink.B)
 		}
 		// The emphasis comes from the style that was chosen.
@@ -303,16 +371,97 @@ func rotateHue(c stdcolor.NRGBA, turn float64) stdcolor.NRGBA {
 	return color.NRGBAFromOKLCh(l, chr, math.Mod(h+turn+360, 360))
 }
 
-// refit returns c at the lightness that clears floor against surface, holding
-// c's hue and chroma. Ink that already clears it is returned untouched — the
-// base's own lightness is part of what was curated, and moving it when it
-// works would trade a good colour for a compliant one.
+// band is a base's own contrast ordering, ready to be read as a target for
+// each of its inks: the ground its author fitted the palette to, and the
+// quietest and loudest contrast any of its coloured inks reaches against that
+// ground.
+type band struct {
+	ground stdcolor.NRGBA
+	lo, hi float64
+}
+
+// bandFor measures a base against its own ground.
 //
-// Ink that does not clear it walks away from the surface: darker on a light
-// fill, lighter on a dark one, one step at a time, stopping at the first step
-// that passes. That is the smallest correction the floor demands rather than
-// the largest one available, so a keyword that misses by a tenth of a ratio
-// point moves about that far and no further.
+// Its own, and not the surface it is about to be drawn on, because the
+// ordering being preserved is the author's: a comment is the quietest ink in a
+// palette because its author drew it quietest against the paper or the slate
+// they had in front of them, and that fact is only legible against that ground.
+// Measured against ours instead, a dark base's near-black comment would
+// outrank its keyword on a light fill — the palette read upside down.
+//
+// A style that names no ground was fitted to nothing there is any record of, so
+// the surface it is about to be drawn on stands in: its inks then rank against
+// the fill they will actually sit on, which is the only ground there is to rank
+// them by. Four of the embedded styles are like this, and it is the same
+// measurement that decides which appearance a base is offered under.
+//
+// The base's plain foreground is left out of the span. It is the colour the
+// theme inks itself — every run resolving to it comes back colourless — so
+// counting it would let ink this package never emits set where the emitted ink
+// lands.
+func bandFor(s *chroma.Style, surface stdcolor.NRGBA) band {
+	ground := surface
+	if bg := s.Get(chroma.Background).Background; bg.IsSet() {
+		ground = fromChroma(bg)
+	}
+	b := band{ground: ground, lo: math.Inf(1)}
+	plain := plainForeground(s)
+	types := s.Types()
+	// Summation order is irrelevant to a min and a max, but the type list comes
+	// out of a map and a sorted walk keeps the numbers in any log identical
+	// between runs.
+	slices.Sort(types)
+	for _, tt := range types {
+		e := s.Get(tt)
+		if !e.Colour.IsSet() || e.Colour == plain {
+			continue
+		}
+		r := color.ContrastRatio(fromChroma(e.Colour), ground)
+		b.lo, b.hi = math.Min(b.lo, r), math.Max(b.hi, r)
+	}
+	return b
+}
+
+// target is the contrast ink is fitted to: its place in its author's own
+// ordering, read onto the band between the floor and the anchor.
+//
+// The map is affine in the contrast ratio, so an ink a third of the way up its
+// palette's own range comes out a third of the way up the band: the ordering is
+// preserved exactly and the spacing proportionally, which is what makes the
+// result the author's palette at this theme's volume rather than a different
+// palette at the right volume.
+//
+// A flat base has no order to stretch and every ink targets the floor, which
+// leaves the loud ones exactly where they were drawn (see refit) and lifts only
+// the ones that cannot be read. An ink outside the span — the plain foreground,
+// which the span deliberately skips — clamps to the band's ends.
+func (b band) target(ink stdcolor.NRGBA) float64 {
+	if !(b.hi >= b.lo*flatSpan) {
+		return contrastFloor
+	}
+	r := color.ContrastRatio(ink, b.ground)
+	t := contrastFloor + (r-b.lo)/(b.hi-b.lo)*(contrastAnchor-contrastFloor)
+	return math.Max(contrastFloor, math.Min(contrastAnchor, t))
+}
+
+// refit returns c at the lightness that reaches target against surface, holding
+// c's hue and chroma. Ink already at its target is returned untouched — the
+// base's own lightness is part of what was curated, and moving it when it is
+// already where the band would put it would trade a chosen colour for an
+// arithmetic one. Whole palettes come back this way: a base fitted to a ground
+// much like the one it is being drawn on is mostly already where it belongs.
+//
+// Ink short of its target walks away from the surface: darker on a light fill,
+// lighter on a dark one, one step at a time, stopping at the first step that
+// reaches it. That is the smallest correction the target demands rather than
+// the largest one available, so an ink that misses by a tenth of a ratio point
+// moves about that far and no further.
+//
+// The walk runs in one direction only, which is what makes the guarantee a
+// guarantee: ink is never made quieter than its author drew it. A target under
+// what an ink already reaches is a target already met, so the band lifts a
+// palette and never flattens one — a base drawn louder at its top than the
+// anchor keeps its own top.
 //
 // Chroma is held as an intent, and sRGB has the last word on it. A saturated
 // orange at the lightness its author chose is a colour the display has; the
@@ -320,27 +469,27 @@ func rotateHue(c stdcolor.NRGBA, turn float64) stdcolor.NRGBA {
 // out-of-gamut by reducing chroma at constant lightness and constant hue. So a
 // deeply corrected ink can come back less saturated than it went in — never
 // more, and never on another hue.
-func refit(c, surface stdcolor.NRGBA, floor float64) stdcolor.NRGBA {
-	if color.ContrastRatio(c, surface) >= floor {
+func refit(c, surface stdcolor.NRGBA, target float64) stdcolor.NRGBA {
+	if r := color.ContrastRatio(c, surface); r >= target-atTarget && r >= contrastFloor {
 		return c
 	}
 	l, chr, h := color.OKLChFromNRGBA(c)
-	target := 1.0
+	end := 1.0
 	if !isDarkSurface(surface) {
-		target = 0.0
+		end = 0.0
 	}
 	for i := 1; i <= refitSteps; i++ {
 		t := float64(i) / refitSteps
-		cand := color.NRGBAFromOKLCh(l+(target-l)*t, chr, h)
-		if color.ContrastRatio(cand, surface) >= floor {
+		cand := color.NRGBAFromOKLCh(l+(end-l)*t, chr, h)
+		if color.ContrastRatio(cand, surface) >= target {
 			return cand
 		}
 	}
 	// Black on a light fill or white on a dark one is as far as lightness
 	// goes. Reaching here means the surface itself is too middling for any
-	// ink to clear the floor on, which the theme's own contrast gates would
-	// have caught long before a code block did.
-	return color.NRGBAFromOKLCh(target, chr, h)
+	// ink to reach the target on, which for the floor is a surface the theme's
+	// own contrast gates would have caught long before a code block did.
+	return color.NRGBAFromOKLCh(end, chr, h)
 }
 
 // isDarkSurface reports whether a fill reads as dark, on the perceptual

@@ -98,9 +98,14 @@ func docsStyle(c tokens.ColorTokens, typo tokens.Typography) markdown.Style {
 inks were fitted to that author's background rather than to the fill your
 theme puts under a fence. `Adapt` derives a style instead: it holds each
 entry's hue and chroma and re-fits the lightness against your own code
-surface until every ink clears the WCAG AA contrast ratio, settles one bold
-and italic policy across the light and dark members of the pair, and keeps
-the plain-foreground fallback. One base name covers both appearances — which
+surface, keeping the order the base's author drew — each ink placed by what
+it measures against the ground it was fitted to, that order stretched onto a
+band running from the WCAG AA ratio at the quiet end to an anchor well above
+it at the loud end. Ink already at or past its place keeps the colour it was
+drawn in, so no ink is ever made quieter than its author drew it and a
+palette fitted to a ground like yours comes through untouched. It also
+settles one bold and italic policy across the light and dark members of the
+pair, and keeps the plain-foreground fallback. One base name covers both appearances — which
 member is derived from follows the tokens — so a single line replaces the
 pair of highlighters above, and it re-derives with the theme rather than
 staying where it was built:
@@ -114,10 +119,11 @@ st.Highlight = highlight.Adapt(highlight.DefaultBase, c)
 `catppuccin-mocha` is the dark member that same name reaches. It is a
 default, not a policy: pass any name chroma's registry holds. It is the
 default because its accents already sit in one perceptual-lightness band
-with the hues carrying the semantics, which is exactly the shape a
-lightness re-fit leaves intact — a palette that told a keyword from a
-string by how dark it was would come out of the same fit with the two
-harder to tell apart.
+with the hues carrying the semantics, so hue is what tells its token types
+apart and the re-fit costs it nothing it was using to carry meaning. A
+palette that told a keyword from a string by how dark it is keeps that
+difference too — the order is what the fit preserves — but it is the hues
+that survive a change of ground unchanged.
 
 Where somebody has chosen a base for each appearance rather than one for
 both, hand over the pair and each appearance derives through its own member:
@@ -295,7 +301,8 @@ organization. What renders, renders well; these are the honest gaps.
   plain identifiers — are emitted colourless and take `Style.CodeColor`, so
   plain code follows the token theme; keyword, string, and comment colours
   remain the chroma style's own, and a style whose author drew them on a
-  near-white page may leave them short of AA on a tinted code fill —
+  near-white page may leave them short of AA on a tinted code fill, or leave
+  a whole palette bunched at one weight there —
   `highlight.Adapt` is the constructor that re-fits them, and it takes one
   base name for both appearances where `New` needs one style per appearance —
   or `highlight.AdaptPair`, where a base was chosen per appearance.
