@@ -46,6 +46,12 @@
 // list at a time. Loaded styles are held beside chroma's registry and never
 // inside it — see bases.go.
 //
+// Contrast is surfaced and never enforced. [BaseContrast] reports how much of
+// what a base draws code in falls under [ContrastFloor] on the ground its own
+// author fitted it to, for a caller that wants to say so beside the name; and
+// nothing here acts on the answer, so a palette drawn faint is still drawn as
+// its author drew it.
+//
 // A person choosing one base has chosen one appearance, and [CompletePair]
 // finds the other: the counterpart the style's author declared, or — for the
 // majority who declared none — the opposite-appearance base whose palette

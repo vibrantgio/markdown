@@ -23,12 +23,10 @@ import (
 	"github.com/vibrantgio/theme/tokens"
 )
 
-// contrastFloor is WCAG 2's AA ratio for normal text, which is the size code
-// is set at. Nothing in this package enforces it: it is the yardstick the
-// sweep reports against, so that "this base is drawn quiet" comes out as a
-// number somebody can act on rather than as an opinion about somebody's
-// palette.
-const contrastFloor = 4.5
+// contrastFloor is the yardstick the sweep reports against, and it is the
+// package's own — the same number [BaseContrast] measures a base against, so
+// the sweep and the summary cannot drift into two floors.
+const contrastFloor = ContrastFloor
 
 // specimen is the code every measurement here reads: enough kinds of run —
 // comment, keyword, type, string, number, call — that a base which colours

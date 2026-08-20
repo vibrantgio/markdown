@@ -203,6 +203,25 @@ token type wearing them, so a reader ranking the list sees how much of the
 style each one is; the body colour, which a highlighter built here never
 emits, is left out.
 
+Contrast in a fence is surfaced and never enforced, and `BaseContrast` is
+where it is surfaced:
+
+```go
+a, ok := highlight.BaseContrast(chosen) // inks measured, and how many are faint
+if ok && a.BelowFloor() { /* say so beside the name */ }
+```
+
+It measures the colour a base sets plain code in, and the colour it gives
+each reading class it takes a position on, against the ground its own author
+fitted them to — reporting how many of those fall under `ContrastFloor`,
+WCAG 2's AA ratio for normal text. `BelowFloor` is true when most of them do.
+A majority and not the worst ink: one receding class is ordinary and usually
+deliberate, and the quietest entries in the set are markers for things that
+are not code, several of them drawn in the ground colour on purpose. Those
+markers are not measured at all. A base fitted to no ground has no authored
+contrast to report and comes back `false`, as does one that colours nothing.
+Nothing acts on the answer — no ink is moved and no style is refused.
+
 Dress the `Style` once per theme rather than once per frame: resolving a
 name is cheap but not free. Stock styles are untouched by any of this —
 nothing here writes to chroma's registry, so `New("github")` still yields
