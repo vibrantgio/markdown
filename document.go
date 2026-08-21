@@ -376,13 +376,18 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 // A code block's own line breaks are the code, so a line too wide for the
 // column is never reflowed and never cut away: the block is a horizontal
 // scroll area (components/scrollarea), and the part that does not fit is
-// scrolled to. The fence's padding is inside the scroll area rather than
-// around it, which puts the block's whole box on the horizontal axis: the
-// leading padding scrolls away with the first column of code, the dissolve
-// that marks a cut edge runs the full height of the fence, and the bar the
-// area draws while it scrolls lands in the bottom padding, where it covers no
-// code. A block that fits lays out exactly as it would with no scroll area at
-// all — same height, same clip, no bar, no dissolve.
+// scrolled to. The fence's padding straddles that area, and which half goes
+// where is what keeps the block padded at every scroll position. The vertical
+// padding is inside it, so a fence takes its content's height and pads it, the
+// dissolve that marks a cut edge runs the full height of the code, and the bar
+// the area draws while it scrolls lands in the bottom padding, where it covers
+// no code. The horizontal padding is outside it, so it is a margin the code
+// scrolls under rather than a run of blank that scrolls away with the first
+// column: the viewport stops a padding short of the frame at both ends, the
+// two ends are padded alike, and a line long enough to be cut is cut over
+// clear ground instead of against the rim. A block that fits lays out exactly
+// as it would with no scroll area at all — same height, same clip, no bar, no
+// dissolve.
 //
 // A Style.CodeBorder with any alpha in it edges the fence: the border colour
 // fills the block's whole rounded box and the ground fills a box one hairline
@@ -399,24 +404,25 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	area := scrollarea.Style{Fade: unit.Dp(tokens.Spacing.S4), FadeColor: style.CodeBackground}
 
 	code := func(gtx layout.Context) layout.Dimensions {
-		return layout.UniformInset(pad).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Inset{Top: pad, Bottom: pad}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return richtext.Render(shaper, codeStyle, spans, richtext.Idle())(gtx)
 		})
 	}
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
-	// The padding is drawn inside the area but is not part of the height the
-	// code has to fit in: a fence takes its content's height and pads it,
-	// rather than making the content fit a viewport two paddings shorter.
+	// The vertical padding is drawn inside the area but is not part of the
+	// height the code has to fit in: a fence takes its content's height and
+	// pads it, rather than making the content fit a viewport two paddings
+	// shorter.
 	cgtx.Constraints.Max.Y += 2 * gtx.Dp(pad)
 	state := d.codeState(cb)
 	macro := op.Record(gtx.Ops)
-	var content layout.Dimensions
-	if style.CodeScrollbar.Width() > 0 {
-		content = area.LayoutScrollbar(cgtx, state, style.CodeScrollbar, code)
-	} else {
-		content = area.Layout(cgtx, state, code)
-	}
+	content := layout.Inset{Left: pad, Right: pad}.Layout(cgtx, func(gtx layout.Context) layout.Dimensions {
+		if style.CodeScrollbar.Width() > 0 {
+			return area.LayoutScrollbar(gtx, state, style.CodeScrollbar, code)
+		}
+		return area.Layout(gtx, state, code)
+	})
 	call := macro.Stop()
 
 	total := image.Pt(gtx.Constraints.Max.X, content.Size.Y)
