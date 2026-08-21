@@ -376,7 +376,7 @@ which is the one place the module inventory, the application skeleton, the MVU
 loop and rx semantics, typography and the non-guessable pitfalls are written
 down. Read it before writing code against this module:
 
-<https://raw.githubusercontent.com/vibrantgio/.github/master/llms.txt>
+<https://raw.githubusercontent.com/vibrantgio/workbench/master/llms.txt>
 
 ## Status
 
