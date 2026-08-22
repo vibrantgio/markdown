@@ -3,7 +3,7 @@ module github.com/vibrantgio/markdown
 go 1.25.1
 
 require (
-	gioui.org v0.10.1
+	gioui.org v0.10.2
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/vibrantgio/components v0.9.3
 	github.com/vibrantgio/svg v0.0.9
@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	gioui.org/shader v1.0.8 // indirect
+	gioui.org/shader v1.0.9 // indirect
 	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/go-text/typesetting v0.3.4 // indirect
 	github.com/vibrantgio/font v0.2.0 // indirect
