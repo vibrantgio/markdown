@@ -153,13 +153,16 @@ func convertList(src []byte, n *ast.List) *List {
 		}
 		item := &ListItem{}
 		// A GFM task item carries a TaskCheckBox as the first inline node of
-		// its first paragraph.
+		// its first paragraph. The checkbox node stores no source segment —
+		// goldmark consumes "[x] " and drops the span — so the marker offset
+		// is read from that first block's Lines().
 		if fc := li.FirstChild(); fc != nil {
 			switch fc.(type) {
 			case *ast.TextBlock, *ast.Paragraph:
 				if cb, ok := fc.FirstChild().(*east.TaskCheckBox); ok {
 					item.Task = true
 					item.Checked = cb.IsChecked
+					item.MarkerOffset = taskMarkerOffset(src, fc)
 				}
 			}
 		}
@@ -170,6 +173,30 @@ func convertList(src []byte, n *ast.List) *List {
 		l.Items = append(l.Items, item)
 	}
 	return l
+}
+
+// taskMarkerOffset is the byte offset of a GFM task marker's opening '[' in
+// src. Goldmark's TaskCheckBox node stores none of its own, so this is read
+// from the list item's first block Lines() — the bytes Parse was handed.
+func taskMarkerOffset(src []byte, block ast.Node) int {
+	lines := block.Lines()
+	if lines.Len() == 0 {
+		return 0
+	}
+	seg := lines.At(0)
+	start, stop := seg.Start, seg.Stop
+	if start < 0 {
+		start = 0
+	}
+	if stop > len(src) {
+		stop = len(src)
+	}
+	for i := start; i < stop; i++ {
+		if src[i] == '[' {
+			return i
+		}
+	}
+	return start
 }
 
 // trimTaskSpace drops the space the "[x] " syntax leaves in front of a task

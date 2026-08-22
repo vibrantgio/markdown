@@ -81,7 +81,7 @@ func anchorBlock(b markdown.Block) (markdown.Block, []string) {
 		var ids []string
 		for i, it := range b.Items {
 			blocks, itemIDs := anchorChildren(it.Blocks)
-			items[i] = &markdown.ListItem{Task: it.Task, Checked: it.Checked, Blocks: blocks}
+			items[i] = &markdown.ListItem{Task: it.Task, Checked: it.Checked, MarkerOffset: it.MarkerOffset, Blocks: blocks}
 			ids = append(ids, itemIDs...)
 		}
 		return &markdown.List{Ordered: b.Ordered, Start: b.Start, Items: items}, ids

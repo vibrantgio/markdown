@@ -96,6 +96,9 @@ type ListItem struct {
 	Task bool
 	// Checked is the checkbox state of a task item.
 	Checked bool
+	// MarkerOffset is the byte offset of a task item's opening '[' in the
+	// source [Parse] received. It is only meaningful when Task is true.
+	MarkerOffset int
 	// Blocks is the item's content.
 	Blocks []Block
 }

@@ -12,6 +12,7 @@ import (
 	"gioui.org/font"
 	"gioui.org/io/event"
 	gioinput "gioui.org/io/input"
+	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -709,6 +710,161 @@ func TestImageProvider(t *testing.T) {
 	}
 	if missing.Size.Y >= fits.Size.Y {
 		t.Errorf("alt-text fallback height %d not below image height %d", missing.Size.Y, fits.Size.Y)
+	}
+}
+
+// ---- Task checkbox interaction ----
+
+func driveTaskFrame(w layout.Widget, ops *op.Ops, r *gioinput.Router, size image.Point) {
+	ops.Reset()
+	gtx := layout.Context{
+		Metric:      unit.Metric{PxPerDp: 1, PxPerSp: 1},
+		Constraints: layout.Constraints{Max: size},
+		Ops:         ops,
+		Source:      r.Source(),
+	}
+	w(gtx)
+	r.Frame(ops)
+}
+
+func taskColumn(d *markdown.Document, shaper *text.Shaper, style markdown.Style) layout.Widget {
+	return func(gtx layout.Context) layout.Dimensions {
+		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		return d.LayoutColumn(gtx, shaper, style)
+	}
+}
+
+// TestTaskClickFiresOnTaskClick drives a pointer press+release over the 14 dp
+// mark and expects OnTaskClick to fire with the *ListItem Parse produced —
+// the same pointer — and a live layout.Context (GX.8). A click on the item
+// text does not fire: the mark is the hit target, not the row.
+func TestTaskClickFiresOnTaskClick(t *testing.T) {
+	shaper := defaultShaper(t)
+	blocks := markdown.Parse([]byte("- [ ] open task\n- [x] done task\n"))
+	l, ok := blocks[0].(*markdown.List)
+	if !ok {
+		t.Fatalf("Parse returned %T, want *List", blocks[0])
+	}
+	if len(l.Items) != 2 {
+		t.Fatalf("list has %d items, want 2", len(l.Items))
+	}
+	open, done := l.Items[0], l.Items[1]
+
+	var got *markdown.ListItem
+	var gotOps bool
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style.OnTaskClick = func(gtx layout.Context, item *markdown.ListItem) {
+		got = item
+		gotOps = gtx.Ops != nil
+	}
+
+	d := markdown.NewDocument(blocks)
+	size := image.Pt(400, 80)
+	w := taskColumn(d, shaper, style)
+
+	r := new(gioinput.Router)
+	ops := new(op.Ops)
+	driveTaskFrame(w, ops, r, size)
+
+	hit := f32.Pt(7, 13)
+	r.Queue(
+		pointer.Event{Kind: pointer.Press, Position: hit, Buttons: pointer.ButtonPrimary, Source: pointer.Mouse},
+		pointer.Event{Kind: pointer.Release, Position: hit, Source: pointer.Mouse},
+	)
+	driveTaskFrame(w, ops, r, size)
+	if got != open {
+		t.Fatalf("OnTaskClick item = %p, want the open task %p", got, open)
+	}
+	if !gotOps {
+		t.Error("OnTaskClick received a layout.Context without Ops; callbacks must carry the live gtx (GX.8)")
+	}
+
+	got = nil
+	miss := f32.Pt(80, hit.Y)
+	r.Queue(
+		pointer.Event{Kind: pointer.Press, Position: miss, Buttons: pointer.ButtonPrimary, Source: pointer.Mouse},
+		pointer.Event{Kind: pointer.Release, Position: miss, Source: pointer.Mouse},
+	)
+	driveTaskFrame(w, ops, r, size)
+	if got != nil {
+		t.Error("click on the item text fired OnTaskClick; the mark is the hit target, not the row")
+	}
+
+	hit2 := f32.Pt(7, 41)
+	r.Queue(
+		pointer.Event{Kind: pointer.Press, Position: hit2, Buttons: pointer.ButtonPrimary, Source: pointer.Mouse},
+		pointer.Event{Kind: pointer.Release, Position: hit2, Source: pointer.Mouse},
+	)
+	driveTaskFrame(w, ops, r, size)
+	if got != done {
+		t.Fatalf("second box OnTaskClick item = %p, want the done task %p", got, done)
+	}
+}
+
+// TestTaskClickKeyboardActivation moves focus onto the first task box and
+// activates it with Enter, then the second with Space — the platform
+// activate keys, once the target is focused.
+func TestTaskClickKeyboardActivation(t *testing.T) {
+	shaper := defaultShaper(t)
+	blocks := markdown.Parse([]byte("- [ ] open task\n- [x] done task\n"))
+	l := blocks[0].(*markdown.List)
+	open, done := l.Items[0], l.Items[1]
+
+	var clicks []*markdown.ListItem
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style.OnTaskClick = func(_ layout.Context, item *markdown.ListItem) {
+		clicks = append(clicks, item)
+	}
+
+	d := markdown.NewDocument(blocks)
+	size := image.Pt(400, 80)
+	w := taskColumn(d, shaper, style)
+
+	r := new(gioinput.Router)
+	ops := new(op.Ops)
+	driveTaskFrame(w, ops, r, size)
+
+	r.MoveFocus(key.FocusForward)
+	driveTaskFrame(w, ops, r, size)
+	r.Queue(
+		key.Event{Name: key.NameReturn, State: key.Press},
+		key.Event{Name: key.NameReturn, State: key.Release},
+	)
+	driveTaskFrame(w, ops, r, size)
+	if len(clicks) != 1 || clicks[0] != open {
+		t.Fatalf("after Enter, clicks = %v, want [%p open]", clicks, open)
+	}
+
+	r.MoveFocus(key.FocusForward)
+	driveTaskFrame(w, ops, r, size)
+	r.Queue(
+		key.Event{Name: key.NameSpace, State: key.Press},
+		key.Event{Name: key.NameSpace, State: key.Release},
+	)
+	driveTaskFrame(w, ops, r, size)
+	if len(clicks) != 2 || clicks[1] != done {
+		t.Fatalf("after Space, clicks = %v, want [open %p done]", clicks, done)
+	}
+}
+
+// TestTaskClickIdlePixelsUnchanged holds the idle half of the contract: a
+// nil OnTaskClick and a set one draw the same pixels while nothing is
+// hovered or focused. The hook is a hit target, not a new glyph.
+func TestTaskClickIdlePixelsUnchanged(t *testing.T) {
+	shaper := defaultShaper(t)
+	blocks := markdown.Parse([]byte("- [ ] open\n- [x] done\n"))
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	live := style
+	live.OnTaskClick = func(layout.Context, *markdown.ListItem) {}
+	size := image.Pt(400, 80)
+
+	draw := func(st markdown.Style) layout.Widget {
+		return taskColumn(markdown.NewDocument(blocks), shaper, st)
+	}
+	idle := golden.Capture(t, size, draw(style))
+	hooked := golden.Capture(t, size, draw(live))
+	if n := golden.PixelDiff(idle, hooked); n != 0 {
+		t.Errorf("setting OnTaskClick moved %d idle pixels; the mark is a hit target, not a new glyph", n)
 	}
 }
 

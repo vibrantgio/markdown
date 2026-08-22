@@ -7,6 +7,11 @@ import (
 
 	"gioui.org/f32"
 	"gioui.org/font"
+	"gioui.org/gesture"
+	"gioui.org/io/event"
+	"gioui.org/io/key"
+	"gioui.org/io/pointer"
+	"gioui.org/io/semantic"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
@@ -29,8 +34,8 @@ import (
 
 // Document lays out a parsed block tree. Allocate once per document instance
 // with [NewDocument] and reuse on every frame: it holds the scroll position
-// and the per-block interaction state (link focus/hover, code block scroll)
-// across frames.
+// and the per-block interaction state (link focus/hover, task-box clicks,
+// code block scroll) across frames.
 //
 // Top-level blocks are rows of a components/list, so only the blocks in the
 // viewport are laid out: O(visible), not O(len(blocks)).
@@ -48,6 +53,9 @@ type Document struct {
 	// images holds per-image-block provider results, so the provider and
 	// texture upload run once per block, not per frame.
 	images map[*Image]imageState
+	// tasks holds per-task-item click and focus state, keyed by the
+	// *[ListItem] Parse produced so a click reports that same pointer.
+	tasks map[*ListItem]*taskState
 	// place records where each top-level block sits among its siblings, which
 	// is what spaces it; see [blockPlacement].
 	place map[Block]blockPlacement
@@ -74,6 +82,7 @@ func NewDocument(blocks []Block) *Document {
 		code:   make(map[*CodeBlock]*scrollarea.State),
 		tables: make(map[*Table]*layout.List),
 		images: make(map[*Image]imageState),
+		tasks:  make(map[*ListItem]*taskState),
 		place:  placements(blocks),
 	}
 }
@@ -778,7 +787,7 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 
 	switch {
 	case item.Task:
-		drawCheckbox(gtx, style, item.Checked, line.center)
+		d.drawTask(gtx, style, item, line.center)
 	case l.Ordered:
 		marker := fmt.Sprintf("%d.", l.Start+i)
 		mgtx := gtx
@@ -886,10 +895,104 @@ func drawBullet(gtx layout.Context, style Style, center int) {
 	}.Op(gtx.Ops))
 }
 
+// drawTask paints a task item's checkbox and, when [Style.OnTaskClick] is
+// set, registers the existing 14 dp mark as a hit target. With a nil hook
+// the paint path is the only ops, so idle pixels do not move.
+func (d *Document) drawTask(gtx layout.Context, style Style, item *ListItem, center int) {
+	drawCheckbox(gtx, style, item.Checked, center)
+	if style.OnTaskClick == nil {
+		return
+	}
+	d.taskInput(gtx, style, item, center)
+}
+
+// taskState is the per-checkbox persistent interaction state. Its pointer
+// identity doubles as the checkbox's focus/event tag.
+type taskState struct {
+	click      gesture.Click
+	pressedKey key.Name
+}
+
+// taskClick returns the persistent click/focus state for a task item.
+func (d *Document) taskClick(item *ListItem) *taskState {
+	s, ok := d.tasks[item]
+	if !ok {
+		s = &taskState{}
+		d.tasks[item] = s
+	}
+	return s
+}
+
+// taskInput drains pointer and keyboard activation for one task checkbox and
+// registers its hit target over the existing 14 dp mark. The paint has
+// already been committed; the clip here is an event area, not a draw clip,
+// so the stroked outline is not cropped.
+func (d *Document) taskInput(gtx layout.Context, style Style, item *ListItem, center int) {
+	st := d.taskClick(item)
+	d.taskEvents(gtx, style, item, st)
+	sz := gtx.Dp(14)
+	top := max(center-sz/2, 0)
+	defer op.Offset(image.Pt(0, top)).Push(gtx.Ops).Pop()
+	defer clip.Rect{Max: image.Pt(sz, sz)}.Push(gtx.Ops).Pop()
+	semantic.Button.Add(gtx.Ops)
+	pointer.CursorPointer.Add(gtx.Ops)
+	st.click.Add(gtx.Ops)
+	event.Op(gtx.Ops, st)
+	// Filters for a first-layout checkbox must register this frame or the
+	// router would drop events arriving before the next one.
+	d.taskEvents(gtx, style, item, st)
+}
+
+// taskEvents drains this frame's events for a registered checkbox: pointer
+// click or Space/Enter while focused → style.OnTaskClick(gtx, item).
+func (d *Document) taskEvents(gtx layout.Context, style Style, item *ListItem, st *taskState) {
+	for {
+		e, ok := st.click.Update(gtx.Source)
+		if !ok {
+			break
+		}
+		if e.Kind == gesture.KindClick {
+			style.OnTaskClick(gtx, item)
+		}
+	}
+	for {
+		e, ok := gtx.Event(
+			key.FocusFilter{Target: st},
+			key.Filter{Focus: st, Name: key.NameReturn},
+			key.Filter{Focus: st, Name: key.NameSpace},
+		)
+		if !ok {
+			break
+		}
+		switch e := e.(type) {
+		case key.FocusEvent:
+			if e.Focus {
+				st.pressedKey = ""
+			}
+		case key.Event:
+			if !gtx.Focused(st) {
+				break
+			}
+			if e.Name != key.NameReturn && e.Name != key.NameSpace {
+				break
+			}
+			switch e.State {
+			case key.Press:
+				st.pressedKey = e.Name
+			case key.Release:
+				if st.pressedKey != e.Name {
+					break
+				}
+				st.pressedKey = ""
+				style.OnTaskClick(gtx, item)
+			}
+		}
+	}
+}
+
 // drawCheckbox paints a task item's checkbox, centred on the first text line:
 // a rounded outline when unchecked, a filled box with a check mark when
-// checked. The checkbox is display-only — GFM task state belongs to the
-// document, not the reader.
+// checked. Interaction is [Style.OnTaskClick], not this paint.
 func drawCheckbox(gtx layout.Context, style Style, checked bool, center int) {
 	sz := gtx.Dp(14)
 	top := max(center-sz/2, 0)

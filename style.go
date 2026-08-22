@@ -58,7 +58,8 @@ type WidgetImageProvider interface {
 }
 
 // Style holds the themed rendering defaults for a document. Derive the
-// token-themed default with [FromTokens], then set Text.OnLinkClick.
+// token-themed default with [FromTokens], then set Text.OnLinkClick and,
+// for a reader that writes GFM task markers, OnTaskClick.
 //
 // # Paper
 //
@@ -307,6 +308,16 @@ type Style struct {
 	// it every image falls back to its alt text. A value that also
 	// implements [WidgetImageProvider] can serve vector images as widgets.
 	Images ImageProvider
+	// OnTaskClick is called when a GFM task checkbox is activated by pointer
+	// click or by Space/Enter while focused. The argument is the *[ListItem]
+	// [Parse] produced — the same pointer, so the caller can find it in the
+	// tree. The gtx is the layout.Context active on the frame the activation
+	// is processed (GX.8), allowing consumers to emit
+	// mvu.MessageOp{Message: ...}.Add(gtx.Ops) inside the callback.
+	//
+	// Nil, the default, leaves every checkbox display-only: no pointer ops,
+	// no visual change.
+	OnTaskClick func(gtx layout.Context, item *ListItem)
 }
 
 // FromTokens derives the default document style from colour tokens and a

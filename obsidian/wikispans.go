@@ -51,9 +51,10 @@ func wikiBlock(b markdown.Block) markdown.Block {
 		items := make([]*markdown.ListItem, len(b.Items))
 		for i, it := range b.Items {
 			items[i] = &markdown.ListItem{
-				Task:    it.Task,
-				Checked: it.Checked,
-				Blocks:  WikiSpans(it.Blocks),
+				Task:         it.Task,
+				Checked:      it.Checked,
+				MarkerOffset: it.MarkerOffset,
+				Blocks:       WikiSpans(it.Blocks),
 			}
 		}
 		return &markdown.List{Ordered: b.Ordered, Start: b.Start, Items: items}
