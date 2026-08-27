@@ -454,25 +454,31 @@ func darkScheme(c tokens.ColorTokens) bool {
 // puts it on. Everything else about it — the width, the radius, the minimum
 // thumb, the fade a second after the content stops — is the shared style's.
 //
-// Two things change, and the same fact drives both. scrollbar.FromTokens tunes
-// its thumb for a scrolling column, which rests on the page: the
-// low-contrast-text step at about 40%, three ramp stops from the ground it
-// lies on, reads clearly there. A fence's bar rests on the code surface
-// instead, one step off that page, and over so little separation the
-// translucency all but disappears — about 1.5:1 in the light scheme, which
-// leaves the one affordance that can be dragged effectively invisible.
+// Only the two colours change, and what they answer is a question the shared
+// bar does not have. scrollbar.FromTokens derives a translucent thumb: the
+// most transparent one that still clears its contrast floor over the two
+// grounds an overlay bar rides, the window's page and the pane fill one
+// storey up. The fence's fill is that pane fill — [FromTokens] gives
+// CodeBackground the step off the page — so the shared bar would read here
+// too, and this override is no longer buying legibility.
 //
-// So the thumb is opaque, and it is the ramp's low-contrast text step: as
-// present against the fence's fill as text on it would be, and it darkens to
-// the ramp's far end while hovered or dragged. That is a weight against a
-// ground and not a match to the code's own ink, which is why it stays on this
-// step in both appearances while the light appearance's code sits one step past
-// it (see codeInk) — the bar lies on the code surface, it is not a run of code,
-// and a fence's one draggable affordance does not get heavier because the
-// reading got heavier. The translucency it gives up is the
-// shared bar's identity because a column's bar lies over the column's own
-// text; a fence's lies over the fence's bottom padding, where nothing shows
-// through it either way.
+// What it buys is the thing translucency was protecting, spent where there
+// is nothing to protect. Coverage is how much of what lies under the bar
+// stops showing through, and a column's bar lies over the column's own text,
+// where showing through is the whole point; a fence's lies over the fence's
+// bottom padding, where nothing shows through it either way. So the fence
+// spends the coverage it cannot use and takes an opaque thumb, at the ramp's
+// low-contrast text step — as present against the fence's fill as text on it
+// would be, 5.46:1 in the light appearance and 9.91:1 in the dark, against
+// the 3:1 the shared bar stops at — darkening to the ramp's far end while
+// hovered or dragged. A pairing already that far past the floor is not one a
+// derivation aimed at the floor should be allowed to walk back.
+//
+// That is a weight against a ground and not a match to the code's own ink,
+// which is why it stays on this step in both appearances while the light
+// appearance's code sits one step past it (see codeInk) — the bar lies on the
+// code surface, it is not a run of code, and a fence's one draggable
+// affordance does not get heavier because the reading got heavier.
 func codeScrollbar(c tokens.ColorTokens) scrollbar.Style {
 	s := scrollbar.FromTokens(c)
 	s.ThumbColor = c.Ramps.Neutral.Step(700)      // the code's own step
