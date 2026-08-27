@@ -188,36 +188,41 @@ func TestTheGroundIsTheAuthorsOrTheChips(t *testing.T) {
 	}
 }
 
-// TestAFenceIsBoundedOnItsPage: a block has to look like a block. Where a
-// base's ground stands off the page at least as far as this theme's own code
-// fill does, the fill says where the fence is; where it does not — which is
-// most of them, a syntax palette being fitted to a page much like this one —
-// an edge says it instead. No base comes out with neither.
+// TestAFenceIsBoundedOnItsPage: a block has to look like a block, and since
+// ADR-022 the fill is not what says so. The theme's own fence is a whisper
+// off its light paper — the ladder climbs toward the light in both schemes
+// and a light scheme has almost no room above its paper — so the theme edges
+// its own fence and every dressed one takes the same edge, derived against
+// the ground it encloses at the 3:1 a graphic carrying meaning owes.
+//
+// Every base, then, with no exceptions and no comparison: this used to edge
+// only the bases that fell short of the theme's own step off the page, and
+// that bar is 1.018:1 in the light scheme now, which nearly anything clears
+// while telling a reader nothing.
 func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
-			surface := codeSurface(sc.tok)
-			step := color.ContrastRatio(surface, sc.tok.Background)
-			edged, standing := 0, 0
+			worst := 99.0
+			var worstName string
 			for _, name := range styles.Names() {
 				st := worn(t, name, sc.tok)
-				r := color.ContrastRatio(st.CodeBackground, sc.tok.Background)
-				switch {
-				case st.CodeBorder.A > 0:
-					edged++
-					if r >= step {
-						t.Errorf("%s stands %.3f:1 off the page, past the %.3f:1 step, and is edged anyway", name, r, step)
-					}
-				case r < step:
-					t.Errorf("%s stands %.3f:1 off the page, under the %.3f:1 step, and takes no edge", name, r, step)
-				default:
-					standing++
+				if st.CodeBorder.A == 0 {
+					t.Errorf("%s is drawn on %v and takes no edge at all", name, st.CodeBackground)
+					continue
+				}
+				r := color.ContrastRatio(st.CodeBorder, st.CodeBackground)
+				if r < edgeFloor {
+					t.Errorf("%s: edge %v measures %.3f:1 against the ground %v it encloses, under the %.1f:1 floor",
+						name, st.CodeBorder, r, st.CodeBackground, edgeFloor)
+				}
+				if r < worst {
+					worst, worstName = r, name
 				}
 			}
 			st := worn(t, DefaultBase, sc.tok)
-			t.Logf("%s: the theme's own fill stands %.3f:1 off the page; %d bases reach it, %d are edged. "+
-				"The default's ground %v stands %.3f:1 off and its edge %v measures %.3f:1 against the page and %.3f:1 against the ground",
-				sc.name, step, standing, edged, st.CodeBackground,
+			t.Logf("%s: %d bases, every one edged; the thinnest margin is %s at %.3f:1. "+
+				"The default's ground %v stands %.3f:1 off the page and its edge %v measures %.3f:1 against the page and %.3f:1 against the ground",
+				sc.name, len(styles.Names()), worstName, worst, st.CodeBackground,
 				color.ContrastRatio(st.CodeBackground, sc.tok.Background), st.CodeBorder,
 				color.ContrastRatio(st.CodeBorder, sc.tok.Background),
 				color.ContrastRatio(st.CodeBorder, st.CodeBackground))
@@ -225,34 +230,64 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 	}
 }
 
-// TestTheEdgeFollowsThePaper: what the edge answers is whether the block can
-// be told from the ground the document is read on, so the answer moves when
-// that ground moves. One theme and one base, on two papers — the theme's own
-// page, and a dark panel a holder has inset the document into. On the page the
-// base's near-white ground is within a step and takes a line; on the dark
-// panel the same ground stands off plainly and takes none.
-func TestTheEdgeFollowsThePaper(t *testing.T) {
+// TestTheEdgeFollowsTheGround: what the edge answers is whether the block can
+// be told from the fill it encloses, so the answer moves when that fill moves
+// and not when anything else does. The two extremes of the registry worn on
+// one theme — the palest ground and the deepest — take two different lines,
+// because each is measured against what it is actually drawn on.
+//
+// The extremes are found rather than named, so the registry can gain and lose
+// bases without this test going stale.
+//
+// It used to follow the paper instead — the ground the document is read on,
+// which is a Style's to say. That comparison retired with ADR-022, along with
+// the bar it was measured against; the paper is no longer read here at all,
+// so a document inset into a panel takes the same edge it takes on the page.
+func TestTheEdgeFollowsTheGround(t *testing.T) {
 	c := tokens.DefaultLight
-	onPage := worn(t, DefaultBase, c)
-	if onPage.CodeBorder.A == 0 {
-		t.Fatalf("%s takes no edge on this theme's own page, so there is nothing here to move", DefaultBase)
+	var pale, deep markdown.Style
+	var paleName, deepName string
+	lightest, darkest := -1.0, 999.0
+	for _, name := range styles.Names() {
+		st := worn(t, name, c)
+		l, _, _ := color.LabFromNRGBA(st.CodeBackground)
+		if l > lightest {
+			lightest, pale, paleName = l, st, name
+		}
+		if l < darkest {
+			darkest, deep, deepName = l, st, name
+		}
+	}
+	t.Logf("palest %s on %v (L* %.1f) edged %v; deepest %s on %v (L* %.1f) edged %v",
+		paleName, pale.CodeBackground, lightest, pale.CodeBorder,
+		deepName, deep.CodeBackground, darkest, deep.CodeBorder)
+
+	if pale.CodeBorder == deep.CodeBorder {
+		t.Errorf("a fence on %v and one on %v take the same edge %v, so the edge is not following the ground",
+			pale.CodeBackground, deep.CodeBackground, pale.CodeBorder)
+	}
+	for _, st := range []markdown.Style{pale, deep} {
+		if r := color.ContrastRatio(st.CodeBorder, st.CodeBackground); r < edgeFloor {
+			t.Errorf("edge %v measures %.3f:1 against its own ground %v, under the %.1f:1 floor",
+				st.CodeBorder, r, st.CodeBackground, edgeFloor)
+		}
 	}
 
+	onPage := worn(t, DefaultBase, c)
 	inset := markdown.FromTokens(c, tokens.DefaultTypography)
 	inset.Paper = tokens.DefaultDark.Background
 	Wear(&inset, DefaultBase, c)
-	if inset.CodeBorder.A != 0 {
-		t.Errorf("a fence on %v, %.3f:1 off the ground its document is read on, is edged in %v anyway",
-			inset.CodeBackground, color.ContrastRatio(inset.CodeBackground, inset.Paper), inset.CodeBorder)
+	if inset.CodeBorder != onPage.CodeBorder {
+		t.Errorf("the same base inset onto a dark panel takes the edge %v where on the page it takes %v — the paper is being read again",
+			inset.CodeBorder, onPage.CodeBorder)
 	}
 }
 
-// TestAStyleNamingNoPaperTakesTheThemesPage: the paper is a record and a Style
-// built by hand carries none, so the measure falls back to the theme's own
-// background — which is what the constructor would have written there. A
-// caller who never heard of the field sees exactly the fence they saw before
-// there was one.
-func TestAStyleNamingNoPaperTakesTheThemesPage(t *testing.T) {
+// TestAStyleNamingNoPaperTakesTheSameEdge: a Style built by hand carries no
+// paper, and since the edge is derived against the fence's own ground rather
+// than against the page, that costs it nothing. A caller who never heard of
+// the field sees exactly the fence a constructor-built Style sees.
+func TestAStyleNamingNoPaperTakesTheSameEdge(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
 			stated := worn(t, DefaultBase, sc.tok)

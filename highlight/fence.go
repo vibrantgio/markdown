@@ -73,9 +73,11 @@ const (
 // It is st's four code fields that are written: Highlight, CodeColor,
 // CodeBackground and CodeBorder. Everything a Style says about anything else
 // is left exactly as the caller had it, so the ordinary shape of this is
-// [markdown.FromTokens] followed by one call. One more field is read and not
-// written — st.Paper, the ground the document is read on, which is what the
-// block's edge is decided against.
+// [markdown.FromTokens] followed by one call. Nothing else is read: the
+// block's edge is decided against the ground the base itself names, so a
+// document mounted on some other paper takes the same fence it takes on the
+// theme's own page. It used to read st.Paper for that comparison; ADR-022
+// retired the comparison (see fenceEdge).
 //
 // A name missing from chroma's style registry panics, as in [New].
 //
@@ -128,24 +130,7 @@ func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 		fallback = surface
 	}
 	st.CodeBackground = fenceGround(member, fallback)
-	st.CodeBorder = fenceEdge(st.CodeBackground, surface, paper(st, c), c)
-}
-
-// paper is the ground the document being dressed is read on: the Style's own,
-// or the theme's background for a Style that names none — which is what
-// [markdown.FromTokens] puts there anyway, so the two answers differ only for
-// a Style built by hand or mounted deliberately somewhere else.
-//
-// It is asked rather than assumed because the page a fence has to be seen
-// against is the page the fence is actually on. A document laid into a card
-// or a bubble is read on that fill, and an edge measured off the window's
-// background instead would be answering about a surface the reader is not
-// looking at.
-func paper(st *markdown.Style, c tokens.ColorTokens) stdcolor.NRGBA {
-	if st.Paper.A == 0 {
-		return c.Background
-	}
-	return st.Paper
+	st.CodeBorder = fenceEdge(st.CodeBackground, c)
 }
 
 // fenceGround is the fence's fill under one member: the background its author
@@ -158,38 +143,39 @@ func fenceGround(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRGBA {
 	return fallback
 }
 
-// fenceEdge is the hairline a fence needs to read as a block on this paper,
-// and the zero colour for a fence that reads as one without it.
+// fenceEdge is the hairline a dressed fence draws to read as a block: the
+// neutral rung nearest the ramp's mid-value step that reaches WCAG 1.4.11's
+// 3:1 against the ground the author fitted their inks to.
 //
-// The measure is the theme's own. A fence drawn in nothing but these tokens
-// separates from the paper by exactly one ramp step, and that step is this
-// design system's answer to "how far off the page is a panel": ground and
-// paper measure 1.13:1 apart in the light scheme and 1.12:1 in the dark one. A
-// base's ground that reaches at least as far stands off the paper the way a
-// panel here is supposed to, and takes no line. One that does not is edged,
-// and both halves of the default pair are — a palette fitted to paper is
-// within 1.05:1 of this page, and one fitted to slate within 1.09:1 of it,
-// which is a block whose ground alone would leave the reader guessing where
-// the code begins.
+// It is the theme's own rule, applied to somebody else's fill. This used to
+// be a comparison instead — a base whose ground stood off the paper at least
+// as far as the theme's own fence did took no line, and one that fell short
+// took the theme's divider. The comparison had a floor under it that ADR-022
+// removed: the theme's fence separated from the paper by one ramp step,
+// 1.13:1 light and 1.12:1 dark, and "as far as ours" was a real bar to clear.
+// Since the ladder was re-founded the light fence sits 1.02:1 off its paper,
+// so almost any ground would clear that bar while telling a reader nothing,
+// and the theme's own fence takes a derived rim in both schemes rather than
+// none in either (see markdown's codeRim). A dressed fence is the same
+// construct with an author's fill in it, so it takes the same edge — one
+// rule, no comparison to keep calibrated, and no scheme named anywhere in
+// it.
 //
-// Both ratios are measured against the paper the document is actually read
-// on, which is the Style's to say and not the window's; see [paper].
-//
-// The line is the theme's divider, the colour this system draws a separator
-// in: 1.37:1 off the light page and 1.31:1 off the dark one, which is what a
-// hairline here has always been weighted at. The weight is a loan from the
-// furniture — a separator is a separator — while the ground is the author's,
-// and the two do not have to agree: a rim only fires where ground and paper
-// are within a step of each other anyway, so a divider that reads against the
-// paper reads against the ground as well (1.31:1 and 1.21:1 for the two
-// default members).
-func fenceEdge(fence, surface, page stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
-	step := color.ContrastRatio(surface, page)
-	if color.ContrastRatio(fence, page) >= step {
-		return stdcolor.NRGBA{}
-	}
-	return c.Divider
+// Deriving against the fence's own fill rather than against the paper is
+// what makes that work for a ground this package has never seen. The line's
+// harder side is the fill it is drawn on, since a dressed fence lies on the
+// page and its rim is read against the block it encloses; and a palette
+// fitted to paper and a palette fitted to slate are answered by the same
+// call without either being named.
+func fenceEdge(fence stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
+	return c.MarkOn(tokens.RoleNeutral, fence, edgeFloor)
 }
+
+// edgeFloor is WCAG 1.4.11's contrast floor for a graphic that carries
+// meaning without being text — 3:1. A fence's rim is exactly such a graphic:
+// it is the whole of what says where the code begins once the fill is a
+// whisper off the page.
+const edgeFloor = 3.0
 
 // codeSurface is the fill a code block is drawn on under these tokens before
 // any base is worn. It is read back off the markdown style rather than from

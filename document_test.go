@@ -979,8 +979,34 @@ func TestFromTokensDefaults(t *testing.T) {
 	if st.Text.Color != c.Text || st.Text.LinkColor != c.Primary {
 		t.Errorf("Text colours = %v/%v, want Text/Primary", st.Text.Color, st.Text.LinkColor)
 	}
-	if st.CodeBackground != c.Ramps.Neutral.Step(200) {
-		t.Errorf("CodeBackground = %v, want Neutral 200 %v", st.CodeBackground, c.Ramps.Neutral.Step(200))
+	// A fence is a raised chip: it fills at the elevation ladder's raised
+	// storey, lighter than the page it lies on, in both schemes (ADR-022).
+	// It used to name Neutral 200 — one ramp step off the pin — which
+	// darkens in a light scheme and lightens in a dark one, and so read as
+	// two opposite depths from one line of code.
+	if st.CodeBackground != c.SurfaceAt(tokens.Level1) {
+		t.Errorf("CodeBackground = %v, want the raised storey %v", st.CodeBackground, c.SurfaceAt(tokens.Level1))
+	}
+	// The fill is a whisper above a light paper, so the rim is what says
+	// where the fence is, and it owes WCAG 1.4.11's 3:1 against the fill it
+	// encloses.
+	for _, tok := range []tokens.ColorTokens{tokens.DefaultLight, tokens.DefaultDark} {
+		s := markdown.FromTokens(tok, typo)
+		for _, edge := range []struct {
+			name        string
+			rim, ground color.NRGBA
+		}{
+			{"CodeBorder", s.CodeBorder, s.CodeBackground},
+			{"CodeChipBorder", s.CodeChipBorder, s.CodeChip},
+		} {
+			if edge.rim.A == 0 {
+				t.Errorf("%s is unset; a whisper of a fill cannot say where a code surface is on its own", edge.name)
+				continue
+			}
+			if r := themecolor.ContrastRatio(edge.rim, edge.ground); r < 3 {
+				t.Errorf("%s %v measures %.2f:1 against %v, under the 3:1 a graphic owes", edge.name, edge.rim, r, edge.ground)
+			}
+		}
 	}
 	// Plain code is the one colour the two appearances take a different step
 	// for, and it is a measured difference rather than a taste: see codeInk.
@@ -994,9 +1020,13 @@ func TestFromTokensDefaults(t *testing.T) {
 		t.Errorf("dark CodeColor = %v, want Neutral 700 %v", dark.CodeColor, tokens.DefaultDark.Ramps.Neutral.Step(700))
 	}
 	// A fence and an inline chip are one surface, so the constructor may not
-	// quietly drift them apart.
+	// quietly drift them apart — the edge included, since ADR-022 made the
+	// edge half of what a code surface is.
 	if st.CodeChip != st.CodeBackground {
 		t.Errorf("CodeChip = %v, CodeBackground = %v; the code surface is one value", st.CodeChip, st.CodeBackground)
+	}
+	if st.CodeChipBorder != st.CodeBorder {
+		t.Errorf("CodeChipBorder = %v, CodeBorder = %v; the code surface's edge is one value", st.CodeChipBorder, st.CodeBorder)
 	}
 	if st.QuoteBar != c.Primary || st.QuoteColor != c.Ramps.Neutral.Step(700) {
 		t.Errorf("quote colours = %v/%v, want Primary/Neutral 700", st.QuoteBar, st.QuoteColor)
