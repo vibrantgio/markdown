@@ -433,7 +433,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CodeChip:              codeFill(c), // one code surface, not two
 		CodeChipBorder:        codeRim(c),  // one code edge, not two
 		CodeScrollbar:         codeScrollbar(c),
-		QuoteBar:              c.Primary,
+		QuoteBar:              quoteBar(c),               // see quoteBar
 		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
 		RuleColor:             c.Divider,
 		TableBorder:           c.Divider,
@@ -496,8 +496,28 @@ func codeRim(c tokens.ColorTokens) color.NRGBA {
 // codeFloor is WCAG 1.4.11's contrast floor for a graphic that carries
 // meaning without being text — 3:1. A code surface's rim is exactly such a
 // graphic once its fill has stopped separating: it is the whole of what says
-// where the code begins and ends.
-const codeFloor = 3.0
+// where the code begins and ends. It is the palette's own graphic floor
+// under a local name, not a second number.
+const codeFloor = tokens.GraphicFloor
+
+// quoteBar is the bar that leads a blockquote: the brand's own colour where
+// that colour reads on the page, and the rung of the brand's ramp that does
+// where it does not.
+//
+// The bar is a graphic carrying meaning without being text — it is the whole
+// of what says these lines are quoted, the quoted prose itself being set in a
+// neutral — so it owes the page WCAG 1.4.11's 3:1, the same floor the code
+// rim takes. It used to name the Primary pin outright, and a pin is not measured against
+// the page: it is the brand colour at the brand's own depth, chosen so that
+// text laid on TOP of it reads. On the canonical seed that pin happens to
+// measure 5.94:1 against the light paper and the question never came up; on an
+// accent stated at a dark scheme's tone — the shape a palette published for
+// dark mode hands out — it measures 1.95:1, which is a bar nobody can see.
+// Asking the palette for an ink measures it instead, and the canonical seed's
+// bar does not move by a byte.
+func quoteBar(c tokens.ColorTokens) color.NRGBA {
+	return c.InkOn(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
+}
 
 // codeInk is what plain code is set in: the runs a highlighter leaves
 // colourless, and the whole of a block nothing highlights.
