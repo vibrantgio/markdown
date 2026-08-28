@@ -991,8 +991,12 @@ func (d *Document) taskEvents(gtx layout.Context, style Style, item *ListItem, s
 }
 
 // drawCheckbox paints a task item's checkbox, centred on the first text line:
-// a rounded outline when unchecked, a filled box with a check mark when
-// checked. Interaction is [Style.OnTaskClick], not this paint.
+// a rounded outline in [Style.CheckboxBorder] when unchecked, and when
+// checked a box filled with [Style.CheckboxFill] carrying a
+// [Style.CheckmarkColor] tick. The two states are two colours because they
+// are drawn on two grounds — the outline goes straight onto the page and is
+// measured against it, the fill covers the page and is measured against the
+// tick it carries. Interaction is [Style.OnTaskClick], not this paint.
 func drawCheckbox(gtx layout.Context, style Style, checked bool, center int) {
 	sz := gtx.Dp(14)
 	top := max(center-sz/2, 0)
@@ -1000,13 +1004,13 @@ func drawCheckbox(gtx layout.Context, style Style, checked bool, center int) {
 	defer tr.Pop()
 	box := clip.UniformRRect(image.Rectangle{Max: image.Pt(sz, sz)}, gtx.Dp(unit.Dp(tokens.Radius.Sm)))
 	if !checked {
-		paint.FillShape(gtx.Ops, style.CheckboxColor, clip.Stroke{
+		paint.FillShape(gtx.Ops, style.CheckboxBorder, clip.Stroke{
 			Path:  box.Path(gtx.Ops),
 			Width: float32(max(gtx.Dp(1), 1)) * 1.5,
 		}.Op())
 		return
 	}
-	paint.FillShape(gtx.Ops, style.CheckboxColor, box.Op(gtx.Ops))
+	paint.FillShape(gtx.Ops, style.CheckboxFill, box.Op(gtx.Ops))
 	s := float32(sz)
 	var p clip.Path
 	p.Begin(gtx.Ops)

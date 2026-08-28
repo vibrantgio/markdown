@@ -223,10 +223,28 @@ type Style struct {
 	// TableHeaderBackground fills the table header row behind its emphasised
 	// cells.
 	TableHeaderBackground color.NRGBA
-	// CheckboxColor strokes the unchecked task checkbox and, filled, backs
-	// the checked one.
-	CheckboxColor color.NRGBA
-	// CheckmarkColor draws the check mark inside a checked checkbox.
+	// CheckboxBorder strokes the box of an unchecked task item. Nothing is
+	// painted inside it, so the stroke lies straight on [Style.Paper] and is
+	// the whole of what says there is a task here and it is open — a graphic
+	// carrying meaning without being text, owing its page WCAG 1.4.11's 3:1.
+	//
+	// CheckboxFill is the same box in the other state and is a separate
+	// field because the two are drawn on opposite grounds: this one on the
+	// page, that one over it. They were one field once, and one colour can
+	// only serve both while it happens to read on both — which is a property
+	// of the brand a Style was derived from and not of this package. See
+	// [FromTokens].
+	CheckboxBorder color.NRGBA
+	// CheckboxFill fills the box of a checked task item, wall to wall, with
+	// [Style.CheckmarkColor]'s tick drawn over it. It is a filled mark and
+	// not an ink on the page: what it owes contrast to is the tick it
+	// carries, not the paper it covers, so it is entitled to be the brand's
+	// own colour at the brand's own depth.
+	CheckboxFill color.NRGBA
+	// CheckmarkColor draws the check mark inside a checked checkbox. Its
+	// ground is CheckboxFill rather than [Style.Paper] — the fill covers the
+	// box before the tick goes on — so it is a colour chosen against that
+	// fill, and a Style that moves the fill has to move this with it.
 	CheckmarkColor color.NRGBA
 	// BlockGap is the vertical space between sibling blocks. It is authored
 	// space, not what the reader sees: the shaped lines put their own leading
@@ -438,8 +456,9 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		RuleColor:             c.Divider,
 		TableBorder:           c.Divider,
 		TableHeaderBackground: c.Ramps.Neutral.Step(300), // tinted fill
-		CheckboxColor:         c.Primary,
-		CheckmarkColor:        c.OnPrimary,
+		CheckboxBorder:        checkboxBorder(c), // an ink on the page
+		CheckboxFill:          checkboxFill(c),   // a fill keeps its brand
+		CheckmarkColor:        checkmarkInk(c),   // measured on that fill
 		BlockGap:              gap,
 		ListSpaceAbove:        listSeam(gap),
 		Indent:                unit.Dp(tokens.Spacing.S6),
@@ -517,6 +536,62 @@ const codeFloor = tokens.GraphicFloor
 // bar does not move by a byte.
 func quoteBar(c tokens.ColorTokens) color.NRGBA {
 	return c.InkOn(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
+}
+
+// checkboxBorder is the outline of an open task's box: the brand's own colour
+// where that colour reads on the page, and the rung of the brand's ramp that
+// does where it does not — the quote bar's derivation, on the same ground and
+// at the same floor, because it is the same kind of thing. An empty box is
+// nothing but its outline, so the outline carries the whole of "there is a
+// task here" without being text: WCAG 1.4.11's 3:1 against the page, which is
+// [Style.Paper], which is the theme's own ground.
+//
+// This half of the old shared field is the half that had to move. A checkbox
+// used to take one colour for both of its states, and while the brand reads
+// on the paper that is a saving rather than a bug — the canonical seed's
+// outline does not shift by a byte. It is the seeds where the brand does NOT
+// read on the paper that the sharing hid: an accent stated at a dark scheme's
+// tone derives a light palette whose primary pin sits a whisper off its own
+// page, and an open task box drawn in it is a box nobody can find. Over the
+// seed sweep 208 of 414 light schemes put that pin under this floor.
+func checkboxBorder(c tokens.ColorTokens) color.NRGBA {
+	return c.InkOn(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
+}
+
+// checkboxFill is the body of a completed task's box, and it is the pin,
+// deliberately.
+//
+// The other half of the split does not gate, because the gate would be
+// measuring the wrong pair. A fill is not an ink: it covers its ground rather
+// than sitting on it, and a solid mark that reads as brand-coloured is what a
+// finished task is meant to look like. What it owes contrast to is the tick
+// laid ON it, and the pin's whole guarantee — the one the derivation solves
+// for every seed — is precisely that something reads on top of it. Walking
+// this to suit the page would move a filled box out from under its own tick
+// to fix a comparison nothing makes. It is the same claim the palette's own
+// on-colour derivation states about text over a base, and the same one every
+// other solid brand body in this design system is drawn under.
+func checkboxFill(c tokens.ColorTokens) color.NRGBA {
+	return c.Primary
+}
+
+// checkmarkInk is the tick drawn on [checkboxFill].
+//
+// It is a mark and not text — a stroked glyph-shaped path carrying "done"
+// with no words in it — so the floor it owes its ground is WCAG 1.4.11's 3:1,
+// the graphic floor, not the 4.5:1 a run of words would owe. What it actually
+// gets is more than that, and by construction rather than by luck: while the
+// fill is the Primary pin, the colour derived to read over that pin is
+// OnPrimary, which the derivation holds to the 4.5:1 text floor for every
+// seed. Naming the fill's own on-colour is therefore both the right answer
+// and a comfortable one.
+//
+// The pairing is asserted per seed rather than assumed, because it is the one
+// thing the split could quietly break: a later hand that moves checkboxFill
+// and leaves this alone orphans the tick on a ground it was never measured
+// against.
+func checkmarkInk(c tokens.ColorTokens) color.NRGBA {
+	return c.OnPrimary
 }
 
 // codeInk is what plain code is set in: the runs a highlighter leaves
