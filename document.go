@@ -456,14 +456,10 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	return layout.Dimensions{Size: total}
 }
 
-// rule renders a thematic break: a full-width 1 dp line, and nothing else.
-//
-// It used to pad itself by a block gap on each side, from a time when the gap
-// was the smallest stop that separates two widgets and a break spaced like an
-// ordinary block would have read as a stray line. The reading rhythm is wide
-// enough now to say "section break" on its own, and doubling it around the
-// line only opened a hole: the break is a block, and the rhythm spaces it like
-// every other block.
+// rule renders a thematic break: a full-width 1 dp line, and nothing else. It
+// adds no space of its own — the reading rhythm is wide enough to say "section
+// break", and doubling it around the line only opens a hole, so the break is a
+// block spaced like every other block.
 func rule(gtx layout.Context, style Style) layout.Dimensions {
 	w := gtx.Constraints.Max.X
 	th := max(gtx.Dp(1), 1)

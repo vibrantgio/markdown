@@ -1,7 +1,6 @@
-// Package markdown renders markdown documents as Gio widgets built from components
-// primitives. It is tier 4 of the Vibrant Gio stack, alongside patterns, and
-// nothing in the design system depends on it: it is a leaf an application
-// reaches for when it has documents to put on screen.
+// Package markdown renders markdown documents as Gio widgets built from
+// components primitives. Nothing in the design system depends on it: it is a
+// leaf an application reaches for when it has documents to put on screen.
 //
 // [Parse] walks a goldmark AST (with extension.GFM) into a block model — a
 // tree of [Block] values whose inline content is expressed as styled [Span]
@@ -20,23 +19,21 @@
 // which markdown/highlight implements with chroma, and vector images are served
 // through [WidgetImageProvider], which markdown/svgimage implements with
 // vibrantgio/svg. Only goldmark stops here rather than one level further out,
-// so components never sees it; gioui.org/x/markdown was evaluated (2026-07-20) and
-// rejected as a dependency — see the README.
+// so components never sees it.
 //
 // # The monospace font comes from the theme
 //
 // [FromTokens] resolves Style.Mono and Style.CodeSize from the Code role of
 // the tokens.Typography it is handed — "Roboto Mono" for the default, a face
-// the default collection (tokens.DefaultTypography.Faces) carries in all four
-// weight/style combinations code shapes in — regular, bold, italic, and bold
-// italic. Out of the box, code blocks and inline code render monospaced.
+// the default collection carries in all four weight/style combinations code
+// shapes in.
 //
-// The caveat survives for custom shapers: Gio matches typeface names
-// literally, with no CSS generic-family fallback and no error or warning on a
-// miss — a collection without a "Roboto Mono" face silently shapes code in
-// the proportional body face instead. An application building its own shaper
-// either includes vibrantgio/font/robotomono's faces in the collection or
-// points Style.Mono at a monospace family the collection does hold.
+// Gio matches typeface names literally, with no CSS generic-family fallback
+// and no error or warning on a miss, so a collection without a "Roboto Mono"
+// face silently shapes code in the proportional body face instead. An
+// application building its own shaper either includes
+// vibrantgio/font/robotomono's faces in the collection or points Style.Mono at
+// a monospace family the collection does hold.
 package markdown
 
 // Span is one styled inline run within a heading or paragraph. The zero

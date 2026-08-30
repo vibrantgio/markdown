@@ -63,11 +63,10 @@ type WidgetImageProvider interface {
 //
 // # Paper
 //
-// The surface a Style describes has a name: paper. It is the quiet ground
-// running text is read on, and it is not chrome — chrome being the furniture
-// a screen is assembled from, the rails and bars and cards and controls that
-// answer to the theme directly. Paper answers to the theme too, but through
-// roles of its own, and the four that make it paper are:
+// The surface a Style describes is paper: the quiet ground running text is
+// read on, distinct from chrome — the rails, bars, cards and controls that
+// answer to the theme directly. Paper answers to the theme through roles of
+// its own, and the four that make it paper are:
 //
 //   - [Style.Paper], the ground the document is read on;
 //   - [Style.Text]'s colours, the prose inks — the body, its links, its focus
@@ -77,21 +76,14 @@ type WidgetImageProvider interface {
 //   - [Style.CodeChip], the fill under a word of code quoted into a sentence.
 //
 // The rest of the fields dress the blocks standing on that paper — a fence, a
-// quote, a rule, a table, a task box — and they are paper's as well: every
-// colour this package draws comes from a field of this struct and from
-// nowhere else. The layout code reads the theme for spacing and for radii and
-// for no colour at all, so a document looks like what its Style says and
-// nothing reaches around it.
+// quote, a rule, a table, a task box.
 //
-// The roles are paper's own even where the values are chrome's today.
-// [FromTokens] takes the ground from the theme's page, the prose ink from its
-// body text pin, the chip from the elevation ladder's raised storey a fence is
-// filled with — the same numbers a card would reach for, held here in paper's
-// own name. Naming them separately costs nothing now and is what lets the reading
-// surface move later without the furniture moving with it, or the other way
-// about. Deriving a paper role from a theme token is not chrome leaking onto
-// the page; drawing a document with a token instead of with a role would be,
-// and nothing here does.
+// The invariant: every colour this package draws comes from a field of this
+// struct and from nowhere else. The layout code reads the theme for spacing
+// and for radii and for no colour at all, so a document looks like what its
+// Style says and nothing reaches around it. Deriving a paper role from a theme
+// token is fine; drawing a document with a token instead of with a role is
+// not, and nothing here does.
 type Style struct {
 	// Paper is the ground the document is read on: what lies behind the
 	// prose, under every block, out to the edges of whatever holds it.
@@ -101,13 +93,9 @@ type Style struct {
 	// record rather than a draw, the Style's statement of what the document
 	// is lying on.
 	//
-	// It used to be measured against as well: a fence took its edge from
-	// whether its ground stood far enough off this one to be seen. ADR-022
-	// retired that comparison — since the ladder was re-founded a light
-	// scheme's raised fill is a whisper off any paper, so every code surface
-	// is edged and the edge is derived against the fill it encloses rather
-	// than against the page. Nothing in the library reads this field today;
-	// it stays a record because a holder that mounts a document somewhere
+	// Nothing in the library reads this field: a code surface's edge is
+	// derived against the fill it encloses rather than against the page. It
+	// stays a record because a holder that mounts a document somewhere
 	// unusual should still be able to say so.
 	//
 	// [FromTokens] sets it to the theme's own background, which is where a
@@ -137,10 +125,8 @@ type Style struct {
 	CodeColor color.NRGBA
 	// CodeBackground is the fenced block's ground. [FromTokens] gives it the
 	// elevation ladder's raised storey — a fence is a raised chip, lighter
-	// than the page it lies on, in a light scheme and a dark one alike
-	// (ADR-022). It is a near-black in a dark scheme, exactly as it always
-	// was, and a near-white in a light one, where it used to be a step
-	// darker than the paper.
+	// than the page it lies on, in a light scheme and a dark one alike: a
+	// near-black in a dark scheme and a near-white in a light one.
 	//
 	// It is a field rather than a constant because a fence may be dressed in a
 	// syntax palette instead, and a palette is a ground and a set of inks
@@ -153,8 +139,8 @@ type Style struct {
 	// zero value — zero alpha — draws none, which is what a ground that stands
 	// off the page on its own needs.
 	//
-	// It is for the ground that does not, and since ADR-022 that is every
-	// ground a fence takes. The ladder climbs toward the light in both
+	// It is for the ground that does not, which is every ground a fence
+	// takes. The ladder climbs toward the light in both
 	// schemes and a light scheme has 3.1 L* of room above its paper to climb
 	// into, so a raised fence there is a whisper — 1.02:1 off the page — and
 	// laid on it unbounded the block stops being a block and the code reads
@@ -165,8 +151,8 @@ type Style struct {
 	CodeBorder color.NRGBA
 	// CodeChip fills the rounded chip an inline code span sits on. A zero
 	// alpha — a Style built by hand rather than by [FromTokens] — sets inline
-	// code on the page itself, as it always was, and the span is still set in
-	// Mono at the code size.
+	// code on the page itself, and the span is still set in Mono at the code
+	// size.
 	//
 	// [FromTokens] gives it and CodeBackground the same value: quoted code is
 	// one surface, whether a word of it is set in a sentence or a screenful of
@@ -177,25 +163,20 @@ type Style struct {
 	// and deliberately: a page of prose spotted with somebody else's grounds
 	// would be a page arguing with itself, so a chip stays on the quiet fill
 	// and in the body's own ink while the block down the page shows the
-	// palette whole. That is a departure from the reading surface, which puts
-	// one fill under both, and it is the chip that keeps the old behaviour.
+	// palette whole.
 	CodeChip color.NRGBA
 	// CodeChipBorder strokes a hairline just inside the chip's rounded edge,
 	// as [Style.CodeBorder] does for the fence. A zero alpha draws none.
 	//
-	// It exists because ADR-022 hands the chip a problem the fence solves by
-	// being big. The two are one construct at two sizes, so they take one
+	// The chip and the fence are one construct at two sizes, so they take one
 	// fill, and in a light scheme that fill is a whisper above the paper —
 	// which a fence survives, having a rim and a radius and a screenful of
-	// area to be recognised by, and a word of code does not. The reference
-	// application answers by tinting its chip a rose pill; this library does
-	// not, because a tint is a hue, a hue in this system belongs to a role,
-	// and code is not a role — a chip tinted Primary would hand the brand
-	// colour to the one span that was quoted for not carrying it, and a chip
-	// tinted from a status role would say something went wrong. So the chip
-	// takes the fence's answer at the chip's own size: the same fill and the
-	// same derived rim, which is what makes it read as the fence's inline
-	// twin rather than as a second construct.
+	// area to be recognised by, and a word of code does not. A tint is not
+	// available as an answer: a hue in this system belongs to a role, and code
+	// is not a role — a chip tinted Primary would hand the brand colour to the
+	// one span quoted for not carrying it, and a chip tinted from a status role
+	// would say something went wrong. So the chip takes the fence's answer at
+	// the chip's own size: the same fill and the same derived rim.
 	//
 	// It is separate from CodeBorder for the same reason CodeChip is separate
 	// from CodeBackground: a fence dressed in a syntax palette takes that
@@ -230,10 +211,9 @@ type Style struct {
 	//
 	// CheckboxFill is the same box in the other state and is a separate
 	// field because the two are drawn on opposite grounds: this one on the
-	// page, that one over it. They were one field once, and one colour can
-	// only serve both while it happens to read on both — which is a property
-	// of the brand a Style was derived from and not of this package. See
-	// [FromTokens].
+	// page, that one over it. One colour can only serve both while it happens
+	// to read on both, which is a property of the brand a Style was derived
+	// from and not of this package. See [FromTokens].
 	CheckboxBorder color.NRGBA
 	// CheckboxFill fills the box of a checked task item, wall to wall, with
 	// [Style.CheckmarkColor]'s tick drawn over it. It is a filled mark and
@@ -258,7 +238,7 @@ type Style struct {
 	// heading take more air above than an ordinary block gap and less below:
 	// a heading then separates from the section it closes and clings to the
 	// one it opens. A zero entry falls back to BlockGap, so a hand-built
-	// Style that sets neither spaces headings evenly, as it always did.
+	// Style that sets neither spaces headings evenly.
 	//
 	// The space above is suppressed for the document's first block, which has
 	// nothing to separate from, and halved for a heading directly under
@@ -360,8 +340,7 @@ type Style struct {
 	// click or by Space/Enter while focused. The argument is the *[ListItem]
 	// [Parse] produced — the same pointer, so the caller can find it in the
 	// tree. The gtx is the layout.Context active on the frame the activation
-	// is processed (GX.8), allowing consumers to emit
-	// mvu.MessageOp{Message: ...}.Add(gtx.Ops) inside the callback.
+	// is processed, so a caller may add ops to gtx.Ops inside the callback.
 	//
 	// Nil, the default, leaves every checkbox display-only: no pointer ops,
 	// no visual change.
@@ -370,50 +349,41 @@ type Style struct {
 
 // FromTokens derives the default document style from colour tokens and a
 // typography: the paper is the theme's own background, headings take the six
-// stops of the typography's document
-// heading scale, body text follows richtext.FromTokens on the BodyLarge
-// role, code sits on the Neutral 200 surface — one step off the page in either
-// scheme — with the low-contrast Neutral 700 text step, inline code on the same
-// step while keeping the body's own ink so a quoted word reads as the
-// sentence's, the quote bar is Primary with Neutral 700 text, rules and table
-// grid lines are separators and use Divider, and the table header row sits on
-// the Neutral 300 tinted fill. Highlight and Images stay nil — both are opt-in.
-// Pass tokens.DefaultTypography for the default look.
+// stops of the typography's document heading scale, body text follows
+// richtext.FromTokens on the BodyLarge role, code sits on the elevation
+// ladder's raised storey (see codeFill) with the ink codeInk derives, inline
+// code on the same fill while keeping the body's own ink so a quoted word
+// reads as the sentence's, the quote bar is Primary with Neutral 700 text,
+// rules and table grid lines are separators and use Divider, and the table
+// header row sits on the Neutral 300 tinted fill. Highlight and Images stay
+// nil — both are opt-in. Pass tokens.DefaultTypography for the default look.
 //
-// Every one of those is a role of paper's, derived from the theme rather than
-// borrowed from it — see the [Style] doc comment for the distinction and what
-// keeping it is worth. The ground is the theme's background because that is
-// where a document lies, and a holder that mounts one somewhere else says so
-// by setting Paper afterwards: this constructor answers for the theme and not
-// for the composition.
+// The ground is the theme's background because that is where a document lies,
+// and a holder that mounts one somewhere else says so by setting Paper
+// afterwards: this constructor answers for the theme and not for the
+// composition.
 //
-// The code surface is one step and not three. A fence covers a good deal of
-// the column, and area amplifies a fill: the tinted-fill step that reads as a
-// tint behind a table's header row reads, spread under a screenful of code, as
-// a slab of grey with the page showing white around it — worst in a light
-// scheme, where it also leaves the code's own ink barely over its floor. The
-// step measured off the reading application this library is judged against is
-// gentler still: a code surface 3.4 L* off its page, against the 4.9 and 5.0
-// this step gives in the light and dark schemes. What that measurement also
-// says is that a fence and an inline chip are one surface there, not two, so
+// The code surface is one step off the page and not three. A fence covers a
+// good deal of the column, and area amplifies a fill: the tinted-fill step
+// that reads as a tint behind a table's header row reads, spread under a
+// screenful of code, as a slab of grey with the page showing white around it —
+// worst in a light scheme, where it also leaves the code's own ink barely over
+// its floor. The measured reference is gentler still, a code surface 3.4 L*
+// off its page against the 4.9 and 5.0 this step gives in the light and dark
+// schemes, and it puts one surface under a fence and an inline chip alike, so
 // they are one here.
 //
 // Mono and CodeSize come from typo's own Code role — the sixteenth style,
-// which sits outside the MD3 grid. Until F3.4 this constructor took a
-// tokens.TypeScale, which had no code stop, and so had to read
-// tokens.DefaultTypography.Code no matter what typography the theme carried
-// (C2.8); a Style shaped for a non-default one had to reset Mono and CodeSize
-// afterwards. Taking the whole typography retires that workaround.
+// which sits outside the MD3 grid.
 //
-// The heading sizes come from tokens.DocumentHeadingScale rather than from
-// the Headline and Title roles this constructor used to borrow. Those roles
-// size the one big line at the top of a screen: against a 16 dp body they run
-// 32 down to 14, which inks a document's title a quarter again taller than a
-// typeset reading surface inks one — enough to wrap a title that should fit a
-// line — while crowding levels three and four onto nearly the same size and
-// then dropping a third of the ladder between levels four and five. The
-// document scale is stepped off the body role instead, evenly, so six levels
-// are six levels.
+// The heading sizes come from tokens.DocumentHeadingScale and not from the
+// Headline and Title roles, which size the one big line at the top of a
+// screen: against a 16 dp body they run 32 down to 14, which inks a document's
+// title a quarter again taller than a typeset reading surface inks one —
+// enough to wrap a title that should fit a line — while crowding levels three
+// and four onto nearly the same size and then dropping a third of the ladder
+// between levels four and five. The document scale is stepped off the body
+// role instead, evenly, so six levels are six levels.
 //
 // The block gap, the heading spaces and the announcing seam are set from the
 // reading rhythm rather than from the smallest stop that separates two widgets:
@@ -456,9 +426,9 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		RuleColor:             c.Divider,
 		TableBorder:           c.Divider,
 		TableHeaderBackground: c.Ramps.Neutral.Step(300), // tinted fill
-		CheckboxBorder:        checkboxBorder(c), // an ink on the page
-		CheckboxFill:          checkboxFill(c),   // a fill keeps its brand
-		CheckmarkColor:        checkmarkInk(c),   // measured on that fill
+		CheckboxBorder:        checkboxBorder(c),         // an ink on the page
+		CheckboxFill:          checkboxFill(c),           // a fill keeps its brand
+		CheckmarkColor:        checkmarkInk(c),           // measured on that fill
 		BlockGap:              gap,
 		ListSpaceAbove:        listSeam(gap),
 		Indent:                unit.Dp(tokens.Spacing.S6),
@@ -468,23 +438,16 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 // codeFill is the surface quoted code sits on, block and chip alike: the
 // elevation ladder's raised storey, asked of the palette.
 //
-// It used to name neutral 200 — "the step off the page" — and that was a
-// mirror. Walking the neutral ramp one rung off the pin darkens in a light
-// scheme and lightens in a dark one, so the same line of code put the light
-// fence 4.9 L* BELOW its paper and the dark fence 5.0 L* ABOVE it: one
-// construct with two opposite depth readings, which is precisely the rule
-// ADR-022 abolishes. The ADR rules the fence a raised chip — lighter than
-// the page it lies on, in both schemes — on a measured reference whose fence
-// is the lighter of the pair in both appearances.
+// A fence is a raised chip — lighter than the page it lies on, in both
+// schemes — which is what the measured reference shows and what walking the
+// neutral ramp one rung off the pin cannot give, that step darkening in a
+// light scheme and lightening in a dark one.
 //
-// Asking the ladder answers that in one call. The dark fence does not move
-// at all: the dark scheme's raised storey lands byte-for-byte back on
-// neutral 200, so #222222 over #181818 is what it always was. The light
-// fence flips to the other side of its paper, #F8F8F8 over #F6F6F6 — and
-// there it is a whisper, 0.7 L*, because the light scheme has spent nearly
-// all of its tonal axis on the paper already. That is the trade the ladder
-// takes (see theme/tokens/elevation.go): whisper steps toward white, with a
-// derived hairline carrying the visible edge. codeRim is that hairline.
+// On the default palettes the dark fence lands on #222222 over #181818, and
+// the light one on #F8F8F8 over #F6F6F6 — a whisper, 0.7 L*, the light scheme
+// having spent nearly all of its tonal axis on the paper already. That is the
+// ladder's trade: whisper steps toward white, with a derived hairline carrying
+// the visible edge. codeRim is that hairline.
 func codeFill(c tokens.ColorTokens) color.NRGBA {
 	return c.SurfaceAt(tokens.Level1)
 }
@@ -494,20 +457,16 @@ func codeFill(c tokens.ColorTokens) color.NRGBA {
 // it edges.
 //
 // It is the same derivation every other surface's edge in this design system
-// takes against its own fill, and it is here for the reason the whisper step
-// creates. While the fill carried the separation the line was decoration and
-// a fence drew none; now the fill carries 1.02:1 against a light paper, and
-// the line is the whole of what says a block of code is a block rather than
+// takes against its own fill. The fill carries 1.02:1 against a light paper,
+// so the line is the whole of what says a block of code is a block rather than
 // a paragraph in a monospace face. A graphic that carries meaning without
 // being text owes WCAG 1.4.11's 3:1, so the line takes it.
 //
-// Both schemes, and that is the point rather than an oversight. The dark
-// fence's fill measures 1.12:1 off its page — no more a floor than the light
-// fence's 1.02:1, only more of a hint — so a rule that edged one and not the
-// other would be a per-scheme rule, which is the mirror wearing different
-// clothes (ADR-022 V6). On the default palettes the line lands on #797979 in
-// the light scheme, 4.10:1 on the fence and 4.03:1 on the paper, and on
-// #9E9E9E in the dark one, 5.94:1 and 6.63:1.
+// Both schemes take the line. The dark fence's fill measures 1.12:1 off its
+// page — no more a floor than the light fence's 1.02:1, only more of a hint —
+// so edging one and not the other would be a per-scheme rule. On the default
+// palettes the line lands on #797979 in the light scheme, 4.10:1 on the fence
+// and 4.03:1 on the paper, and on #9E9E9E in the dark one, 5.94:1 and 6.63:1.
 func codeRim(c tokens.ColorTokens) color.NRGBA {
 	return c.MarkOn(tokens.RoleNeutral, codeFill(c), codeFloor)
 }
@@ -526,14 +485,15 @@ const codeFloor = tokens.GraphicFloor
 // The bar is a graphic carrying meaning without being text — it is the whole
 // of what says these lines are quoted, the quoted prose itself being set in a
 // neutral — so it owes the page WCAG 1.4.11's 3:1, the same floor the code
-// rim takes. It used to name the Primary pin outright, and a pin is not measured against
-// the page: it is the brand colour at the brand's own depth, chosen so that
-// text laid on TOP of it reads. On the canonical seed that pin happens to
-// measure 5.94:1 against the light paper and the question never came up; on an
-// accent stated at a dark scheme's tone — the shape a palette published for
-// dark mode hands out — it measures 1.95:1, which is a bar nobody can see.
-// Asking the palette for an ink measures it instead, and the canonical seed's
-// bar does not move by a byte.
+// rim takes.
+//
+// The Primary pin will not serve: a pin is the brand colour at the brand's own
+// depth, chosen so that text laid on TOP of it reads, and it is not measured
+// against the page. On the canonical seed it measures 5.94:1 against the light
+// paper, but on an accent stated at a dark scheme's tone — the shape a palette
+// published for dark mode hands out — it measures 1.95:1, a bar nobody can
+// see. Asking the palette for an ink measures it instead, and the canonical
+// seed's bar is unchanged.
 func quoteBar(c tokens.ColorTokens) color.NRGBA {
 	return c.InkOn(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
 }
@@ -546,14 +506,11 @@ func quoteBar(c tokens.ColorTokens) color.NRGBA {
 // task here" without being text: WCAG 1.4.11's 3:1 against the page, which is
 // [Style.Paper], which is the theme's own ground.
 //
-// This half of the old shared field is the half that had to move. A checkbox
-// used to take one colour for both of its states, and while the brand reads
-// on the paper that is a saving rather than a bug — the canonical seed's
-// outline does not shift by a byte. It is the seeds where the brand does NOT
-// read on the paper that the sharing hid: an accent stated at a dark scheme's
-// tone derives a light palette whose primary pin sits a whisper off its own
-// page, and an open task box drawn in it is a box nobody can find. Over the
-// seed sweep 208 of 414 light schemes put that pin under this floor.
+// The derivation matters where the brand does NOT read on the paper: an accent
+// stated at a dark scheme's tone derives a light palette whose primary pin sits
+// a whisper off its own page, and an open task box drawn in it is a box nobody
+// can find. Over the seed sweep 208 of 414 light schemes put that pin under
+// this floor.
 func checkboxBorder(c tokens.ColorTokens) color.NRGBA {
 	return c.InkOn(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
 }
@@ -561,8 +518,8 @@ func checkboxBorder(c tokens.ColorTokens) color.NRGBA {
 // checkboxFill is the body of a completed task's box, and it is the pin,
 // deliberately.
 //
-// The other half of the split does not gate, because the gate would be
-// measuring the wrong pair. A fill is not an ink: it covers its ground rather
+// It is not gated against the page, because that would be measuring the wrong
+// pair. A fill is not an ink: it covers its ground rather
 // than sitting on it, and a solid mark that reads as brand-coloured is what a
 // finished task is meant to look like. What it owes contrast to is the tick
 // laid ON it, and the pin's whole guarantee — the one the derivation solves
@@ -586,10 +543,9 @@ func checkboxFill(c tokens.ColorTokens) color.NRGBA {
 // seed. Naming the fill's own on-colour is therefore both the right answer
 // and a comfortable one.
 //
-// The pairing is asserted per seed rather than assumed, because it is the one
-// thing the split could quietly break: a later hand that moves checkboxFill
-// and leaves this alone orphans the tick on a ground it was never measured
-// against.
+// The pairing is asserted per seed rather than assumed: a hand that moves
+// checkboxFill and leaves this alone orphans the tick on a ground it was never
+// measured against.
 func checkmarkInk(c tokens.ColorTokens) color.NRGBA {
 	return c.OnPrimary
 }
@@ -684,9 +640,7 @@ func codeScrollbar(c tokens.ColorTokens) scrollbar.Style {
 // They are the size they are because a line box is the type role's, not the
 // glyphs'. A 16 dp body line inks 16 px inside a 24 px box, and the 8 px left
 // over is what a pair of ordinary blocks shows the reader on top of the space
-// between them. Under a box left to the shaped metrics the same pair showed
-// three, which is the whole of why every number here moved when the boxes
-// arrived.
+// between them.
 const (
 	// lineLeading is what a pair of ordinary blocks contributes.
 	lineLeading = unit.Dp(8)
@@ -706,9 +660,9 @@ const (
 // precisely because that is the quantity a typeset reading surface is set in;
 // [FromTokens] authors it less lineLeading, which lands the rendered run
 // within a pixel of it across mixed prose — and that is where the reference's
-// own 37 px sits. The swing is small now that a line occupies its role's box
+// own 37 px sits. The swing is small because a line occupies its role's box
 // rather than its glyphs': the box edges are fixed, so only where the ink sits
-// inside them still varies with the words.
+// inside them varies with the words.
 var blockRhythm = unit.Dp(tokens.Spacing.S8 + tokens.Spacing.S1)
 
 // The proportions a heading holds against that rhythm: the space above it is
@@ -820,7 +774,7 @@ func (s Style) headingSpace(level int) (above, below unit.Dp) {
 
 // listSpace returns the space at the seam between a paragraph and the list it
 // announces. A zero field — a Style built by hand rather than by [FromTokens] —
-// falls back to the ordinary block gap, which is what that seam always had.
+// falls back to the ordinary block gap.
 func (s Style) listSpace() unit.Dp {
 	if s.ListSpaceAbove > 0 {
 		return s.ListSpaceAbove
@@ -908,7 +862,7 @@ var (
 // document would be sized by another line's face.
 //
 // A style carrying no code size — built by hand rather than by [FromTokens] —
-// leaves the span at the line's own size, which is what it always had.
+// leaves the span at the line's own size.
 func (s Style) codeSize(size unit.Sp) unit.Sp {
 	if s.CodeSize == 0 || s.Text.Size == 0 {
 		return size

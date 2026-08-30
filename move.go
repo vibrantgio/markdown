@@ -4,15 +4,13 @@ import (
 	"gioui.org/layout"
 )
 
-// Moving a document from outside its pointer events.
+// Moving a document from outside its pointer events: a page in either
+// direction, and the two ends.
 //
-// A reader crossing a long note needs the document to move on request — from a
-// key, an outline entry, a command — and nothing about that motion is the
-// pointer's. The moves below are the reading ones: a page in either direction,
-// and the two ends. They take no layout.Context because a key arrives on the
-// frame that handles it, before the document lays out again: each records what
-// it was asked for and the next layout carries it out, which is also what
-// bounds it at the document's ends.
+// The moves take no layout.Context because a key arrives on the frame that
+// handles it, before the document lays out again: each records what it was
+// asked for and the next layout carries it out, which is also what bounds it
+// at the document's ends.
 
 // pageOverlapDivisor caps the overlap a page move keeps at this fraction of the
 // viewport. On an ordinary reading column a line of text is far below the cap;
@@ -57,8 +55,8 @@ func (d *Document) ScrollToEnd() { d.list.ScrollToEnd(len(d.blocks)) }
 // ScrollToBlock puts the top-level block at index i at the top of the viewport.
 // It is how an outline entry, or anything else naming a place in the document,
 // takes the reader there: the same document keeps reading, seated somewhere
-// else, rather than being built again at that block — so what the reader had
-// open, scrolled and interacted with survives the move.
+// else, so what the reader had open, scrolled and interacted with survives the
+// move.
 //
 // The index is the one [Document.Blocks] is indexed by, which is also what
 // [NewDocumentAt] seats a fresh document at. Out of range is not an error: a
