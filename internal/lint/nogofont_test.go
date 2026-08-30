@@ -70,7 +70,7 @@ func TestNoGofontImports(t *testing.T) {
 	}
 
 	if len(offenders) > 0 {
-		t.Errorf("ADR-003 violation: %s imported by:\n  %s",
+		t.Errorf("%s is a banned import — faces come from the theme, not gofont — imported by:\n  %s",
 			bannedImport, strings.Join(offenders, "\n  "))
 	}
 }
