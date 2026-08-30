@@ -1,16 +1,11 @@
 // Package lint holds repo-wide lint tests that enforce architecture
 // decisions mechanically.
 //
-// TestNoGofontImports enforces ADR-003: no library source file may import
-// gioui.org/font/gofont. It walks the entire repository from the module
-// root, deliberately including any nested modules (e.g. a gallery/ demo
-// module): the ADR bans gofont in library source, and the galleries were
-// migrated off gofont too, so keeping the whole repo clean is the intent.
-// Only testdata/, vendor/, node_modules/ and .git/ are skipped.
-//
-// The check matches actual parsed import declarations (go/parser in
-// ImportsOnly mode), not substrings, so this file's own mention of the
-// banned path does not trip the lint.
+// TestNoGofontImports bans gioui.org/font/gofont across the whole
+// repository, nested modules included; only testdata/, vendor/,
+// node_modules/ and .git/ are skipped. It matches parsed import
+// declarations (go/parser in ImportsOnly mode), not substrings, so this
+// file's own mention of the banned path does not trip the lint.
 package lint
 
 import (
@@ -24,8 +19,8 @@ import (
 	"testing"
 )
 
-// bannedImport is the import path forbidden by ADR-003. Both the exact
-// path and any subpackage of it are rejected.
+// bannedImport is the forbidden import path. Both the exact path and any
+// subpackage of it are rejected.
 const bannedImport = "gioui.org/font/gofont"
 
 func TestNoGofontImports(t *testing.T) {

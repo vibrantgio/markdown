@@ -21,31 +21,29 @@ type exception struct {
 }
 
 // exceptions lists the deliberate literal-colour sites in this repo.
-// None yet: markdown's only colours are computed from chroma syntax
-// themes (highlight/highlight.go), which the construction exemption
-// already covers.
+// None yet: this module's only colours are computed from chroma syntax
+// themes, which the construction exemption already covers.
 var exceptions = []exception{}
 
 // TestNoLiteralColors enforces the design-token rule: library source must
 // not hard-code colour values. Every colour a component paints comes from
-// theme/tokens (and, once D1.1 lands, theme/color) — a hex literal in
-// component code silently forks the palette.
+// theme tokens — a hex literal in component code silently forks the
+// palette.
 //
-// Like TestNoGofontImports, the check walks the entire repository from the
-// module root, including nested modules, skipping only .git/, testdata/,
-// vendor/ and node_modules/. Files are fully parsed (go/parser, not
-// ImportsOnly) and matched on the AST, so this file's own prose does not
-// trip the lint. It flags every composite literal of type <pkg>.NRGBA —
-// where <pkg> is the local name of an import of image/color, aliased or
-// dot-imported — whose elements are all basic literals, e.g.
+// The check walks the entire repository from the module root, including
+// nested modules, skipping only .git/, testdata/, vendor/ and
+// node_modules/. Files are fully parsed (go/parser, not ImportsOnly) and
+// matched on the AST, so this file's own prose does not trip the lint. It
+// flags every composite literal of type <pkg>.NRGBA — where <pkg> is the
+// local name of an import of image/color, aliased or dot-imported — whose
+// elements are all basic literals, e.g.
 // color.NRGBA{R: 0x15, G: 0x80, B: 0x3d, A: 0xff}, including such
 // literals written element-wise inside a []<pkg>.NRGBA literal.
 //
 // Three shapes are deliberately not flagged:
 //
 //   - _test.go files, wholesale. Golden tests and fixtures paint specific
-//     throwaway colours by nature; listing every fixture would bloat the
-//     allow-list without adding protection, since test colours never ship.
+//     throwaway colours by nature, and test colours never ship.
 //   - The empty literal color.NRGBA{}. The zero value expresses "unset"
 //     or "fully transparent", not a colour choice.
 //   - Literals with at least one non-literal element (variable, named
@@ -54,12 +52,7 @@ var exceptions = []exception{}
 //     hard-coding one.
 //
 // Any remaining hard-coded colour in library source must be allow-listed
-// in exceptions below with a reason, or migrated to a token.
-//
-// theme is exempt by not carrying this test: theme/tokens (and
-// theme/color once D1.1 creates it) is where literal colours
-// legitimately live. If this lint ever lands in theme, those two
-// packages are its allow-list.
+// in exceptions above with a reason, or migrated to a token.
 func TestNoLiteralColors(t *testing.T) {
 	root, err := repoRoot()
 	if err != nil {
