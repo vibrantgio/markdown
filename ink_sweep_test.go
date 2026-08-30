@@ -25,11 +25,10 @@ import (
 // macOS system accents, both ends of the tonal axis, three pastels stated at
 // a dark scheme's tone, and four hundred random colours from a fixed source.
 //
-// The three pastels are the shape that produced the defect this split
-// repairs. A palette published for a dark scheme states its accents high on
-// the tonal axis, and a brand seeded with one of them derives a light scheme
-// whose primary pin sits a whisper off its own paper — which is exactly what
-// an open task's box used to be outlined in.
+// The three pastels are the shape that breaks a naive derivation: a palette
+// published for a dark scheme states its accents high on the tonal axis, and a
+// brand seeded with one of them derives a light scheme whose primary pin sits
+// a whisper off its own paper.
 func checkboxSweepSeeds() []stdcolor.NRGBA {
 	rng := rand.New(rand.NewSource(20260827))
 	seeds := []stdcolor.NRGBA{
@@ -103,11 +102,10 @@ func TestCheckboxBorderClearsTheGraphicFloorForEverySeed(t *testing.T) {
 		len(seeds), worstLight, worstLightAt, worstDark, worstDarkAt)
 }
 
-// TestCheckmarkClearsItsFloorOnTheFillForEverySeed is the other half, and it
-// is the pairing the split makes possible to get wrong. The tick's ground is
-// the fill and not the page, so the two have to be read together; asserting
-// them apart is what let one shared field look correct while the box it drew
-// was invisible in one of its two states.
+// TestCheckmarkClearsItsFloorOnTheFillForEverySeed is the other half. The
+// tick's ground is the fill and not the page, so the two have to be read
+// together: asserted apart, a checkbox can look correct while being invisible
+// in one of its two states.
 //
 // The floor here is the graphic floor. A tick is a mark — a stroked path
 // shaped like a gesture, carrying "done" with no words in it — and 1.4.11's
@@ -140,13 +138,10 @@ func TestCheckmarkClearsItsFloorOnTheFillForEverySeed(t *testing.T) {
 		len(seeds), worst, worstAt, tokens.GraphicFloor)
 }
 
-// TestTheCanonicalSeedKeepsEveryCheckboxPin states what this split costs
-// every stored image in the design system, which is nothing. On the seed
-// every golden is rendered from, the brand's own colour clears the page and
-// is what the outline gets, the fill was never going to move, and the tick is
-// the on-colour it always was — so all three fields hold the exact bytes the
-// single shared field used to produce, and no task list anywhere renders a
-// different pixel.
+// TestTheCanonicalSeedKeepsEveryCheckboxPin pins the three checkbox fields on
+// the seed every golden is rendered from: the brand's own colour clears the
+// page and is what the outline gets, the fill is the pin, and the tick is its
+// on-colour.
 func TestTheCanonicalSeedKeepsEveryCheckboxPin(t *testing.T) {
 	for _, s := range []struct {
 		name string

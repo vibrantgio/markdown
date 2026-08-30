@@ -52,8 +52,8 @@ func themed(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c t
 
 // ---- Golden-image tests ----
 
-// TestCorpusDocumentGolden records or diffs the corpus document — every G6.2
-// construct — in light and dark token themes.
+// TestCorpusDocumentGolden records or diffs the corpus document — every
+// supported construct — in light and dark token themes.
 func TestCorpusDocumentGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse(corpus(t))
@@ -249,8 +249,8 @@ func driveDocument(w layout.Widget, size image.Point, evs ...event.Event) {
 	frame()
 }
 
-// TestCodeOverflowGolden records or diffs the fence that exposed the defect,
-// at rest in both schemes and scrolled. At rest the long line dissolves into the fence at the
+// TestCodeOverflowGolden records or diffs an over-wide fence, at rest in both
+// schemes and scrolled. At rest the long line dissolves into the fence at the
 // right edge — the affordance that says there is more while a desktop overlay
 // bar would already have faded out — and the short fence below it draws
 // neither dissolve nor bar. Scrolled, the far end of the line is on screen,
@@ -980,10 +980,9 @@ func TestFromTokensDefaults(t *testing.T) {
 		t.Errorf("Text colours = %v/%v, want Text/Primary", st.Text.Color, st.Text.LinkColor)
 	}
 	// A fence is a raised chip: it fills at the elevation ladder's raised
-	// storey, lighter than the page it lies on, in both schemes (ADR-022).
-	// It used to name Neutral 200 — one ramp step off the pin — which
-	// darkens in a light scheme and lightens in a dark one, and so read as
-	// two opposite depths from one line of code.
+	// storey, lighter than the page it lies on, in both schemes. A plain
+	// ramp step off the pin would not do — it darkens in a light scheme and
+	// lightens in a dark one, reading as two opposite depths.
 	if st.CodeBackground != c.SurfaceAt(tokens.Level1) {
 		t.Errorf("CodeBackground = %v, want the raised storey %v", st.CodeBackground, c.SurfaceAt(tokens.Level1))
 	}
@@ -1020,8 +1019,8 @@ func TestFromTokensDefaults(t *testing.T) {
 		t.Errorf("dark CodeColor = %v, want Neutral 700 %v", dark.CodeColor, tokens.DefaultDark.Ramps.Neutral.Step(700))
 	}
 	// A fence and an inline chip are one surface, so the constructor may not
-	// quietly drift them apart — the edge included, since ADR-022 made the
-	// edge half of what a code surface is.
+	// quietly drift them apart — the edge included, the edge being half of
+	// what a code surface is.
 	if st.CodeChip != st.CodeBackground {
 		t.Errorf("CodeChip = %v, CodeBackground = %v; the code surface is one value", st.CodeChip, st.CodeBackground)
 	}

@@ -121,9 +121,9 @@ func TestEscapesSuppressDelimiters(t *testing.T) {
 	}
 }
 
-// TestEscapesInTableCells asserts the reported defect in its original
-// setting: escaped underscores in table cells lose their backslashes, and an
-// escaped pipe stays inside its cell instead of splitting it.
+// TestEscapesInTableCells carries the rule into table cells: escaped
+// underscores lose their backslashes, and an escaped pipe stays inside its
+// cell instead of splitting it.
 func TestEscapesInTableCells(t *testing.T) {
 	src := "| Quant | Note |\n" +
 		"|-------|------|\n" +

@@ -51,10 +51,9 @@ func TestQuoteBarClearsTheGraphicFloor(t *testing.T) {
 	}
 }
 
-// TestTheCanonicalSeedsQuoteBarIsThePrimaryPin states what deriving the bar
-// costs the stored images, which is nothing: on the seed every golden is
-// rendered from, the brand's own colour clears the floor and is what the bar
-// is drawn in, exactly as when this named the pin outright.
+// TestTheCanonicalSeedsQuoteBarIsThePrimaryPin: on the seed every golden is
+// rendered from, the brand's own colour clears the floor, so the derivation
+// lands on the pin itself and the stored images do not move.
 func TestTheCanonicalSeedsQuoteBarIsThePrimaryPin(t *testing.T) {
 	for _, s := range []struct {
 		name string
@@ -71,8 +70,8 @@ func TestTheCanonicalSeedsQuoteBarIsThePrimaryPin(t *testing.T) {
 	}
 }
 
-// TestAPastelSeedsQuoteBarLeavesThePin is the regression: on the shape that
-// produced it, the bar is no longer the bare pin.
+// TestAPastelSeedsQuoteBarLeavesThePin: on a seed whose light pin falls under
+// the graphic floor, the bar is derived rather than the bare pin.
 func TestAPastelSeedsQuoteBarLeavesThePin(t *testing.T) {
 	light, _ := tokens.FromSeed(stdcolor.NRGBA{0x89, 0xb4, 0xfa, 0xff})
 	style := markdown.FromTokens(light, tokens.DefaultTypography)

@@ -322,7 +322,7 @@ func TestHighlightChangesPixels(t *testing.T) {
 // system fonts, so glyphs coming back at all proves the collection resolved
 // the request; a Gio GlyphID packs the face index the glyph resolved to, so
 // identical strings shaped by different faces yield different ID sequences —
-// face identity, not just metrics (the F0.1 technique).
+// face identity, not just metrics.
 func shapeRun(t *testing.T, f font.Font) (fixed.Int26_6, []text.GlyphID) {
 	t.Helper()
 	shaper := tokens.DefaultTypography.DeterministicShaper()

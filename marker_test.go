@@ -147,8 +147,8 @@ func TestInlineCodeLeavesTheLineTheBodysHeight(t *testing.T) {
 }
 
 // codeMarkerProbe is [markerProbe]'s task row with a code span opening it —
-// the shape the defect showed itself in, a checkbox riding high beside a row
-// that begins in backticks. Its plain twin runs directly above it, so one
+// the shape that would ride a checkbox high beside a row beginning in
+// backticks. Its plain twin runs directly above it, so one
 // render carries both and the two offsets are measured under identical
 // conditions.
 //

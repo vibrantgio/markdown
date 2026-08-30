@@ -40,8 +40,8 @@ func task(checked bool, marker int, blocks ...markdown.Block) *markdown.ListItem
 	return &markdown.ListItem{Task: true, Checked: checked, MarkerOffset: marker, Blocks: blocks}
 }
 
-// TestParseCorpus asserts the corpus document's full block tree: every G6.2
-// construct — heading levels 1–6, styled paragraph runs (bold, italic, bold
+// TestParseCorpus asserts the corpus document's full block tree: every
+// supported construct — heading levels 1–6, styled paragraph runs (bold, italic, bold
 // italic, inline code, link, autolink, GFM strikethrough, soft and hard
 // breaks), nested unordered and ordered lists, an ordered list with an
 // explicit start, GFM task items, nested blockquotes, fenced code with
@@ -209,7 +209,7 @@ func TestCodeTabExpansion(t *testing.T) {
 	}
 }
 
-// taskOffsetSrc mixes the cases AB1.1 has to record: nested and ordered
+// taskOffsetSrc mixes the cases a marker offset has to record: nested and ordered
 // items, [x] and [X], and a fence plus a code span that look like checkboxes
 // but are not task items.
 const taskOffsetSrc = "" +
