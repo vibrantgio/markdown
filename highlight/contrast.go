@@ -1,20 +1,16 @@
 // contrast.go — how loudly a base draws, measured on its own ground.
 //
 // Contrast in content is surfaced and not enforced. Nothing here moves an ink
-// or refuses a style: a base is shown as its author drew it, and what this file
-// adds is the ability to say, quietly and beside the thing, that a particular
-// palette was drawn faint. A chooser can pass that on; a renderer never has to
-// ask.
+// or refuses a style; what this file adds is the ability to report that a
+// palette was drawn faint.
 //
-// The measurement is deliberately not the whole entry table. A syntax style is
-// mostly a set of decisions about code, plus a handful of markers for things
-// that are not code — deleted lines, error spans, trailing whitespace — and
-// several of those are drawn in the ground colour on purpose, at a ratio of one
-// to one, because being invisible until something goes wrong is the job. A
-// count over everything would call a careful palette faint on the strength of
-// one marker its author meant nobody to see. So the reading is over the runs a
-// person's eye is actually on while reading code, and the verdict is a majority
-// of them rather than the worst of them.
+// The measurement is deliberately not the whole entry table. Several non-code
+// markers — deleted lines, error spans, trailing whitespace — are drawn in the
+// ground colour on purpose, at a ratio of one to one, so a count over
+// everything would call a careful palette faint on the strength of one marker
+// its author meant nobody to see. The reading is over the runs a person's eye
+// is on while reading code, and the verdict is a majority of them rather than
+// the worst of them.
 
 package highlight
 

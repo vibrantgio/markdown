@@ -1,19 +1,13 @@
 // bases.go — which names a style can be derived from, including the ones a
 // person adds themselves.
 //
-// Chroma ships its styles embedded, and a style is also a small XML document
-// that a person can write or download and drop in a folder. Both are offered
-// here under one vocabulary — a base is a name — so a chooser lists them
-// together and a name that was kept resolves the same way whichever kind it
-// turned out to be.
+// Chroma's embedded styles and styles read from a folder are offered under one
+// vocabulary — a base is a name — so a name that was kept resolves the same way
+// whichever kind it turned out to be.
 //
-// Loaded styles are held HERE and not put into chroma's registry. The registry
-// is a curated set that this package promises not to touch (see fence.go), and
-// a file appearing in it would make the promise conditional on what happens to
-// be in somebody's folder. The lookups below read this map first and the
-// registry after, so a loaded style is reachable everywhere a name is, and
-// nothing outside this package can tell that the two came from different
-// places.
+// Loaded styles are held HERE and never put into chroma's registry, which this
+// package promises not to touch. The lookups below read this map first and the
+// registry after, so a loaded style is reachable everywhere a name is.
 
 package highlight
 
@@ -178,16 +172,12 @@ func Loaded(name string) bool {
 // author fitted its inks against, read on the same perceptual lightness axis
 // the derivation uses to decide which way an ink has to move. It is measured
 // and not read off the name because a name is not evidence: most of the
-// embedded set says nothing about its appearance at all, and a name that does
-// say something is under no obligation to be true — a styles folder is a place
-// people put files they wrote themselves. A chooser that guessed would put a
-// style under the wrong half with nothing to appeal to.
+// embedded set says nothing about its appearance, and a name that does say
+// something is under no obligation to be true.
 //
-// A style that names no ground at all suits both. It was fitted to nothing, so
-// whatever it is drawn on is the theme's own surface and there is no appearance
-// it is the wrong choice for; putting it under one half would take it out of
-// reach under the other for no measured reason. Four of the embedded styles are
-// like this.
+// A style that names no ground at all suits both: it was fitted to nothing, so
+// whatever it is drawn on is the theme's own surface. Four of the embedded
+// styles are like this.
 //
 // A name that resolves to nothing suits neither: there is no style to measure,
 // and none to offer.
@@ -241,19 +231,12 @@ func (p BasePair) Base(dark bool) string {
 // fitted to the appearance it is being kept for, and falls back to the default
 // for that appearance otherwise.
 //
-// Both halves of that are the same rule — a member has to be usable where it
-// is going. A name nobody chose, or one whose file has left the folder, is the
-// ordinary case and falls back the way [BaseOrDefault] does. A name fitted to
-// the other ground is the odder one: it can only arrive from a file naming one
-// base with no appearance attached, or from a file somebody edited by hand,
-// and it is measured off the style's own background by [BaseSuits] rather than
-// guessed from the name. Sending it through anyway would put a palette
-// balanced for paper on a near-black slab, and would leave a chooser marking a
-// row that its own list does not hold.
-//
-// So one kept name resolves by measurement: passed as both members, it keeps
-// the appearance it was fitted to and the other takes the default. A style
-// fitted to no ground at all suits both and keeps both.
+// Both halves are the same rule: a member has to be usable where it is going.
+// A name nobody chose, or one whose file has left the folder, falls back the
+// way [BaseOrDefault] does. Fitness is measured off the style's own background
+// by [BaseSuits] rather than guessed from the name, so one kept name passed as
+// both members keeps the appearance it was fitted to and the other takes the
+// default. A style fitted to no ground at all suits both and keeps both.
 func BasesOrDefault(light, dark string) BasePair {
 	return BasePair{Light: baseFor(light, false), Dark: baseFor(dark, true)}
 }

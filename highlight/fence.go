@@ -1,27 +1,16 @@
 // fence.go dresses a fenced code block in a syntax base, as its author drew
 // it.
 //
-// A syntax style is a curated artifact and its parts were curated together: a
-// ground, a body ink, and a couple of dozen accents chosen against that
-// ground. Which of them reads loudest, which recedes, and by how much is a set
-// of relations, and the relations only hold where the whole set is. Re-fitting
-// the inks onto some other surface keeps the hues and loses the artifact — and
-// on a palette drawn for paper it loses most of it, because nearly every ink
-// has to move. Three dark flavours of one family that differ mostly by their
-// grounds come out of a re-fit indistinguishable, which is the plainest
-// statement of what a re-fit is discarding.
+// A syntax style's ground, body ink and accents were curated together, so the
+// block shows the base whole: the author's own background under the author's
+// own inks, neither of them touched. The paper around it — the page, the
+// prose, the chip an inline span sits on — stays the theme's. What the theme
+// decides is which member of the pair is on screen, and that a block on a page
+// is bounded: a ground too near the paper to be seen against it takes an edge.
 //
-// So the block shows the base whole: the author's own background under the
-// author's own inks, neither of them touched. The paper around it — the page,
-// the prose, the chip an inline span sits on — stays the theme's; the fence is
-// content, and content is shown as it was made. What the theme still decides
-// is which member of the pair is on screen, and that a block on a page is
-// bounded: a ground too near the paper to be seen against it takes an edge.
-//
-// Contrast here is surfaced, not enforced. A base whose author drew a quiet
-// palette is drawn quiet; the sweep in the tests records what every base
-// measures on its own ground and names the worst of them, and no ink is moved
-// and no style is failed for its author's taste.
+// Contrast is surfaced, not enforced: no ink is moved and no style is failed
+// for its author's taste. The sweep in the tests records what every base
+// measures on its own ground and names the worst of them.
 
 package highlight
 
@@ -41,15 +30,6 @@ import (
 // appearance and catppuccin-mocha under a dark one, which are each other's
 // registered counterparts. They are defaults and not a policy — [Wear] takes
 // any name in chroma's registry, and [WearPair] any two.
-//
-// The pair is picked for what it says about the two appearances. Its members
-// are one family drawn twice rather than one palette lit twice: the same token
-// types on the same hues, at the two volumes their author set for paper and
-// for slate, so a change of appearance changes the whole plate and not just
-// the sheet it is on. Its accents also sit in one perceptual-lightness band
-// per member, which is what makes hue rather than weight the thing telling a
-// keyword from a string — the distinction a reader keeps across a scheme
-// switch.
 const (
 	DefaultBase     = "catppuccin-latte"
 	DefaultDarkBase = "catppuccin-mocha"
@@ -76,8 +56,7 @@ const (
 // [markdown.FromTokens] followed by one call. Nothing else is read: the
 // block's edge is decided against the ground the base itself names, so a
 // document mounted on some other paper takes the same fence it takes on the
-// theme's own page. It used to read st.Paper for that comparison; ADR-022
-// retired the comparison (see fenceEdge).
+// theme's own page.
 //
 // A name missing from chroma's style registry panics, as in [New].
 //
@@ -92,15 +71,10 @@ func Wear(st *markdown.Style, base string, c tokens.ColorTokens) {
 // appearance says which member is drawn, and that member's ground, inks and
 // body colour are what the fence takes.
 //
-// A pair is what a person chooses when they choose twice, and the two members
-// owe each other nothing: a set of inks balanced against a near-white page is
-// not the set anybody would balance against a near-black one, so the light
-// member and the dark member are two artifacts and not two views of one.
-// Wearing through the pair rather than through one name is therefore what
-// makes a change of appearance a change of palette — the whole point of
-// keeping two. Each member is drawn as its own author wrote it, italics and
-// bold included; a member naming nothing this package can resolve panics
-// exactly as [Wear] does, if it is the member the appearance calls for.
+// The two members are independent artifacts, not two views of one: each is
+// drawn as its own author wrote it, italics and bold included. A member naming
+// nothing this package can resolve panics exactly as [Wear] does, if it is the
+// member the appearance calls for.
 func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 	surface := codeSurface(c)
 	mode, name := chroma.Light, p.Light
@@ -112,19 +86,16 @@ func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 		panic(fmt.Sprintf("highlight: unknown style %q (Bases lists every name that resolves)", name))
 	}
 
-	// The registry's own style, straight through: the entries the spanner
-	// reads are the author's entries, so the inks on screen are theirs to the
-	// byte and nothing here can alter one.
+	// The registry's own style, straight through: the inks on screen are the
+	// author's to the byte and nothing here alters one.
 	plain := plainForeground(member)
 	st.Highlight = spanner(member, plain)
 	if plain.IsSet() {
 		st.CodeColor = fromChroma(plain)
 	}
 
-	// The chip's fill is what a groundless base is drawn on: it is the fill a
-	// fence had before any base was chosen, and a style fitted to nothing has
-	// no ground of its own to prefer to it. A Style built by hand may carry no
-	// chip, and then the theme's own code fill stands in.
+	// The chip's fill is what a groundless base is drawn on. A Style built by
+	// hand may carry no chip, and then the theme's own code fill stands in.
 	fallback := st.CodeChip
 	if fallback.A == 0 {
 		fallback = surface
@@ -147,26 +118,11 @@ func fenceGround(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRGBA {
 // neutral rung nearest the ramp's mid-value step that reaches WCAG 1.4.11's
 // 3:1 against the ground the author fitted their inks to.
 //
-// It is the theme's own rule, applied to somebody else's fill. This used to
-// be a comparison instead — a base whose ground stood off the paper at least
-// as far as the theme's own fence did took no line, and one that fell short
-// took the theme's divider. The comparison had a floor under it that ADR-022
-// removed: the theme's fence separated from the paper by one ramp step,
-// 1.13:1 light and 1.12:1 dark, and "as far as ours" was a real bar to clear.
-// Since the ladder was re-founded the light fence sits 1.02:1 off its paper,
-// so almost any ground would clear that bar while telling a reader nothing,
-// and the theme's own fence takes a derived rim in both schemes rather than
-// none in either (see markdown's codeRim). A dressed fence is the same
-// construct with an author's fill in it, so it takes the same edge — one
-// rule, no comparison to keep calibrated, and no scheme named anywhere in
-// it.
-//
-// Deriving against the fence's own fill rather than against the paper is
-// what makes that work for a ground this package has never seen. The line's
-// harder side is the fill it is drawn on, since a dressed fence lies on the
-// page and its rim is read against the block it encloses; and a palette
-// fitted to paper and a palette fitted to slate are answered by the same
-// call without either being named.
+// The rim is derived against the fence's own fill rather than against the
+// paper, which is what makes it work for a ground this package has never seen:
+// a dressed fence lies on the page and its rim is read against the block it
+// encloses, so a palette fitted to paper and one fitted to slate are answered
+// by the same call without either being named.
 func fenceEdge(fence stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
 	return c.MarkOn(tokens.RoleNeutral, fence, edgeFloor)
 }
@@ -179,10 +135,9 @@ const edgeFloor = 3.0
 
 // codeSurface is the fill a code block is drawn on under these tokens before
 // any base is worn. It is read back off the markdown style rather than from
-// the neutral ramp directly, because the question being asked is "what does
-// this theme put under a fence by itself", and the answer is whatever the
-// style constructor decided — one place, not two. The typography is
-// irrelevant to it and the default stands in.
+// the neutral ramp directly, so the answer stays in one place: whatever the
+// style constructor decided. The typography is irrelevant to it and the
+// default stands in.
 func codeSurface(c tokens.ColorTokens) stdcolor.NRGBA {
 	return markdown.FromTokens(c, tokens.DefaultTypography).CodeBackground
 }

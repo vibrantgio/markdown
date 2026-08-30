@@ -188,17 +188,11 @@ func TestTheGroundIsTheAuthorsOrTheChips(t *testing.T) {
 	}
 }
 
-// TestAFenceIsBoundedOnItsPage: a block has to look like a block, and since
-// ADR-022 the fill is not what says so. The theme's own fence is a whisper
-// off its light paper — the ladder climbs toward the light in both schemes
-// and a light scheme has almost no room above its paper — so the theme edges
-// its own fence and every dressed one takes the same edge, derived against
-// the ground it encloses at the 3:1 a graphic carrying meaning owes.
-//
-// Every base, then, with no exceptions and no comparison: this used to edge
-// only the bases that fell short of the theme's own step off the page, and
-// that bar is 1.018:1 in the light scheme now, which nearly anything clears
-// while telling a reader nothing.
+// TestAFenceIsBoundedOnItsPage: a block has to look like a block, and the fill
+// is not what says so. The theme's own fence is a whisper off its light paper
+// — 1.018:1 — so the theme edges its own fence and every dressed one takes the
+// same edge, derived against the ground it encloses at the 3:1 a graphic
+// carrying meaning owes. Every base, with no exceptions and no comparison.
 func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
@@ -239,10 +233,8 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 // The extremes are found rather than named, so the registry can gain and lose
 // bases without this test going stale.
 //
-// It used to follow the paper instead — the ground the document is read on,
-// which is a Style's to say. That comparison retired with ADR-022, along with
-// the bar it was measured against; the paper is no longer read here at all,
-// so a document inset into a panel takes the same edge it takes on the page.
+// The paper is not read here at all, so a document inset into a panel takes
+// the same edge it takes on the page.
 func TestTheEdgeFollowsTheGround(t *testing.T) {
 	c := tokens.DefaultLight
 	var pale, deep markdown.Style

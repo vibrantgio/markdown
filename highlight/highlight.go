@@ -16,48 +16,35 @@
 // runs the style genuinely colours (keywords, strings, comments) carry a
 // colour of their own.
 //
-// There are two constructors, and they differ in how much of the style
-// arrives. [New] returns the highlighter alone, colouring runs with a stock
-// style's inks on whatever fill the caller's own Style puts under a fence:
-// pass the name that matches the theme, github against a light one and
-// github-dark against a dark one. [Wear] dresses the whole block instead —
-// the base's own background under it, its own inks in the runs it colours, its
-// own body colour in the runs it leaves plain, and an edge where a ground that
-// close to the page needs one to still read as a block. Neither alters an ink
-// or a registry entry: a style is a curated artifact and is shown as one.
+// There are two constructors. [New] returns the highlighter alone, colouring
+// runs with a stock style's inks on whatever fill the caller's own Style puts
+// under a fence: pass the name that matches the theme, github against a light
+// one and github-dark against a dark one. [Wear] dresses the whole block
+// instead — the base's own background under it, its own inks in the runs it
+// colours, its own body colour in the runs it leaves plain, and an edge where
+// a ground that close to the page needs one to still read as a block. Neither
+// alters an ink or a registry entry.
 //
-// Wear takes any name chroma's registry holds. The default, [DefaultBase], is
-// catppuccin-latte, whose registered counterpart catppuccin-mocha is the dark
-// member the same name reaches: one family drawn twice, for paper and for
-// slate, so a change of appearance changes the whole plate.
-//
-// [WearPair] takes two names, one per appearance, for a caller whose person
-// has chosen a base for each. A base is fitted to a ground, so the two
-// appearances of one theme are two choices rather than one choice and a
-// counterpart rule — and most names have no counterpart to reach anyway.
+// Wear takes any name chroma's registry holds; the default is [DefaultBase].
+// [WearPair] takes two names, one per appearance, since a base is fitted to a
+// ground and most names have no registered counterpart to reach.
 // [BasesOrDefault] turns a pair that was kept somewhere into a pair that can be
 // drawn, and [DefaultBases] is what stands in when nothing was chosen.
 //
-// It also takes the name of a style read from a folder. A chroma style is a
-// small XML document, and [LoadDir] reads a folder of them and makes each one
-// choosable by its own name; [Bases] is the whole list, embedded and loaded
-// together, and [Known] answers for one name. [BaseSuits] measures which
-// appearance a base was fitted to, for a chooser that offers one half of the
-// list at a time. Loaded styles are held beside chroma's registry and never
-// inside it — see bases.go.
+// A base name may also come from a folder: a chroma style is a small XML
+// document, [LoadDir] reads a folder of them and makes each choosable by its
+// own name, [Bases] is the whole list, and [Known] answers for one name.
+// [BaseSuits] measures which appearance a base was fitted to. Loaded styles
+// are held beside chroma's registry and never inside it — see bases.go.
 //
 // Contrast is surfaced and never enforced. [BaseContrast] reports how much of
 // what a base draws code in falls under [ContrastFloor] on the ground its own
-// author fitted it to, for a caller that wants to say so beside the name; and
-// nothing here acts on the answer, so a palette drawn faint is still drawn as
-// its author drew it.
+// author fitted it to; nothing here acts on the answer.
 //
-// A person choosing one base has chosen one appearance, and [CompletePair]
-// finds the other: the counterpart the style's author declared, or — for the
-// majority who declared none — the opposite-appearance base whose palette
-// measures nearest, by [BaseDistance]. [BasePalette] is the other half of that
-// arithmetic made public: a base as plain colours, for a caller extracting a
-// brand seed from a scheme somebody already curated, or painting its swatches.
+// [CompletePair] finds the other member for a caller holding one base: the
+// counterpart the style's author declared, or the opposite-appearance base
+// whose palette measures nearest by [BaseDistance]. [BasePalette] exposes a
+// base as plain colours.
 //
 // Dress the Style again when the theme changes. Both constructors resolve
 // their style once and the highlighter closes over it, so neither can follow a
@@ -91,9 +78,8 @@ import (
 // against chroma's lexer registry; an unrecognised language yields nil,
 // rendering the block plain. Assign the result to [markdown.Style].Highlight.
 //
-// A stock style's inks were fitted to the background its author drew them on.
-// Where that background is wanted under them too — which is where a palette's
-// relations actually hold — [Wear] puts it there.
+// A stock style's inks were fitted to the background its author drew them on;
+// [Wear] puts that background under them too.
 func New(styleName string) markdown.Highlighter {
 	style, ok := lookup(styleName)
 	if !ok {

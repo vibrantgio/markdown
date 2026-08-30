@@ -1,27 +1,18 @@
 // pair.go — the other half of a base, found rather than asked for.
 //
-// A person picking one syntax style has picked one side of a theme. The style
-// was fitted to a ground — near-white paper or a near-black slab — and drawn
-// on the other one it is either unreadable or simply not the thing its author
-// made. So a single choice has to be completed into a pair before anything can
-// be derived from it, and the question is where the other member comes from.
+// A style is fitted to one ground, so a single chosen base has to be completed
+// into a pair before anything can be derived from it.
 //
-// A minority of styles answer it themselves: chroma records a counterpart on
-// twenty-two of the seventy-four it ships, which is eleven author-declared
-// pairs. Those are the best answer there is — the same author drew both halves
-// for each other — and they win whenever they exist.
-//
-// The rest are on their own, and guessing from the name is not an option: most
-// of the set says nothing about a partner, and the names that look like they
-// pair — nord and nordic — are two dark styles rather than two halves of one
-// scheme. What is left is the palettes themselves. Two halves of a pair are
-// recognisably the same scheme — the same reds and greens and blues, re-fitted
-// to the other ground — so the nearest opposite-polarity style by hue is a
-// reasonable stand-in for a counterpart nobody declared.
-//
-// That claim is testable, and it is tested: the metric is run over both halves
-// of every declared pair with the declarations hidden from it, and has to find
-// them anyway. What it finds and where it is honestly beaten is in pair_test.go.
+// Chroma records a counterpart on twenty-two of the seventy-four styles it
+// ships — eleven author-declared pairs — and a declared counterpart wins
+// whenever there is one. For the rest, guessing from the name is not an option:
+// most say nothing about a partner, and names that look like they pair (nord
+// and nordic) are two dark styles rather than two halves of one scheme. The
+// palettes themselves are what is left: two halves of a pair are the same hues
+// re-fitted to the other ground, so the nearest opposite-polarity style by hue
+// stands in for a counterpart nobody declared. pair_test.go runs the metric
+// over both halves of every declared pair with the declarations hidden and
+// requires it to find them anyway.
 
 package highlight
 
