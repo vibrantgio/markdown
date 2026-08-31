@@ -8,7 +8,7 @@ require (
 	github.com/vibrantgio/components v1.1.1
 	github.com/vibrantgio/svg v0.0.9
 	github.com/vibrantgio/svg/driver/gio v0.0.9
-	github.com/vibrantgio/theme v1.3.0
+	github.com/vibrantgio/theme v1.3.2
 	github.com/yuin/goldmark v1.8.5
 	golang.org/x/image v0.44.0
 )
