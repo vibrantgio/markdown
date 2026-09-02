@@ -3,6 +3,7 @@ package markdown
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"strings"
 
 	"gioui.org/f32"
@@ -62,6 +63,16 @@ type Document struct {
 	// line is one line of body text in pixels, taken from the Style the last
 	// layout was given. It is the overlap a page move keeps; see move.go.
 	line int
+	// mark is the highlight this layout draws; see [Document.Highlight].
+	mark blockMark
+}
+
+// blockMark is a highlight over one top-level block: the block's index and
+// the wash it is marked with. The zero value marks nothing, and so does any
+// index outside the document or any wash with no alpha in it.
+type blockMark struct {
+	block int
+	wash  color.NRGBA
 }
 
 // imageState is a cached provider result: the widget serving a vector
@@ -84,6 +95,7 @@ func NewDocument(blocks []Block) *Document {
 		images: make(map[*Image]imageState),
 		tasks:  make(map[*ListItem]*taskState),
 		place:  placements(blocks),
+		mark:   blockMark{block: -1},
 	}
 }
 
@@ -98,6 +110,47 @@ func NewDocumentAt(blocks []Block, first int) *Document {
 
 // Blocks returns the document's top-level blocks.
 func (d *Document) Blocks() []Block { return d.blocks }
+
+// Highlight marks the top-level block at index block with wash: a field
+// painted under that block's content ink, sized to the block's own laid-out
+// box rather than to the column it is read in, so what is marked is the
+// content and not the row it occupies. block indexes d.Blocks, as
+// [Document.ScrollToBlock]'s does.
+//
+// The marking is frame state and not document state: the caller owns its
+// lifetime and its going, handing a wash whose alpha it has scaled, and sets
+// it before every [Document.Layout]. An index outside the document, or a
+// wash with no alpha in it, marks nothing.
+func (d *Document) Highlight(block int, wash color.NRGBA) {
+	d.mark = blockMark{block: block, wash: wash}
+}
+
+// ClearHighlight unmarks whatever [Document.Highlight] marked.
+func (d *Document) ClearHighlight() { d.mark = blockMark{block: -1} }
+
+// marked returns the block the highlight is on, nil when nothing is marked.
+// It resolves to a block value rather than an index because the layout paths
+// see one block at a time and know it by identity, not by position.
+func (d *Document) marked() Block {
+	if d.mark.wash.A == 0 || d.mark.block < 0 || d.mark.block >= len(d.blocks) {
+		return nil
+	}
+	return d.blocks[d.mark.block]
+}
+
+// markedBlock lays b out and, when b is the marked one, paints the wash under
+// the ink at exactly the size b laid out to.
+func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style Style, b, marked Block) layout.Dimensions {
+	if b != marked {
+		return d.block(gtx, shaper, style, b)
+	}
+	macro := op.Record(gtx.Ops)
+	dims := d.block(gtx, shaper, style, b)
+	ink := macro.Stop()
+	paint.FillShape(gtx.Ops, d.mark.wash, clip.Rect{Max: dims.Size}.Op())
+	ink.Add(gtx.Ops)
+	return dims
+}
 
 // LayoutColumn lays out every block in a natural-height vertical column with
 // no internal scrolling: the document takes exactly the height its content
@@ -152,6 +205,7 @@ func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, styl
 //
 // A document of one block takes both, being its own first and last.
 func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) func(layout.Context, Block) layout.Dimensions {
+	marked := d.marked()
 	var first, last Block
 	if n := len(d.blocks); n > 0 {
 		if start > 0 {
@@ -171,7 +225,7 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 		}
 		return layout.Inset{Top: top, Bottom: bottom, Right: style.Gutter}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Min = image.Point{}
-			return d.block(gtx, shaper, style, b)
+			return d.markedBlock(gtx, shaper, style, b, marked)
 		})
 	}
 }
@@ -295,6 +349,7 @@ func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b
 func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, blocks []Block) layout.Dimensions {
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
+	marked := d.marked()
 	var size image.Point
 	closing := 0 // the space the previous block closes with
 	for i, b := range blocks {
@@ -303,7 +358,7 @@ func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, 
 			size.Y += closing + gtx.Dp(top)
 		}
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
-		dims := d.block(cgtx, shaper, style, b)
+		dims := d.markedBlock(cgtx, shaper, style, b, marked)
 		tr.Pop()
 		size.Y += dims.Size.Y
 		size.X = max(size.X, dims.Size.X)

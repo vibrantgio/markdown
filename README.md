@@ -281,6 +281,28 @@ A `Style` built by hand names no paper, and the measure falls back to the
 theme's background — which is what the constructor would have written there,
 so nothing about a fence changes for a caller who never sets the field.
 
+## Marking a block
+
+A document can carry a highlight: a wash painted under one top-level block's
+ink, sized to the block's own laid-out box rather than to the column it is
+read in.
+
+```go
+doc.Highlight(block, wash) // block indexes doc.Blocks()
+doc.ClearHighlight()
+```
+
+The marking is frame state, not document state. The caller sets it before
+each `Layout` and owns both its lifetime and its going — a mark that fades
+hands a wash whose alpha it has scaled, and takes the marking off on the
+first frame it is done, since a document reused across frames would
+otherwise keep it. An index outside the document, or a wash with no alpha in
+it, marks nothing, so stale caller state cannot draw a mark in the wrong
+place.
+
+The colour is the caller's: nothing here decides what a marking means or
+which of a theme's colours says it.
+
 ## The monospace font comes from the theme
 
 `FromTokens` resolves `Style.Mono` and `Style.CodeSize` from the Code role of
