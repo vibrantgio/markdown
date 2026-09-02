@@ -593,9 +593,9 @@ func darkScheme(c tokens.ColorTokens) bool {
 // Only the two colours change, and what they answer is a question the shared
 // bar does not have. scrollbar.FromTokens derives a translucent thumb: the
 // most transparent one that still clears its contrast floor over the two
-// grounds an overlay bar rides, the window's page and the furniture floor its
-// panes are filled with. A fence's fill is neither of those — it is the
-// raised storey, which is lighter than both in either scheme — so the shared
+// surfaces an overlay bar rides, the window's page and the chrome level its
+// panes are filled at. A fence's fill is neither of those — it is a raised
+// level, which is lighter than both in either scheme — so the shared
 // bar clears its floor here by more than it was asked to, and this override
 // is not buying legibility.
 //
