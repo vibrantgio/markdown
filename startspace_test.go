@@ -19,7 +19,7 @@ import (
 //
 // These are endspace_test.go's questions at the other end of the viewport, and
 // they are asked the same way: in pixels, because what is under test is where
-// the ink starts relative to the viewport's leading edge, and no position
+// the content starts relative to the viewport's leading edge, and no position
 // value answers that.
 
 // startSpaceUnderTest is the inset the tests here ask for: a round number well
@@ -29,7 +29,7 @@ const startSpaceUnderTest = unit.Dp(40)
 
 // startShot lays a document out at the size given, moved to wherever move puts
 // it, and returns the number of pixel rows between the top edge and the first
-// ink — the blank the reader sees over the document's first line.
+// drawn row — the blank the reader sees over the document's first line.
 func startShot(t *testing.T, src string, size image.Point, start unit.Dp, move func(*markdown.Document)) int {
 	t.Helper()
 	shaper := defaultShaper(t)
@@ -59,7 +59,8 @@ func startShot(t *testing.T, src string, size image.Point, start unit.Dp, move f
 	return blankAbove(img)
 }
 
-// blankAbove returns the number of rows at the head of img carrying no ink.
+// blankAbove returns the number of rows at the head of img carrying nothing
+// drawn.
 func blankAbove(img *image.RGBA) int {
 	ground := tokens.DefaultLight.Background
 	b := img.Bounds()
@@ -96,7 +97,7 @@ func TestADocumentRestsClearOfTheViewportsStart(t *testing.T) {
 // margin. Part way down a document the viewport's first row carries whatever
 // the scroll left there, and a line half off the leading edge is the viewport
 // cutting it. A document that reserved the space on every frame would leave a
-// strip of empty ground over that half-cut line, which reads as a clipping
+// strip of empty background over that half-cut line, which reads as a clipping
 // fault rather than as scrolling — and it would put that strip under whatever
 // chrome the viewport begins against.
 //
@@ -112,7 +113,7 @@ func TestOnlyTheStartPaysForTheSpace(t *testing.T) {
 	inset := startShot(t, longDoc(30), size, startSpaceUnderTest, page)
 
 	if flush != inset {
-		t.Errorf("part way down, the ink starts %d px below the leading edge with the inset and %d px without it", inset, flush)
+		t.Errorf("part way down, the content starts %d px below the leading edge with the inset and %d px without it", inset, flush)
 	}
 }
 
@@ -177,7 +178,7 @@ func TestASeatedDocumentStartsFlush(t *testing.T) {
 	inset := startShot(t, longDoc(30), size, startSpaceUnderTest, seat)
 
 	if flush != inset {
-		t.Errorf("seated at a block, the ink starts %d px below the leading edge with the inset and %d px without it", inset, flush)
+		t.Errorf("seated at a block, the content starts %d px below the leading edge with the inset and %d px without it", inset, flush)
 	}
 }
 

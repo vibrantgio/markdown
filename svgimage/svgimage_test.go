@@ -52,7 +52,7 @@ func TestImageWidgetFallthroughs(t *testing.T) {
 	p := svgimage.New(testFS())
 
 	if w, err := p.ImageWidget("icon.svg"); err != nil || w == nil {
-		t.Errorf("ImageWidget(icon.svg) = (%v, %v); want a widget", w, err)
+		t.Errorf("ImageWidget(icon.svg) = (%v, %v); want a layout.Widget", w, err)
 	}
 	if _, err := p.ImageWidget("photo.png"); err == nil {
 		t.Error("ImageWidget(photo.png) succeeded; want a not-svg error")

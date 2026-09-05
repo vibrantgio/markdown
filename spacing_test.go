@@ -279,14 +279,14 @@ const (
 	rhythmTolerance       = 4
 	// Inside a paragraph the reference is exact rather than a middle: its
 	// lines are pitched at the body role's line height whatever the words are,
-	// and at a 16 px body inking 16 px that leaves 8 px between one line's ink
-	// and the next's.
+	// and at a 16 px body setting 16 px that leaves 8 px between one line's
+	// glyphs and the next's.
 	referenceLinePitch = 24
 	referenceLineBlank = 8
 )
 
 // pitchProse repeats one syllable carrying a capital, an x-height letter and a
-// descender, so every line it wraps to inks exactly the same band — cap tops
+// descender, so every line it wraps to draws exactly the same band — cap tops
 // down to the descender's foot. What is left between two bands is then the
 // blank the reader sees between two lines of prose, with nothing about the
 // words left in it.
@@ -309,14 +309,14 @@ func TestTheLinePitchInsideAParagraphMatchesTheReference(t *testing.T) {
 	})
 	bands := inkBands(img, 0, img.Bounds().Max.X)
 	if len(bands) < 4 {
-		t.Fatalf("scanned %d ink bands, want at least 4 (one per wrapped line): %v; the probe did not wrap", len(bands), bands)
+		t.Fatalf("scanned %d drawn bands, want at least 4 (one per wrapped line): %v; the probe did not wrap", len(bands), bands)
 	}
 	for i := 1; i < len(bands); i++ {
 		if pitch := bands[i][0] - bands[i-1][0]; pitch != referenceLinePitch {
-			t.Errorf("line %d inks %d px below line %d, want the reference's %d px pitch (bands %v)", i, pitch, i-1, referenceLinePitch, bands)
+			t.Errorf("line %d draws %d px below line %d, want the reference's %d px pitch (bands %v)", i, pitch, i-1, referenceLinePitch, bands)
 		}
 		if blank := bands[i][0] - bands[i-1][1]; blank != referenceLineBlank {
-			t.Errorf("lines %d and %d leave %d px of blank between their ink, want the reference's %d (bands %v)", i-1, i, blank, referenceLineBlank, bands)
+			t.Errorf("lines %d and %d leave %d px of blank between their glyphs, want the reference's %d (bands %v)", i-1, i, blank, referenceLineBlank, bands)
 		}
 	}
 }
@@ -330,21 +330,21 @@ const rhythmProse = "The measurement was taken from a rendered document.\n\n" +
 	"Some lines drop below the baseline; jumping typography.\n\n" +
 	"Others do not, so the run above them measures wider.\n\n" +
 	"CAPITALS AND NUMERALS 1234 END A LINE FLAT.\n\n" +
-	"quiet lowercase prose, no ascenders over an x-height run\n\n" +
+	"plain lowercase prose, no ascenders over an x-height run\n\n" +
 	"## The section it announces\n\n" +
 	"The paragraph a section heading opens with.\n\n" +
 	"Another ordinary paragraph closing the section.\n\n" +
 	"## Jumping typography glyphs\n\n" +
-	"quiet lowercase prose after the second heading\n\n" +
+	"plain lowercase prose after the second heading\n\n" +
 	spacingAnnounce + "\n\n" +
 	"- What drives the instability, and whether it matters.\n"
 
-// blankRuns returns the height of every run of rows carrying no ink, in
-// order, ignoring the runs that open and close the image. A row counts as ink
-// when any pixel in it differs from the background by more than a small
+// blankRuns returns the height of every run of rows carrying nothing drawn,
+// in order, ignoring the runs that open and close the image. A row counts as
+// drawn when any pixel in it differs from the background by more than a small
 // luminance threshold, which is how the reference captures were scanned:
 // low enough to catch a thin stroke, high enough that the tint behind a code
-// block does not read as a wall of ink.
+// block does not read as a solid band.
 func blankRuns(img *image.RGBA) []int {
 	b := img.Bounds()
 	lum := func(x, y int) float64 {

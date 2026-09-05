@@ -17,19 +17,19 @@
 // colour of their own.
 //
 // There are two constructors. [New] returns the highlighter alone, colouring
-// runs with a stock style's inks on whatever fill the caller's own Style puts
-// under a fence: pass the name that matches the theme, github against a light
-// one and github-dark against a dark one. [Wear] dresses the whole block
-// instead — the base's own background under it, its own inks in the runs it
+// runs with a stock style's colours on whatever fill the caller's own Style
+// puts under a fence: pass the name that matches the theme, github against a
+// light one and github-dark against a dark one. [Wear] dresses the whole block
+// instead — the base's own background under it, its own colours in the runs it
 // colours, its own body colour in the runs it leaves plain, and an edge where
-// a ground that close to the page needs one to still read as a block. Neither
-// alters an ink or a registry entry.
+// a background that close to the page needs one to still read as a block.
+// Neither alters a colour or a registry entry.
 //
 // Wear takes any name chroma's registry holds; the default is [DefaultBase].
 // [WearPair] takes two names, one per appearance, since a base is fitted to a
-// ground and most names have no registered counterpart to reach.
-// [BasesOrDefault] turns a pair that was kept somewhere into a pair that can be
-// drawn, and [DefaultBases] is what stands in when nothing was chosen.
+// background and most names have no registered counterpart to reach.
+// [BasesOrDefault] turns a pair that was kept somewhere into a pair that can
+// be drawn, and [DefaultBases] is what stands in when nothing was chosen.
 //
 // A base name may also come from a folder: a chroma style is a small XML
 // document, [LoadDir] reads a folder of them and makes each choosable by its
@@ -38,8 +38,8 @@
 // are held beside chroma's registry and never inside it — see bases.go.
 //
 // Contrast is surfaced and never enforced. [BaseContrast] reports how much of
-// what a base draws code in falls under [ContrastFloor] on the ground its own
-// author fitted it to; nothing here acts on the answer.
+// what a base draws code in falls under [ContrastFloor] on the background its
+// own author fitted it to; nothing here acts on the answer.
 //
 // [CompletePair] finds the other member for a caller holding one base: the
 // counterpart the style's author declared, or the opposite-appearance base
@@ -78,8 +78,8 @@ import (
 // against chroma's lexer registry; an unrecognised language yields nil,
 // rendering the block plain. Assign the result to [markdown.Style].Highlight.
 //
-// A stock style's inks were fitted to the background its author drew them on;
-// [Wear] puts that background under them too.
+// A stock style's colours were fitted to the background its author drew them
+// on; [Wear] puts that background under them too.
 func New(styleName string) markdown.Highlighter {
 	style, ok := lookup(styleName)
 	if !ok {
@@ -91,13 +91,13 @@ func New(styleName string) markdown.Highlighter {
 // plainForeground is the colour a style renders ordinary text in.
 //
 // Get resolves unspecified token types to the style's plain-text foreground by
-// inheritance (Text, then Background), so a run whose resolved colour equals it
-// is one chroma had no opinion about — emit it colourless and let
-// Style.CodeColor theme it. A minority of styles (github among them) declare no
-// foreground at all and instead restate their body colour per token type; for
-// those the punctuation colour is the de-facto body colour — punctuation is the
-// least semantic ink a style ever colours — so it stands in as the plain
-// foreground.
+// inheritance (Text, then Background), so a run whose resolved colour equals
+// it is one chroma had no opinion about — emit it colourless and let
+// Style.CodeColor theme it. A minority of styles (github among them) declare
+// no foreground at all and instead restate their body colour per token type;
+// for those the punctuation colour is the de-facto body colour — punctuation
+// is the least semantic thing a style ever colours — so it stands in as the
+// plain foreground.
 func plainForeground(style *chroma.Style) chroma.Colour {
 	plain := style.Get(chroma.Text).Colour
 	if !plain.IsSet() {

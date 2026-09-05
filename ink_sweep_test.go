@@ -2,8 +2,8 @@ package markdown
 
 // This file is an internal test (package markdown, not markdown_test) so it
 // can exercise checkboxBorder, checkboxFill and checkmarkInk directly, the
-// way theme/tokens/ink_test.go exercises ColorTokens.InkOn and
-// patterns/tabs/ink_sweep_test.go exercises its underline ink. The Style
+// way `theme/tokens/ink_test.go` exercises ColorTokens.InkOn and
+// `patterns/tabs/ink_sweep_test.go` exercises its underline colour. The Style
 // fields these three feed are exported and could be read back through
 // FromTokens, but the derivations are the seam the claims belong to: a test
 // that went through the constructor would still be measuring these functions
@@ -20,7 +20,7 @@ import (
 )
 
 // checkboxSweepSeeds is the seed population this file reads the checkbox's
-// ink claims against, the same one theme/tokens, components/richtext and the
+// colour claims against, the same one theme/tokens, components/richtext and the
 // pattern strips sweep their derivations with: the default seed, the nine
 // macOS system accents, both ends of the tonal axis, three pastels stated at
 // a dark scheme's tone, and four hundred random colours from a fixed source.
@@ -73,10 +73,10 @@ func checkboxSweepSchemes(seed stdcolor.NRGBA) []struct {
 // the palette's guarantee: whatever a caller seeds the brand with, an open
 // task's box is visible on the page it is drawn on.
 //
-// The ground is the theme's own background, which is what FromTokens puts in
+// The surface is the theme's own background, which is what FromTokens puts in
 // Style.Paper in the same literal, and nothing in this package paints
 // anything between the two: an unchecked box is a stroke and no fill, laid
-// straight on the document's ground.
+// straight on the document's own page.
 func TestCheckboxBorderClearsTheGraphicFloorForEverySeed(t *testing.T) {
 	worstLight, worstDark := 99.0, 99.0
 	var worstLightAt, worstDarkAt string
@@ -103,19 +103,19 @@ func TestCheckboxBorderClearsTheGraphicFloorForEverySeed(t *testing.T) {
 }
 
 // TestCheckmarkClearsItsFloorOnTheFillForEverySeed is the other half. The
-// tick's ground is the fill and not the page, so the two have to be read
+// tick stands on the fill and not on the page, so the two have to be read
 // together: asserted apart, a checkbox can look correct while being invisible
 // in one of its two states.
 //
 // The floor here is the graphic floor. A tick is a mark — a stroked path
 // shaped like a gesture, carrying "done" with no words in it — and 1.4.11's
-// 3:1 is what such a mark owes its ground; 1.4.3's 4.5:1 is what a run of
-// words owes. The measured margin is far wider than the floor asked for,
-// because while the fill is the brand's pin the tick is that pin's derived
-// on-colour, which the palette holds to the text floor for every seed. The
-// looser number is nonetheless the honest contract: it is what a future fill
-// would have to clear, and pinning the test at 4.5 would forbid fills that
-// are perfectly legal.
+// 3:1 is what such a mark owes the surface under it; 1.4.3's 4.5:1 is what a
+// run of words owes. The measured margin is far wider than the floor asked
+// for, because while the fill is the brand's pin the tick is that pin's
+// derived on-colour, which the palette holds to the text floor for every seed.
+// The looser number is nonetheless the honest contract: it is what a future
+// fill would have to clear, and pinning the test at 4.5 would forbid fills
+// that are perfectly legal.
 func TestCheckmarkClearsItsFloorOnTheFillForEverySeed(t *testing.T) {
 	worst := 99.0
 	var worstAt string

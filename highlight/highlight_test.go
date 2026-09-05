@@ -171,11 +171,12 @@ func TestGoSnippetGolden(t *testing.T) {
 }
 
 // TestWornSnippetGolden records or diffs the same fenced snippet with the
-// default base on it: the palette's own ground under the block, its own inks
-// in the runs it colours, its own body colour in the runs it leaves plain, and
-// the edge that keeps a ground this near the page a block. Beside the two
-// images above — a stock style's inks on the theme's own fill — it is what
-// wearing a base buys: a plate, rather than a set of hues borrowed from one.
+// default base on it: the palette's own background under the block, its own
+// colours in the runs it colours, its own body colour in the runs it leaves
+// plain, and the edge that keeps a background this near the page a block.
+// Beside the two images above — a stock style's colours on the theme's own
+// fill — it is what wearing a base buys: a plate, rather than a set of hues
+// borrowed from one.
 func TestWornSnippetGolden(t *testing.T) {
 	code := "// greet returns a greeting\n" + goSnippet
 	for _, tc := range []struct {
@@ -203,9 +204,9 @@ func TestWornSnippetGolden(t *testing.T) {
 
 // TestInlineChipsStayOnTheQuietFill is the other half of a worn fence: the
 // document around it does not change. A chip is a word of code inside a
-// sentence, and giving it a foreign ground would spot a page of prose with
-// grounds that belong to a palette rather than to this theme — so the chip
-// keeps the theme's fill and the body's own ink while the block down the page
+// sentence, and giving it a foreign background would spot a page of prose with
+// backgrounds that belong to a palette rather than to this theme — so the chip
+// keeps the theme's fill and the body's own colour while the block down the page
 // shows the base whole. Measured on a document holding both, by counting the
 // pixels of each fill.
 func TestInlineChipsStayOnTheQuietFill(t *testing.T) {
@@ -229,7 +230,7 @@ func TestInlineChipsStayOnTheQuietFill(t *testing.T) {
 				t.Errorf("the chip's fill moved to %v; the theme fills it with %v", style.CodeChip, plain.CodeChip)
 			}
 			if style.CodeBackground == plain.CodeChip {
-				t.Fatal("the fence's ground is the chip's fill, so counting the two apart proves nothing")
+				t.Fatal("the fence's background is the chip's fill, so counting the two apart proves nothing")
 			}
 			d := markdown.NewDocument(blocks)
 			img := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
@@ -242,7 +243,7 @@ func TestInlineChipsStayOnTheQuietFill(t *testing.T) {
 				t.Errorf("nothing on the page is filled with the chip's %v", plain.CodeChip)
 			}
 			if n := countPixels(img, style.CodeBackground); n == 0 {
-				t.Errorf("nothing on the page is filled with the base's ground %v", style.CodeBackground)
+				t.Errorf("nothing on the page is filled with the base's background %v", style.CodeBackground)
 			}
 		})
 	}

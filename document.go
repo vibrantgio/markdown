@@ -68,16 +68,16 @@ type Document struct {
 }
 
 // blockMark is a highlight over one top-level block: the block's index and
-// the wash it is marked with. The zero value marks nothing, and so does any
-// index outside the document or any wash with no alpha in it.
+// the fill it is marked with. The zero value marks nothing, and so does any
+// index outside the document or any fill with no alpha in it.
 type blockMark struct {
 	block int
 	wash  color.NRGBA
 }
 
-// imageState is a cached provider result: the widget serving a vector
-// image, the uploaded raster texture, or a recorded failure that pins the
-// alt-text fallback.
+// imageState is a cached provider result: the [layout.Widget] serving a
+// vector image, the uploaded raster texture, or a recorded failure that pins
+// the alt-text fallback.
 type imageState struct {
 	widget layout.Widget
 	src    paint.ImageOp
@@ -111,16 +111,16 @@ func NewDocumentAt(blocks []Block, first int) *Document {
 // Blocks returns the document's top-level blocks.
 func (d *Document) Blocks() []Block { return d.blocks }
 
-// Highlight marks the top-level block at index block with wash: a field
-// painted under that block's content ink, sized to the block's own laid-out
+// Highlight marks the top-level block at index block with the given fill: a
+// field painted under that block's content, sized to the block's own laid-out
 // box rather than to the column it is read in, so what is marked is the
 // content and not the row it occupies. block indexes d.Blocks, as
 // [Document.ScrollToBlock]'s does.
 //
 // The marking is frame state and not document state: the caller owns its
-// lifetime and its going, handing a wash whose alpha it has scaled, and sets
+// lifetime and its going, handing a fill whose alpha it has scaled, and sets
 // it before every [Document.Layout]. An index outside the document, or a
-// wash with no alpha in it, marks nothing.
+// fill with no alpha in it, marks nothing.
 func (d *Document) Highlight(block int, wash color.NRGBA) {
 	d.mark = blockMark{block: block, wash: wash}
 }
@@ -138,8 +138,8 @@ func (d *Document) marked() Block {
 	return d.blocks[d.mark.block]
 }
 
-// markedBlock lays b out and, when b is the marked one, paints the wash under
-// the ink at exactly the size b laid out to.
+// markedBlock lays b out and, when b is the marked one, paints the fill under
+// the content at exactly the size b laid out to.
 func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style Style, b, marked Block) layout.Dimensions {
 	if b != marked {
 		return d.block(gtx, shaper, style, b)
@@ -317,7 +317,7 @@ func blockSpace(style Style, b Block, p blockPlacement) (top, bottom unit.Dp) {
 	return top, below
 }
 
-// block dispatches one block to its widget.
+// block dispatches one block to the code that lays it out.
 func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b Block) layout.Dimensions {
 	switch b := b.(type) {
 	case *Heading:
@@ -449,15 +449,15 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 // scrolls under rather than a run of blank that scrolls away with the first
 // column: the viewport stops a padding short of the frame at both ends, the
 // two ends are padded alike, and a line long enough to be cut is cut over
-// clear ground instead of against the rim. A block that fits lays out exactly
+// clear fill instead of against the rim. A block that fits lays out exactly
 // as it would with no scroll area at all — same height, same clip, no bar, no
 // dissolve.
 //
 // A Style.CodeBorder with any alpha in it edges the fence: the border colour
-// fills the block's whole rounded box and the ground fills a box one hairline
-// smaller, concentric with it, so the rim is drawn without a stroke and
-// without a seam. The ground's box is also what the content is clipped to,
-// which is what keeps the dissolve at a cut edge off the rim it would
+// fills the block's whole rounded box and the block's own fill covers a box
+// one hairline smaller, concentric with it, so the rim is drawn without a
+// stroke and without a seam. That inner box is also what the content is
+// clipped to, which is what keeps the dissolve at a cut edge off the rim it would
 // otherwise paint over. The block's own size is the outer box either way, so
 // edging one moves nothing below it.
 func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Style, cb *CodeBlock) layout.Dimensions {
@@ -880,10 +880,10 @@ const capProbe = "H"
 // every marker high — most visibly the checkbox, which is nearly as tall as
 // the text and so has the least room to hide the error.
 //
-// The anchor is the centre of the cap band, not of the line's whole ink.
+// The anchor is the centre of the cap band, not of the line's whole extent.
 // Ascenders and descenders come and go with the words, which would make a
 // marker wander from line to line; the capitals' band is where a line's
-// weight sits whatever it says. A line that opens with taller ink — inline
+// weight sits whatever it says. A line that opens with taller glyphs — inline
 // code, say — stretches below this band, and the marker stays with the body
 // line it belongs to.
 //
@@ -892,7 +892,7 @@ const capProbe = "H"
 //
 // The line box the paragraph sets its lines in is part of that agreement. A
 // paragraph whose style names a line height taller than its shaped metrics
-// splits the surplus around the ink, half above and half below, so its first
+// splits the surplus around the glyphs, half above and half below, so its first
 // baseline sits half a leading lower than the metrics alone would put it —
 // and a marker anchored to the metrics alone would ride exactly that far
 // high. The same split is applied here, on the same rounding, so the anchor
@@ -1045,8 +1045,9 @@ func (d *Document) taskEvents(gtx layout.Context, style Style, item *ListItem, s
 // a rounded outline in [Style.CheckboxBorder] when unchecked, and when
 // checked a box filled with [Style.CheckboxFill] carrying a
 // [Style.CheckmarkColor] tick. The two states are two colours because they
-// are drawn on two grounds — the outline goes straight onto the page and is
-// measured against it, the fill covers the page and is measured against the
+// are drawn on two different surfaces — the outline goes straight onto the
+// page and is measured against it, the fill covers the page and is measured
+// against the
 // tick it carries. Interaction is [Style.OnTaskClick], not this paint.
 func drawCheckbox(gtx layout.Context, style Style, checked bool, center int) {
 	sz := gtx.Dp(14)

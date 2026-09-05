@@ -39,8 +39,8 @@ func defaultShaper(t *testing.T) *text.Shaper {
 	return tokens.DefaultTypography.DeterministicShaper()
 }
 
-// themed wraps a document in a Background-filled widget so goldens capture
-// the document on its token background.
+// themed wraps a document in a Background-filled [layout.Widget] so goldens
+// capture the document on its token background.
 func themed(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.ColorTokens) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, c.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
@@ -134,7 +134,7 @@ func TestScrolledDocumentGolden(t *testing.T) {
 }
 
 // scrolledWithBar is themed for LayoutScrollbar: the same document on the
-// same ground, with the design system's bar in a reserved gutter.
+// same background, with the design system's bar in a reserved gutter.
 func scrolledWithBar(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.ColorTokens) layout.Widget {
 	bar := scrollbar.FromTokens(c)
 	return func(gtx layout.Context) layout.Dimensions {
@@ -160,8 +160,8 @@ func TestScrollbarDocumentGolden(t *testing.T) {
 // TestScrollbarOnlyWhenTheDocumentOverflows asserts the appearing half of the
 // contract at the document level: a corpus far taller than the viewport draws
 // a bar, and a two-line document in the same viewport draws none. The probe
-// is the ink outside the row area — with Occupy the gutter is reserved either
-// way, so dimensions cannot tell the two apart, but pixels can.
+// is what is drawn outside the row area — with Occupy the gutter is reserved
+// either way, so dimensions cannot tell the two apart, but pixels can.
 func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
@@ -176,8 +176,8 @@ func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 			return d.LayoutScrollbar(gtx, shaper, style, bar, list.Occupy)
 		})
 	}
-	// A blank ground of the same size is the baseline: any difference in the
-	// gutter column is the bar.
+	// A blank background of the same size is the baseline: any difference in
+	// the gutter column is the bar.
 	blank := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background,
 			clip.Rect{Max: gtx.Constraints.Max}.Op())
@@ -340,7 +340,7 @@ func TestCodeBlockClaimsHorizontalAxisOnly(t *testing.T) {
 
 // TestCodeOffsetBounds pins where a fence's own scrolling stops: at the start
 // however far back it is pushed, and at the last column of the widest line
-// however far forward — never on empty ground past the code.
+// however far forward — never on empty background past the code.
 func TestCodeOffsetBounds(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
@@ -374,15 +374,15 @@ func TestCodeOffsetBounds(t *testing.T) {
 	}
 }
 
-// TestCodeBorderEdgesTheFenceWithoutMovingIt: a fence whose ground is too
+// TestCodeBorderEdgesTheFenceWithoutMovingIt: a fence whose fill is too
 // near the page to be seen against it takes a hairline, and taking one costs
 // the document nothing. The block occupies the same box either way — the rim
 // is drawn inside it, not around it — so a border can be switched on without
-// anything below the block moving; the ground still fills the middle, and the
+// anything below the block moving; the fill still covers the middle, and the
 // line is on screen where it was not before.
 //
 // The probe is one fence rendered twice, differing in CodeBorder alone, on a
-// ground deliberately set to the page's own colour: with no line that block is
+// fill deliberately set to the page's own colour: with no line that block is
 // invisible, which is the case the field exists for.
 func TestCodeBorderEdgesTheFenceWithoutMovingIt(t *testing.T) {
 	shaper := defaultShaper(t)
@@ -431,7 +431,7 @@ func TestCodeBorderEdgesTheFenceWithoutMovingIt(t *testing.T) {
 		t.Errorf("%d pixels came out in the border colour; a rim around a block %d px wide is more than that", got, width)
 	}
 	if n := count(rimmed, style.CodeBackground); n == 0 {
-		t.Error("the ground no longer fills the block")
+		t.Error("the fill no longer covers the block")
 	}
 }
 
@@ -605,7 +605,8 @@ func TestTableNarrowKeepsWords(t *testing.T) {
 }
 
 // widgetProvider implements ImageProvider and WidgetImageProvider, counting
-// widget requests and painting a fixed-size rect so layout is observable.
+// [layout.Widget] requests and painting a fixed-size rect so layout is
+// observable.
 type widgetProvider struct {
 	calls int
 }
@@ -624,8 +625,8 @@ func (p *widgetProvider) ImageWidget(string) (layout.Widget, error) {
 }
 
 // TestWidgetImageProvider verifies the vector hook: a provider implementing
-// WidgetImageProvider serves the image as a widget (its size shows up in
-// the layout), and the widget is requested once per block, not per frame.
+// WidgetImageProvider serves the image as a [layout.Widget] (its size shows
+// up in the layout), and it is requested once per block, not per frame.
 func TestWidgetImageProvider(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
@@ -646,7 +647,7 @@ func TestWidgetImageProvider(t *testing.T) {
 
 	dims := layoutOnce()
 	if dims.Size.Y < 30 {
-		t.Errorf("document height %d; want at least the 30 px widget", dims.Size.Y)
+		t.Errorf("document height %d; want at least the 30 px layout.Widget", dims.Size.Y)
 	}
 	layoutOnce()
 	if prov.calls != 1 {
@@ -898,13 +899,13 @@ func TestDocumentLiveFrame(t *testing.T) {
 // TestCodeReadsAtItsPagesWeight is the measurement behind codeInk, kept as a
 // gate so the two appearances cannot drift apart again.
 //
-// A document's code is quieter than its prose in both appearances, deliberately
-// — a fence is quoted matter, and it is set on its own fill besides. What must
-// not differ is how much quieter, because a reader who switches appearance is
-// reading the same document: code that recedes a step in one and half a page in
-// the other is two different documents.
+// A document's code is less pronounced than its prose in both appearances,
+// deliberately — a fence is quoted matter, and it is set on its own fill
+// besides. What must not differ is by how much, because a reader who switches
+// appearance is reading the same document: code that recedes a step in one and
+// half a page in the other is two different documents.
 //
-// The measurement is the travel from the fence's own fill to the code's ink,
+// The measurement is the travel from the fence's own fill to the code's colour,
 // against the travel from the page to the prose's, on the perceptual lightness
 // axis — "how far into the page's own range does this text go" — with the WCAG
 // ratios logged beside it because the floor the syntax palette is fitted to is
@@ -930,11 +931,11 @@ func TestCodeReadsAtItsPagesWeight(t *testing.T) {
 			tc.name, themecolor.ContrastRatio(st.Text.Color, tc.c.Background),
 			themecolor.ContrastRatio(st.CodeColor, st.CodeBackground), 100*share[i])
 		if share[i] < wantAtLeast {
-			t.Errorf("%s: code travels %.0f%% of the range its prose does; under %.0f%% a screenful of it reads washed",
+			t.Errorf("%s: code travels %.0f%% of the range its prose does; under %.0f%% a screenful of it reads faint",
 				tc.name, 100*share[i], 100*wantAtLeast)
 		}
 		if st.CodeColor == st.Text.Color {
-			t.Errorf("%s: code is inked in the prose colour; a fence is quoted matter and reads as such", tc.name)
+			t.Errorf("%s: code is set in the prose colour; a fence is quoted matter and reads as such", tc.name)
 		}
 	}
 	if d := math.Abs(share[0] - share[1]); d > 0.15 {
@@ -951,7 +952,7 @@ func TestFromTokensDefaults(t *testing.T) {
 	c, typo := tokens.DefaultLight, tokens.DefaultTypography
 	st := markdown.FromTokens(c, typo)
 
-	// The ground a document is read on is a role of the document's, and its
+	// The surface a document is read on is a role of the document's, and its
 	// value is the theme's page — the same colour the furniture round it
 	// fills a window with, held in the document's own name so that the two
 	// can part later without either being renamed for it.
@@ -973,14 +974,14 @@ func TestFromTokensDefaults(t *testing.T) {
 	// its own headline in: borrowing the display roles back would put a
 	// document's title a quarter again taller than a reading surface sets one.
 	if st.HeadingSizes[0] >= unit.Sp(typo.HeadlineLarge.Size) {
-		t.Errorf("level 1 sets at %v, the HeadlineLarge display role at %v; the document scale must be the quieter of the two",
+		t.Errorf("level 1 sets at %v, the HeadlineLarge display role at %v; the document scale must be the smaller of the two",
 			st.HeadingSizes[0], typo.HeadlineLarge.Size)
 	}
 	if st.Text.Color != c.Text || st.Text.LinkColor != c.Primary {
 		t.Errorf("Text colours = %v/%v, want Text/Primary", st.Text.Color, st.Text.LinkColor)
 	}
-	// A fence is a raised chip: it fills at the elevation ladder's raised
-	// storey, lighter than the page it lies on, in both schemes. A plain
+	// A fence is a raised chip: it fills at the raise walked off the content,
+	// lighter than the page it lies on, in both schemes. A plain
 	// ramp step off the pin would not do — it darkens in a light scheme and
 	// lightens in a dark one, reading as two opposite depths.
 	if st.CodeBackground != c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill {

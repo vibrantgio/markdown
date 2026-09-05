@@ -14,8 +14,8 @@ import (
 )
 
 // A style is a small XML document. These are the smallest ones that still
-// colour something: a ground the mode is read off, and three inks a test can
-// tell apart from any embedded style's.
+// colour something: a background the mode is read off, and three colours a
+// test can tell apart from any embedded style's.
 const (
 	lanternXML = `<style name="lantern-day" counterpart="lantern-night">
   <entry type="Background" style="bg:#fdf6e3 #586e75"/>
@@ -107,7 +107,7 @@ func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 
 // TestALoadedPairHasTwoSides: a style naming a counterpart that is also in the
 // folder behaves the way an embedded pair does — the light member on a light
-// theme, the dark one on a dark theme, from the one name. The ground on the
+// theme, the dark one on a dark theme, from the one name. The background on the
 // fence is what says which member arrived, the two fixtures being fitted to
 // paper and to slate.
 func TestALoadedPairHasTwoSides(t *testing.T) {
@@ -125,7 +125,7 @@ func TestALoadedPairHasTwoSides(t *testing.T) {
 		{"dark", tokens.DefaultDark, stdcolor.NRGBA{R: 0x00, G: 0x2b, B: 0x36, A: 0xff}},
 	} {
 		if got := worn(t, "lantern-day", tc.tok).CodeBackground; got != tc.want {
-			t.Errorf("%s theme put %v under the fence, want the pair's %s member's own ground %v",
+			t.Errorf("%s theme put %v under the fence, want the pair's %s member's own background %v",
 				tc.name, got, tc.name, tc.want)
 		}
 	}
@@ -281,10 +281,10 @@ func TestEveryBaseIsOfferedUnderOneAppearanceOrBoth(t *testing.T) {
 		case d:
 			dark++
 		default:
-			t.Errorf("the base %q is offered under neither appearance — nothing can reach it", n)
+			t.Errorf("the base %q is offered under neither appearance — no chooser can show it", n)
 		}
 	}
-	t.Logf("%d bases: %d light, %d dark, %d fitted to no ground and offered under both",
+	t.Logf("%d bases: %d light, %d dark, %d fitted to no background and offered under both",
 		len(Bases()), light, dark, both)
 	if light == 0 || dark == 0 {
 		t.Errorf("the split came out %d light and %d dark — one half of the chooser would be empty", light, dark)
@@ -369,7 +369,7 @@ func TestAKeptPairResolvesByMeasurement(t *testing.T) {
 		{"members on the wrong halves", "dracula", "github", DefaultBase, DefaultDarkBase},
 		{"one light base, no appearance attached", "github", "github", "github", DefaultDarkBase},
 		{"one dark base, no appearance attached", "dracula", "dracula", DefaultBase, "dracula"},
-		{"one base fitted to no ground at all", "pygments", "pygments", "pygments", "pygments"},
+		{"one base fitted to no background at all", "pygments", "pygments", "pygments", "pygments"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := BasesOrDefault(tc.light, tc.dark)
@@ -381,7 +381,7 @@ func TestAKeptPairResolvesByMeasurement(t *testing.T) {
 			// for, which is the property a chooser leans on: the applied base
 			// is always on the list the scheme is showing.
 			if !BaseSuits(got.Light, false) || !BaseSuits(got.Dark, true) {
-				t.Errorf("%+v holds a member fitted to the other ground", got)
+				t.Errorf("%+v holds a member fitted to the other background", got)
 			}
 		})
 	}

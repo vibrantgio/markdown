@@ -17,10 +17,11 @@ import (
 
 // The space a scrolling document keeps below its last block.
 //
-// The measurements below are pixels, because the question is where the ink
-// stops relative to the viewport's trailing edge and no position value
-// answers that. Every shot fills the ground with the token background first,
-// so "the last row that is not the ground" is the last row that carries ink.
+// The measurements below are pixels, because the question is where the drawn
+// content stops relative to the viewport's trailing edge and no position value
+// answers that. Every shot fills the surface with the token background first,
+// so "the last row that is not the background" is the last row that carries
+// anything.
 
 // endSpaceUnderTest is the inset the tests here ask for. Any value clear of
 // the ordinary block gap would do; this one is a round number well above it,
@@ -29,7 +30,7 @@ import (
 const endSpaceUnderTest = unit.Dp(40)
 
 // endShot lays a document out at the size given, moved to wherever move puts
-// it, and returns the number of pixel rows between the last ink and the
+// it, and returns the number of pixel rows between the last drawn row and the
 // bottom edge — the blank the reader sees under the document's last line.
 //
 // The document lays out three times: once to give the move a viewport to
@@ -65,7 +66,8 @@ func endShot(t *testing.T, src string, size image.Point, end unit.Dp, move func(
 	return blankBelow(img)
 }
 
-// blankBelow returns the number of rows at the foot of img carrying no ink.
+// blankBelow returns the number of rows at the foot of img carrying nothing
+// drawn.
 func blankBelow(img *image.RGBA) int {
 	ground := tokens.DefaultLight.Background
 	b := img.Bounds()
@@ -104,7 +106,7 @@ func TestADocumentRestsClearOfTheViewportsEnd(t *testing.T) {
 // margin. Part way down a long document every row of the viewport may carry
 // text, and a line half off the trailing edge is the viewport cutting it —
 // exactly as it is without the inset. A document that reserved the space on
-// every frame would leave a strip of empty ground under a half-cut line,
+// every frame would leave a strip of empty background under a half-cut line,
 // which reads as a clipping fault rather than as scrolling.
 func TestOnlyTheEndPaysForTheSpace(t *testing.T) {
 	size := image.Pt(480, 400)
@@ -114,7 +116,7 @@ func TestOnlyTheEndPaysForTheSpace(t *testing.T) {
 	inset := endShot(t, longDoc(30), size, endSpaceUnderTest, page)
 
 	if flush != inset {
-		t.Errorf("part way down, the ink stops %d px above the edge with the inset and %d px without it", inset, flush)
+		t.Errorf("part way down, the content stops %d px above the edge with the inset and %d px without it", inset, flush)
 	}
 }
 
@@ -169,7 +171,7 @@ func TestTheEndsAgreeWithTheRestingPosition(t *testing.T) {
 
 // TestADocumentThatFitsRestsWhereItAlwaysDid: asking for the inset must not
 // start a document scrolling that has nowhere to scroll. The space is at the
-// end of a document the reader can reach the end of; a note shorter than the
+// end of a document that has an end to scroll to; a note shorter than the
 // viewport is already showing its end.
 func TestADocumentThatFitsRestsWhereItAlwaysDid(t *testing.T) {
 	r := newReader(t, "# Short\n\nTwo lines, and no more than that.\n", image.Pt(480, 400))

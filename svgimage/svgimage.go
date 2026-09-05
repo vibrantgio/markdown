@@ -36,7 +36,7 @@ import (
 
 // Provider serves destinations ending in .svg from a file system —
 // typically a go:embed asset tree, so the document performs no network
-// I/O — as vector widgets sized by the SVG's own viewBox and scaled down
+// I/O — as vector [layout.Widget]s sized by the SVG's own viewBox and scaled down
 // to the constraint. Other destinations delegate to the optional raster
 // provider, and every failure falls through to the document's alt-text
 // rendering.
@@ -57,7 +57,7 @@ func NewWithRaster(fsys fs.FS, raster markdown.ImageProvider) *Provider {
 }
 
 // ImageWidget parses the SVG at the destination path in the provider's
-// file system and returns a widget rendering it at its viewBox size,
+// file system and returns a [layout.Widget] rendering it at its viewBox size,
 // constrained down with its aspect preserved.
 func (p *Provider) ImageWidget(url string) (layout.Widget, error) {
 	if !strings.EqualFold(path.Ext(url), ".svg") {

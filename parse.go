@@ -312,7 +312,7 @@ func inlines(src []byte, parent ast.Node) []Span {
 				sp.Text = string(c.Label(src))
 				add(sp)
 			case *east.TaskCheckBox:
-				// Rendered as a real checkbox by the list-item widget.
+				// Rendered as a real checkbox by the list-item layout.
 			case *ast.Image:
 				// Only a paragraph-sole image becomes an *Image block; an
 				// image mixed into text falls back to its alt-text runs.

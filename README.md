@@ -13,7 +13,7 @@ real document — headings on the type scale, bordered tables, code on a surface
 The package walks a goldmark AST (with `extension.GFM`) into a block model and
 renders it with components primitives:
 
-- headings on the `tokens` document heading scale — a ladder stepped off the
+- headings on the `tokens` document heading scale — stepped off the
   body role for reading surfaces rather than the display roles that size a
   screen's own headline — each carrying its own vertical space, wider above
   than below, so a heading parts from the section it closes and binds to the
@@ -37,7 +37,7 @@ renders it with components primitives:
 - images through a caller-supplied `ImageProvider` (the library performs no
   I/O), rendered with `widget.Image` and falling back to alt text
 
-The document widget lays top-level blocks through `components/list`, so long
+The `Document` lays top-level blocks through `components/list`, so long
 documents stay O(visible).
 
 Notes written in the Obsidian dialect — YAML-style frontmatter, `[[wikilink]]`
@@ -64,8 +64,8 @@ The [organization page](https://github.com/vibrantgio) has the full stack.
 | package | what it does |
 | --- | --- |
 | `markdown` | `Parse` a source into a block model, `Document` to lay it out, `Style` to theme it. Carries goldmark, and nothing heavier. |
-| `markdown/highlight` | A chroma-backed `Highlighter` for fenced code — `New` for the highlighter alone, `Wear` to put a whole syntax base on the block, ground and all. Importing this package is what pulls chroma into a build; no chroma type reaches its exported API. |
-| `markdown/svgimage` | An image provider serving `.svg` destinations as vector widgets through `svg/driver/gio`. Importing this package is what pulls svg in. |
+| `markdown/highlight` | A chroma-backed `Highlighter` for fenced code — `New` for the highlighter alone, `Wear` to put a whole syntax base on the block, background and all. Importing this package is what pulls chroma into a build; no chroma type reaches its exported API. |
+| `markdown/svgimage` | An image provider serving `.svg` destinations as vector `layout.Widget`s through `svg/driver/gio`. Importing this package is what pulls svg in. |
 | `markdown/obsidian` | Recognition of the Obsidian dialect around `Parse`: `SplitFrontMatter` before it, `WikiSpans` and `BlockAnchors` after it. Pure Go, no dependency beyond the parent package. |
 
 ## Usage
@@ -95,7 +95,7 @@ func docsStyle(c tokens.ColorTokens, typo tokens.Typography) markdown.Style {
 ```
 
 `New` wears a stock style exactly as its author wrote it, which means its
-inks were fitted to that author's background rather than to the fill your
+colours were fitted to that author's background rather than to the fill your
 theme puts under a fence. `Wear` puts that background there too:
 
 ```go
@@ -103,29 +103,30 @@ st := markdown.FromTokens(c, typo)
 highlight.Wear(&st, highlight.DefaultBase, c)
 ```
 
-A syntax base is a ground, a body ink and a couple of dozen accents chosen
-together, and which of them reads loudest — and by how much — is a set of
-relations that only holds where the whole set is. So the fenced block shows the artifact: the author's
-own background under it, their own inks in the runs they coloured, their own
-body colour in the runs they left plain, and no ink altered by anything here.
-Nothing else on the page moves. The prose, and the chip an inline code span
-sits on, stay the theme's — one call writes four fields of a `Style`
-(`Highlight`, `CodeColor`, `CodeBackground`, `CodeBorder`) and leaves the
-rest exactly as you had it.
+A syntax base is a background, a body colour and a couple of dozen accents
+chosen together, and which of them reads most pronounced — and by how much —
+is a set of relations that only holds where the whole set is. So the fenced
+block shows the artifact: the author's own background under it, their own
+colours in the runs they coloured, their own body colour in the runs they left
+plain, and nothing altered by anything here. Nothing else on the page moves.
+The prose, and the chip an inline code span sits on, stay the theme's — one
+call writes four fields of a `Style` (`Highlight`, `CodeColor`,
+`CodeBackground`, `CodeBorder`) and leaves the rest exactly as you had it.
 
 The fourth of those is what keeps a block a block. A palette fitted to paper
-is drawn on a near-white and this page is a near-white too, so a ground alone
-can leave the reader guessing where the code begins: where a base's ground
+is drawn on a near-white and this page is a near-white too, so a fill alone
+can leave the reader guessing where the code begins: where a base's background
 stands less far off the page than your theme's own code fill does, `Wear`
 also sets `CodeBorder`, and the block takes a hairline in the theme's divider
-colour. Where the ground stands off on its own, no line is drawn. A base that
-names no ground at all — four of the embedded styles — is drawn on the fill an
-inline chip uses, which is what a fence had before any base was chosen.
+colour. Where the background stands off on its own, no line is drawn. A base
+that names no background at all — four of the embedded styles — is drawn on
+the fill an inline chip uses, which is what a fence had before any base was
+chosen.
 
 Contrast inside the block is surfaced, not enforced. A style shows as its
-author drew it, quiet palettes included; what the library does is measure —
-the package's own test sweep records what every base's inks reach on the
-ground they were drawn on, and names the quietest.
+author drew it, faint palettes included; what the library does is measure —
+the package's own test sweep records what every base's colours reach on the
+background they were drawn on, and names the faintest.
 
 One base name covers both appearances: which member is worn follows the
 tokens, so the single line above replaces the pair of highlighters earlier,
@@ -135,9 +136,8 @@ and it re-dresses with the theme rather than staying where it was built.
 `catppuccin-mocha` is the dark member that same name reaches. It is a
 default, not a policy: pass any name chroma's registry holds. It is the
 default because its two members are one family drawn twice — the same token
-types on the same hues, at the two volumes their author set for paper and for
-slate — so a change of appearance changes the whole plate rather than the
-sheet it is on.
+types on the same hues, fitted by their author to paper and to slate — so a
+change of appearance changes the whole plate rather than the sheet it is on.
 
 Where somebody has chosen a base for each appearance rather than one for
 both, hand over the pair and each appearance wears its own member:
@@ -149,12 +149,12 @@ highlight.WearPair(&st, p, c)                      // c decides which member
 
 `DefaultBases()` is the pair that stands in when nothing was chosen —
 `catppuccin-latte` and `catppuccin-mocha`. `BasesOrDefault` keeps a member
-only where it resolves and its own measured ground suits the appearance it
-is being kept for, so a name that has left the styles folder, and one fitted
-to the other ground, both fall back to that appearance's default. Passing one
-name as both members is therefore how a single stored choice migrates to a
-pair: it stays on the half it was fitted for. Each member is drawn as its own
-author wrote it, italics and bold included.
+only where it resolves and its own measured background suits the appearance
+it is being kept for, so a name that has left the styles folder, and one
+fitted to the other appearance, both fall back to that appearance's default.
+Passing one name as both members is therefore how a single stored choice
+migrates to a pair: it stays on the half it was fitted for. Each member is
+drawn as its own author wrote it, italics and bold included.
 
 The choice is not limited to what ships embedded. A chroma style is a small
 XML document, and `highlight.LoadDir` reads a folder of them and makes each
@@ -183,15 +183,15 @@ Somebody who has picked one base has picked one appearance, and
 
 ```go
 p := highlight.CompletePair(chosen)   // both members, whichever side was picked
-ink := highlight.BasePalette(chosen)  // the colours it draws code with
+cols := highlight.BasePalette(chosen) // the colours it draws code with
 ```
 
 A counterpart the style's own author declared wins — twenty-two of the
 seventy-four embedded styles name one. For the rest the other member is
-measured: of the bases fitted to the opposite ground, the one whose inks
-fall nearest, class against class, on the OKLCh hue circle, weighted by how
-much colour each ink actually carries. `BaseDistance` is that measure on
-its own. A base fitted to no ground at all is a pair by itself. The measure
+measured: of the bases fitted to the opposite background, the one whose
+colours fall nearest, class against class, on the OKLCh hue circle, weighted
+by how much colour each one actually carries. `BaseDistance` is that measure
+on its own. A base fitted to no background at all is a pair by itself. The measure
 is held honest by a test that runs it over the declared pairs with the
 declarations hidden and requires it to find them anyway.
 
@@ -207,20 +207,21 @@ Contrast in a fence is surfaced and never enforced, and `BaseContrast` is
 where it is surfaced:
 
 ```go
-a, ok := highlight.BaseContrast(chosen) // inks measured, and how many are faint
+a, ok := highlight.BaseContrast(chosen) // colours measured, and how many are faint
 if ok && a.BelowFloor() { /* say so beside the name */ }
 ```
 
 It measures the colour a base sets plain code in, and the colour it gives
-each reading class it takes a position on, against the ground its own author
-fitted them to — reporting how many of those fall under `ContrastFloor`,
+each reading class it takes a position on, against the background its own
+author fitted them to — reporting how many of those fall under `ContrastFloor`,
 WCAG 2's AA ratio for normal text. `BelowFloor` is true when most of them do.
-A majority and not the worst ink: one receding class is ordinary and usually
-deliberate, and the quietest entries in the set are markers for things that
-are not code, several of them drawn in the ground colour on purpose. Those
-markers are not measured at all. A base fitted to no ground has no authored
-contrast to report and comes back `false`, as does one that colours nothing.
-Nothing acts on the answer — no ink is moved and no style is refused.
+A majority and not the worst colour: one receding class is ordinary and
+usually deliberate, and the faintest entries in the set are markers for things
+that are not code, several of them drawn in the background colour on purpose.
+Those markers are not measured at all. A base fitted to no background has no
+authored contrast to report and comes back `false`, as does one that colours
+nothing.
+Nothing acts on the answer — no colour is moved and no style is refused.
 
 Dress the `Style` once per theme rather than once per frame: resolving a
 name is cheap but not free. Stock styles are untouched by any of this —
@@ -239,16 +240,16 @@ doc.Layout(gtx, shaper, docsStyle(colors, typography))
 
 ## The document is paper
 
-The surface a `Style` describes has a name: paper — the quiet ground running
+The surface a `Style` describes has a name: paper — the plain surface running
 text is read on. It is not chrome, chrome being the furniture a screen is
 assembled from, the rails and bars and cards and controls that answer to the
 theme directly. Paper answers to the theme too, but through roles of its own:
 
 | paper role | field |
 | --- | --- |
-| the ground the document is read on | `Style.Paper` |
-| the prose inks — body, link, focus ring | `Style.Text`'s colours |
-| the heading ladder | `Style.HeadingSizes`, `Style.HeadingLineHeights` |
+| the surface the document is read on | `Style.Paper` |
+| the prose foregrounds — body, link, focus ring | `Style.Text`'s colours |
+| the heading scale | `Style.HeadingSizes`, `Style.HeadingLineHeights` |
 | the fill under a word of code quoted into a sentence | `Style.CodeChip` |
 
 The remaining fields dress the blocks standing on that paper — a fence, a
@@ -258,16 +259,17 @@ layout code reads the theme for spacing and for radii and for no colour at all,
 so a document looks like what its `Style` says and nothing reaches around it.
 
 The roles are paper's own even where the values are chrome's today.
-`FromTokens` takes the ground from the theme's background, the prose ink from
-its body-text pin, the chip from the same neutral step a fence is filled with —
-the numbers a card or a toolbar would reach for, held here in paper's name.
+`FromTokens` takes the surface from the theme's background, the prose
+foreground from its body-text pin, the chip from the same neutral step a fence
+is filled with — the numbers a card or a toolbar would reach for, held here in
+paper's name.
 Naming them apart costs nothing now and is what lets the reading surface move
 later without the furniture moving with it.
 
 `Style.Paper` is a record rather than a draw. Nothing here fills the page: a
-document is laid into a space its holder owns and the holder paints the ground.
+document is laid into a space its holder owns and the holder paints the surface.
 But the library measures against it — a fence wearing a syntax base takes its
-edge from whether that base's ground can be told from the paper, and "too near
+edge from whether that base's background can be told from the paper, and "too near
 to be seen against it" is unanswerable without knowing which surface. A
 document mounted on something other than the theme's background says so:
 
@@ -283,20 +285,20 @@ so nothing about a fence changes for a caller who never sets the field.
 
 ## Marking a block
 
-A document can carry a highlight: a wash painted under one top-level block's
-ink, sized to the block's own laid-out box rather than to the column it is
+A document can carry a highlight: a fill painted under one top-level block's
+text, sized to the block's own laid-out box rather than to the column it is
 read in.
 
 ```go
-doc.Highlight(block, wash) // block indexes doc.Blocks()
+doc.Highlight(block, fill) // block indexes doc.Blocks()
 doc.ClearHighlight()
 ```
 
 The marking is frame state, not document state. The caller sets it before
-each `Layout` and owns both its lifetime and its going — a mark that fades
-hands a wash whose alpha it has scaled, and takes the marking off on the
+each `Layout` and owns both its lifetime and its going — a highlight that
+fades hands a fill whose alpha it has scaled, and takes the marking off on the
 first frame it is done, since a document reused across frames would
-otherwise keep it. An index outside the document, or a wash with no alpha in
+otherwise keep it. An index outside the document, or a fill with no alpha in
 it, marks nothing, so stale caller state cannot draw a mark in the wrong
 place.
 
@@ -342,10 +344,10 @@ built by hand leaves it zero and inline code sits on the page, as it did
 before.
 
 `FromTokens` gives the chip and the fence the same fill, and they part company
-as soon as a fence wears a syntax base: the block takes that base's ground and
-the chip stays on the quiet one, in the body's own ink. A page of prose spotted
-with somebody else's grounds is a page arguing with itself; a block set apart
-from the prose is not.
+as soon as a fence wears a syntax base: the block takes that base's background
+and the chip stays on the theme's own fill, in the body's own foreground. A
+page of prose spotted with somebody else's backgrounds is a page arguing with
+itself; a block set apart from the prose is not.
 
 ## The Obsidian dialect
 
@@ -407,7 +409,7 @@ organization. What renders, renders well; these are the honest gaps.
 
 - **v0.2.0 is additive.** It adds the `markdown/obsidian` subpackage and
   changes nothing that existed before it: the parser, the block model, the
-  document widget and `Style` are untouched, and the stored golden images
+  `Document` and `Style` are untouched, and the stored golden images
   are byte-identical across the release. A consumer that does not import the
   new subpackage sees no difference.
 - **v0.1.0 was a breaking release.** `FromTokens` takes a
@@ -427,12 +429,13 @@ organization. What renders, renders well; these are the honest gaps.
   a chroma style would render in its plain-text foreground — whitespace,
   punctuation, plain identifiers — are emitted colourless and take
   `Style.CodeColor`; keyword, string, and comment colours are the style's own,
-  byte for byte. With `New` those inks land on whatever fill your `Style` puts
-  under a fence, which is not the fill their author drew them on, and a
+  byte for byte. With `New` those colours land on whatever fill your `Style`
+  puts under a fence, which is not the fill their author drew them on, and a
   palette fitted to a near-white page can measure short of AA on a tinted one.
-  `highlight.Wear` answers that by moving the ground rather than the ink — the
-  author's own background under the author's own inks — and it takes one base
-  name for both appearances where `New` needs one style per appearance, or
+  `highlight.Wear` answers that by moving the background rather than the
+  colours — the author's own background under the author's own colours — and
+  it takes one base name for both appearances where `New` needs one style per
+  appearance, or
   `highlight.WearPair` where a base was chosen per appearance. Neither
   enforces a contrast floor on somebody else's palette. An unrecognised style
   name panics in both — chroma's silent fallback is a dark-background style

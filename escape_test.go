@@ -147,7 +147,7 @@ func TestEscapesInTableCells(t *testing.T) {
 // TestEscapedTableCellsRenderAsLiterals is the pixel half of the same claim:
 // the escaped source and the source someone would write to mean the same
 // thing shape into the same image. A backslash left on screen would be extra
-// ink, and the widths it shifts would move every glyph after it.
+// glyph, and the widths it shifts would move every glyph after it.
 func TestEscapedTableCellsRenderAsLiterals(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)

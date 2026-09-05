@@ -1,7 +1,7 @@
 // palette.go — a base read as a list of colours rather than as a style.
 //
-// A syntax style is a curated palette that somebody spent time on: a couple
-// of dozen inks chosen to sit together, already discrete, already deliberate.
+// A syntax style is a curated palette that somebody spent time on: a couple of
+// dozen colours chosen to sit together, already discrete, already deliberate.
 // That makes it a better source for a colour than a photograph is, and the
 // only thing standing between the two is a type — one side of this module
 // speaks chroma and nothing outside this package is allowed to. So the base
@@ -22,12 +22,12 @@ import (
 // extractor or paints as swatches, and it names no chroma type, so reading a
 // style this way costs nothing but this package.
 //
-// The list is the base's inks and not its whole entry table. An entry with no
-// colour of its own contributes nothing, and so does one resolving to the
-// style's plain foreground: that is the colour ordinary code is drawn in —
-// the one a highlighter built here deliberately does not emit, so the theme's
-// own text colour shows through — and counting it would let the least
-// deliberate colour in a style outweigh every chosen one.
+// The list is the base's colours and not its whole entry table. An entry with
+// no colour of its own contributes nothing, and so does one resolving to the
+// style's plain foreground: that is the colour ordinary code is drawn in — the
+// one a highlighter built here deliberately does not emit, so the theme's own
+// text colour shows through — and counting it would let the least deliberate
+// colour in a style outweigh every chosen one.
 //
 // Colours repeat, and the repeats are the point. A style that draws eight
 // kinds of name in one blue and one number in one orange puts that blue in

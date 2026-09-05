@@ -89,9 +89,9 @@ func TestCompletePairDeclared(t *testing.T) {
 	}
 }
 
-// TestCompletePairGroundless holds the rule for a base fitted to no ground: it
-// is its own pair, because there is no appearance it is the wrong choice for
-// and none it is the right one for either.
+// TestCompletePairGroundless holds the rule for a base fitted to no
+// background: it is its own pair, because there is no appearance it is the
+// wrong choice for and none it is the right one for either.
 func TestCompletePairGroundless(t *testing.T) {
 	var found []string
 	for _, name := range Bases() {
@@ -107,7 +107,7 @@ func TestCompletePairGroundless(t *testing.T) {
 	if len(found) == 0 {
 		t.Fatal("no groundless base in the embedded set; the rule is untested")
 	}
-	t.Logf("bases fitted to no ground: %v", found)
+	t.Logf("bases fitted to no background: %v", found)
 }
 
 func TestCompletePairUnknown(t *testing.T) {
@@ -275,7 +275,7 @@ func family(name string) string {
 // The acceptance rule is not "always first", and pretending otherwise would be
 // dishonest about what was measured. Some schemes ship several flavours of one
 // side — three dark catppuccins against one light one, two dark rose-pines
-// against one light one — and those flavours differ mostly in their grounds,
+// against one light one — and those flavours differ mostly in their backgrounds,
 // which is exactly the axis a palette comparison ignores. So a declared
 // counterpart may be beaten, but only by a sibling of its own family, and it
 // must still be inside the top three. Beaten by an unrelated scheme is a
@@ -286,7 +286,7 @@ func TestRediscoversDeclaredPairs(t *testing.T) {
 		name, declared := pair[0], pair[1]
 		dark, grounded := func() (bool, bool) { s, _ := lookup(name); return polarity(s) }()
 		if !grounded {
-			t.Fatalf("%s declares a counterpart but was fitted to no ground", name)
+			t.Fatalf("%s declares a counterpart but was fitted to no background", name)
 		}
 		order := ranked(t, name, !dark)
 		at := slices.Index(order, declared)
@@ -429,14 +429,14 @@ func TestSweepEveryBase(t *testing.T) {
 			continue
 		}
 		if len(candidates) == 0 {
-			t.Errorf("%s: %d inks and no candidate", name, len(ink))
+			t.Errorf("%s: %d colours and no candidate", name, len(ink))
 			continue
 		}
 		if !slices.Contains(ink, candidates[0].Color) {
 			t.Errorf("%s: the leading candidate %v is not a colour the style draws with",
 				name, candidates[0].Color)
 		}
-		t.Logf("%-22s -> light %-22s dark %-22s  seed #%02x%02x%02x (chroma %.3f, share %.2f of %d inks)",
+		t.Logf("%-22s -> light %-22s dark %-22s  seed #%02x%02x%02x (chroma %.3f, share %.2f of %d colours)",
 			name, pair.Light, pair.Dark,
 			candidates[0].Color.R, candidates[0].Color.G, candidates[0].Color.B,
 			candidates[0].Chroma, candidates[0].Share, len(ink))

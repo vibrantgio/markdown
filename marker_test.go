@@ -15,27 +15,27 @@ import (
 
 // A marker beside a list item is centred on the first text line, and the
 // measurement that says so is taken off the pixels, the way the reference
-// reading surface it was matched against was measured: the marker's ink band
+// reading surface it was matched against was measured: the marker's drawn band
 // against the text's.
 //
 // markerProbe says everything in capitals with flat terminals — no ascender
 // above them, no descender below, no round letter overshooting either edge —
-// so the text's ink band is exactly the cap band the marker claims to be
+// so the text's drawn band is exactly the cap band the marker claims to be
 // centred on, with nothing to interpret away. Each item is one line, so every
 // band in the image belongs to one row.
-const markerProbe = "- [ ] FLAT INK AT THE LINE\n" +
-	"- [x] FLAT INK AT THE LINE\n" +
-	"- FLAT INK AT THE LINE\n"
+const markerProbe = "- [ ] FLAT TEXT AT THE LINE\n" +
+	"- [x] FLAT TEXT AT THE LINE\n" +
+	"- FLAT TEXT AT THE LINE\n"
 
 // markerColumn is the width of the probe's marker column: Indent at the
 // probe's scale, which is Spacing.S6. The marker lives left of it and the
 // text right of it.
 const markerColumn = 24
 
-// inkBands returns the vertical extent of every run of rows carrying ink
-// within the column [x0, x1), in order, as half-open [top, bottom) intervals.
-// Ink is the same luminance departure from the background that the rhythm
-// scan uses.
+// `inkBands` returns the vertical extent of every run of rows carrying drawn
+// pixels within the column [x0, x1), in order, as half-open [top, bottom)
+// intervals. A row carries pixels at the same luminance departure from the
+// background that the rhythm scan uses.
 func inkBands(img *image.RGBA, x0, x1 int) [][2]int {
 	b := img.Bounds()
 	lum := func(x, y int) float64 {
@@ -71,7 +71,7 @@ func inkBands(img *image.RGBA, x0, x1 int) [][2]int {
 func center(band [2]int) float64 { return float64(band[0]+band[1]) / 2 }
 
 // TestAListMarkerCentresOnItsFirstTextLine holds every marker to one rule:
-// its ink sits centred on the cap band of the line beside it — the strip from
+// its mark sits centred on the cap band of the line beside it — the strip from
 // the tops of the capitals down to the baseline, which is the band a reader
 // sees a line of text occupy and the band the reference centres its own
 // checkbox on.
@@ -109,7 +109,7 @@ func TestAListMarkerCentresOnItsFirstTextLine(t *testing.T) {
 			for i, kind := range []string{"unchecked checkbox", "checked checkbox", "bullet"} {
 				off := center(markers[i]) - center(lines[i])
 				if off < -0.5 || off > 0.5 {
-					t.Errorf("the %s's ink centres %+.1f px from its text line's (marker %v, text %v); a marker hangs from the shaped line's cap band, not above it", kind, off, markers[i], lines[i])
+					t.Errorf("the %s's mark centres %+.1f px from its text line's (marker %v, text %v); a marker hangs from the shaped line's cap band, not above it", kind, off, markers[i], lines[i])
 				}
 			}
 		})
@@ -152,12 +152,12 @@ func TestInlineCodeLeavesTheLineTheBodysHeight(t *testing.T) {
 // render carries both and the two offsets are measured under identical
 // conditions.
 //
-// Everything is capitals here for the same reason [markerProbe] is: the ink
+// Everything is capitals here for the same reason [markerProbe] is: the drawn
 // band a row measures is then exactly its cap band. The code span's capitals
 // are shorter than the body's and sit inside them, so both rows' bands are
 // the body cap band and the comparison is of marker positions alone.
-const codeMarkerProbe = "- [x] FLAT INK AT THE LINE\n" +
-	"- [x] `GIT MV` FLAT INK AT THE LINE\n"
+const codeMarkerProbe = "- [x] FLAT TEXT AT THE LINE\n" +
+	"- [x] `GIT MV` FLAT TEXT AT THE LINE\n"
 
 // TestAMarkerHangsLevelBesideACodeOpeningRow measures what the owner sees: a
 // task row opening with inline code carries its checkbox at the same height

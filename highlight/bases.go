@@ -168,16 +168,16 @@ func Loaded(name string) bool {
 // appearance, or for a light one — the question a chooser that shows one half
 // of the list at a time has to ask of every name in it.
 //
-// The answer is measured, off the style's own Background entry: the ground its
-// author fitted its inks against, read on the same perceptual lightness axis
-// the derivation uses to decide which way an ink has to move. It is measured
-// and not read off the name because a name is not evidence: most of the
-// embedded set says nothing about its appearance, and a name that does say
+// The answer is measured, off the style's own Background entry: the background
+// its author fitted its colours against, read on the same perceptual lightness
+// axis the derivation uses to decide which way a colour has to move. It is
+// measured and not read off the name because a name is not evidence: most of
+// the embedded set says nothing about its appearance, and a name that does say
 // something is under no obligation to be true.
 //
-// A style that names no ground at all suits both: it was fitted to nothing, so
-// whatever it is drawn on is the theme's own surface. Four of the embedded
-// styles are like this.
+// A style that names no background at all suits both: it was fitted to
+// nothing, so whatever it is drawn on is the theme's own surface. Four of the
+// embedded styles are like this.
 //
 // A name that resolves to nothing suits neither: there is no style to measure,
 // and none to offer.
@@ -236,7 +236,7 @@ func (p BasePair) Base(dark bool) string {
 // way [BaseOrDefault] does. Fitness is measured off the style's own background
 // by [BaseSuits] rather than guessed from the name, so one kept name passed as
 // both members keeps the appearance it was fitted to and the other takes the
-// default. A style fitted to no ground at all suits both and keeps both.
+// default. A style fitted to no background at all suits both and keeps both.
 func BasesOrDefault(light, dark string) BasePair {
 	return BasePair{Light: baseFor(light, false), Dark: baseFor(dark, true)}
 }

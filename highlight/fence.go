@@ -1,16 +1,17 @@
 // fence.go dresses a fenced code block in a syntax base, as its author drew
 // it.
 //
-// A syntax style's ground, body ink and accents were curated together, so the
-// block shows the base whole: the author's own background under the author's
-// own inks, neither of them touched. The paper around it — the page, the
-// prose, the chip an inline span sits on — stays the theme's. What the theme
-// decides is which member of the pair is on screen, and that a block on a page
-// is bounded: a ground too near the paper to be seen against it takes an edge.
+// A syntax style's background, body colour and accents were curated together,
+// so the block shows the base whole: the author's own background under the
+// author's own colours, neither of them touched. The paper around it — the
+// page, the prose, the chip an inline span sits on — stays the theme's. What
+// the theme decides is which member of the pair is on screen, and that a block
+// on a page is bounded: a background too near the paper to be seen against it
+// takes an edge.
 //
-// Contrast is surfaced, not enforced: no ink is moved and no style is failed
-// for its author's taste. The sweep in the tests records what every base
-// measures on its own ground and names the worst of them.
+// Contrast is surfaced, not enforced: no colour is moved and no style is
+// failed for its author's taste. The sweep in the tests records what every
+// base measures on its own background and names the worst of them.
 
 package highlight
 
@@ -36,8 +37,8 @@ const (
 )
 
 // Wear dresses st's fenced code blocks in the base named: its author's own
-// background under the fence, their own inks in the runs they coloured, and
-// their own body ink in the runs they left plain. Nothing else on the page
+// background under the fence, their own colours in the runs they coloured, and
+// their own body colour in the runs they left plain. Nothing else on the page
 // moves — the prose, the chip an inline code span sits on, and the bar a wide
 // block scrolls under all stay the theme's.
 //
@@ -54,7 +55,7 @@ const (
 // CodeBackground and CodeBorder. Everything a Style says about anything else
 // is left exactly as the caller had it, so the ordinary shape of this is
 // [markdown.FromTokens] followed by one call. Nothing else is read: the
-// block's edge is decided against the ground the base itself names, so a
+// block's edge is decided against the background the base itself names, so a
 // document mounted on some other paper takes the same fence it takes on the
 // theme's own page.
 //
@@ -68,8 +69,8 @@ func Wear(st *markdown.Style, base string, c tokens.ColorTokens) {
 }
 
 // WearPair is [Wear] for a caller holding a base per appearance: c's own
-// appearance says which member is drawn, and that member's ground, inks and
-// body colour are what the fence takes.
+// appearance says which member is drawn, and that member's background, colours
+// and body colour are what the fence takes.
 //
 // The two members are independent artifacts, not two views of one: each is
 // drawn as its own author wrote it, italics and bold included. A member naming
@@ -86,7 +87,7 @@ func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 		panic(fmt.Sprintf("highlight: unknown style %q (Bases lists every name that resolves)", name))
 	}
 
-	// The registry's own style, straight through: the inks on screen are the
+	// The registry's own style, straight through: the colours on screen are the
 	// author's to the byte and nothing here alters one.
 	plain := plainForeground(member)
 	st.Highlight = spanner(member, plain)
@@ -94,8 +95,9 @@ func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 		st.CodeColor = fromChroma(plain)
 	}
 
-	// The chip's fill is what a groundless base is drawn on. A Style built by
-	// hand may carry no chip, and then the theme's own code fill stands in.
+	// The chip's fill is what a base naming no background of its own is drawn on.
+	// A Style built by hand may carry no chip, and then the theme's own code fill
+	// stands in.
 	fallback := st.CodeChip
 	if fallback.A == 0 {
 		fallback = surface
@@ -105,7 +107,7 @@ func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 }
 
 // fenceGround is the fence's fill under one member: the background its author
-// fitted their inks against, or fallback for the four embedded styles that
+// fitted their colours against, or fallback for the four embedded styles that
 // name no background at all.
 func fenceGround(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRGBA {
 	if bg := member.Get(chroma.Background).Background; bg.IsSet() {
@@ -114,15 +116,15 @@ func fenceGround(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRGBA {
 	return fallback
 }
 
-// fenceEdge is the hairline a dressed fence draws to read as a block: the
-// neutral rung nearest the ramp's mid-value step that reaches WCAG 1.4.11's
-// 3:1 against the ground the author fitted their inks to.
+// fenceEdge is the hairline a dressed fence draws to read as a block: the step
+// of the neutral ramp nearest its mid-value that reaches WCAG 1.4.11's 3:1
+// against the background the author fitted their colours to.
 //
 // The rim is derived against the fence's own fill rather than against the
-// paper, which is what makes it work for a ground this package has never seen:
-// a dressed fence lies on the page and its rim is read against the block it
-// encloses, so a palette fitted to paper and one fitted to slate are answered
-// by the same call without either being named.
+// paper, which is what makes it work for a background this package has never
+// seen: a dressed fence lies on the page and its rim is read against the block
+// it encloses, so a palette fitted to paper and one fitted to slate are
+// answered by the same call without either being named.
 func fenceEdge(fence stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
 	return c.MarkOn(tokens.RoleNeutral, fence, edgeFloor)
 }

@@ -1,12 +1,12 @@
-// Package markdown renders markdown documents as Gio widgets built from
+// Package markdown renders markdown documents for Gio, built from
 // components primitives. Nothing in the design system depends on it: it is a
 // leaf an application reaches for when it has documents to put on screen.
 //
 // [Parse] walks a goldmark AST (with extension.GFM) into a block model — a
 // tree of [Block] values whose inline content is expressed as styled [Span]
 // runs. [Document] lays the top-level blocks through components/list, so long
-// documents stay O(visible), and renders each block with components widgets:
-// type-scale headings, richtext paragraphs, nested lists with task-list
+// documents stay O(visible), and renders each block with the components
+// library: type-scale headings, richtext paragraphs, nested lists with task-list
 // checkboxes, inset blockquotes with a leading token-coloured bar, rules,
 // monospace code blocks on a surface background with tab expansion and
 // horizontal scrolling (a fence keeps its own line breaks, and a line too wide

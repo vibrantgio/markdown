@@ -22,9 +22,9 @@ func barHex(c stdcolor.NRGBA) string { return fmt.Sprintf("#%02X%02X%02X", c.R, 
 // text, so it owes the page WCAG 1.4.11's 3:1 whichever seed it came from.
 //
 // The population claim behind it is the palette's, not this package's: the
-// gate that every brand ink clears its floor for every swept seed lives with
-// the derivation, in theme/tokens. What is asserted here is that a document's
-// bar is derived through that gate rather than naming a pin.
+// gate that every brand foreground clears its floor for every swept seed lives
+// with the derivation, in theme/tokens. What is asserted here is that a
+// document's bar is derived through that gate rather than naming a pin.
 func TestQuoteBarClearsTheGraphicFloor(t *testing.T) {
 	for _, s := range []struct {
 		name string

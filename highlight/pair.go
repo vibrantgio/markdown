@@ -1,18 +1,18 @@
 // pair.go — the other half of a base, found rather than asked for.
 //
-// A style is fitted to one ground, so a single chosen base has to be completed
-// into a pair before anything can be derived from it.
+// A style is fitted to one background, so a single chosen base has to be
+// completed into a pair before anything can be derived from it.
 //
 // Chroma records a counterpart on twenty-two of the seventy-four styles it
 // ships — eleven author-declared pairs — and a declared counterpart wins
-// whenever there is one. For the rest, guessing from the name is not an option:
-// most say nothing about a partner, and names that look like they pair (nord
-// and nordic) are two dark styles rather than two halves of one scheme. The
-// palettes themselves are what is left: two halves of a pair are the same hues
-// re-fitted to the other ground, so the nearest opposite-polarity style by hue
-// stands in for a counterpart nobody declared. pair_test.go runs the metric
-// over both halves of every declared pair with the declarations hidden and
-// requires it to find them anyway.
+// whenever there is one. For the rest, guessing from the name is not an
+// option: most say nothing about a partner, and names that look like they pair
+// (nord and nordic) are two dark styles rather than two halves of one scheme.
+// The palettes themselves are what is left: two halves of a pair are the same
+// hues re-fitted to the other background, so the nearest opposite-polarity
+// style by hue stands in for a counterpart nobody declared. pair_test.go runs
+// the metric over both halves of every declared pair with the declarations
+// hidden and requires it to find them anyway.
 
 package highlight
 
@@ -57,16 +57,17 @@ var hueClasses = []chroma.TokenType{
 }
 
 // classFloor is the weight a class carries before its chroma is counted. It is
-// the same floor the seed ranking lifts its chroma emphasis off, and it is here
-// for the same reason: a comment grey has a hue, and that hue is an artifact of
-// rounding rather than a decision, so it must count for little. Little, though,
-// and not nothing — a palette whose every ink is near-neutral would otherwise
-// have no distance to anything at all, and would compare equal to everything.
+// the same floor the seed ranking lifts its chroma emphasis off, and it is
+// here for the same reason: a comment grey has a hue, and that hue is an
+// artifact of rounding rather than a decision, so it must count for little.
+// Little, though, and not nothing — a palette whose every colour is
+// near-neutral would otherwise have no distance to anything at all, and would
+// compare equal to everything.
 const classFloor = 0.020
 
-// hueFamily is the angle past which two inks are simply two different hues:
+// hueFamily is the angle past which two colours are simply two different hues:
 // a sixth of the circle, about the step between the landmarks a person names
-// separately — red, yellow, green, cyan, blue, magenta. Inside it, two inks
+// separately — red, yellow, green, cyan, blue, magenta. Inside it, two colours
 // are one hue that two authors, or one author twice, expressed slightly
 // differently. Outside it they are two hues, and how far outside is not a
 // number about schemes.
@@ -101,14 +102,14 @@ const hueFamily = 60
 // That answer is looked for in two places, in order. A counterpart the style's
 // own author declared wins outright, when the style declares one and it is
 // resolvable and it really is fitted to the other side. Otherwise the pair is
-// completed by measurement: of every base this build can resolve that suits the
-// other side, the one whose inks fall nearest this one's, class by class, on
-// the hue circle — see [BaseDistance].
+// completed by measurement: of every base this build can resolve that suits
+// the other side, the one whose colours fall nearest this one's, class by
+// class, on the hue circle — see [BaseDistance].
 //
-// A base fitted to no ground at all is a pair by itself. It was drawn against
-// nothing, so it is not the wrong choice under either appearance, and returning
-// it for both sides is the honest reading of what its author left. Four of the
-// embedded styles are like this.
+// A base fitted to no background at all is a pair by itself. It was drawn
+// against nothing, so it is not the wrong choice under either appearance, and
+// returning it for both sides is the honest reading of what its author left.
+// Four of the embedded styles are like this.
 //
 // A name that resolves to nothing yields [DefaultBases], which is what a
 // caller holding a name from a settings file written by an older build needs:
@@ -188,11 +189,12 @@ func counterpart(s *chroma.Style, dark bool) string {
 // nearest is the base suiting the given appearance whose palette falls closest
 // to s's, or false when nothing this build holds can be compared to s.
 //
-// The candidates are the grounded bases of the wanted appearance. A groundless
-// base is not among them: it suits both sides because it was fitted to
-// neither, and a style fitted to nothing is nobody's opposite — offering it as
-// the counterpart of a style that does have a ground would answer "what was
-// this scheme's other half" with a style that has no halves.
+// The candidates are the bases of the wanted appearance that name a background
+// of their own. One that names none is not among them: it suits both sides
+// because it was fitted to neither, and a style fitted to nothing is nobody's
+// opposite — offering it as the counterpart of a style that does have a
+// background would answer "what was this scheme's other half" with a style
+// that has no halves.
 //
 // The walk is over [Bases], which is sorted, and takes a strictly smaller
 // distance to displace the leader, so the first-listed of two equally near
@@ -223,20 +225,21 @@ func nearest(s *chroma.Style, dark bool) (string, bool) {
 // coloured class in common.
 //
 // It is a chroma-weighted mean over the classes both styles colour. Each class
-// contributes the angle between its two inks on the OKLCh hue circle, capped
-// at one hue family and read as a fraction of one — so a class the two draw in
-// the same colour contributes nothing, a class they draw in two unrelated
-// colours contributes its full weight, and how unrelated stops mattering past
-// the point where the answer is already "not the same colour". The weight is
-// the smaller of the two chromas lifted off a floor: the smaller rather than
-// the mean, because a grey compared against a saturated ink is a comparison of
-// one hue that means something against one that is rounding noise, and the
-// floor because a palette of near-neutrals must still be able to differ from
-// something.
+// contributes the angle between its two colours on the OKLCh hue circle,
+// capped at one hue family and read as a fraction of one — so a class the two
+// draw in the same colour contributes nothing, a class they draw in two
+// unrelated colours contributes its full weight, and how unrelated stops
+// mattering past the point where the answer is already "not the same colour".
+// The weight is the smaller of the two chromas lifted off a floor: the smaller
+// rather than the mean, because a grey compared against a saturated colour is
+// a comparison of one hue that means something against one that is rounding
+// noise, and the floor because a palette of near-neutrals must still be able
+// to differ from something.
 //
-// Hue is the axis because it is the one a change of ground does not touch. The
-// two halves of a declared pair differ in lightness everywhere by construction
-// — that is what the two grounds are for — and in hue almost nowhere.
+// Hue is the axis because it is the one a change of background does not touch.
+// The two halves of a declared pair differ in lightness everywhere by
+// construction — that is what the two backgrounds are for — and in hue almost
+// nowhere.
 //
 // Classes only one of the two styles colours are left out rather than counted
 // as a mismatch. A style that takes no position on numbers has not disagreed
@@ -244,7 +247,7 @@ func nearest(s *chroma.Style, dark bool) (string, bool) {
 //
 // The space is the one seed extraction reads a palette in, and the chroma
 // floor is the one it lifts its own emphasis off, so "how much colour has this
-// ink got" is one question across the two and not two.
+// one got" is one question across the two and not two.
 func BaseDistance(a, b string) (float64, bool) {
 	sa, ok := lookup(a)
 	if !ok {

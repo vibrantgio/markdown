@@ -83,8 +83,8 @@ func authored(s *chroma.Style) (stdcolor.NRGBA, bool) {
 }
 
 // TestTheFenceWearsTheBasesOwnGroundAndInks is what the whole file is about:
-// the plate on screen is the artifact its author made. The ground under the
-// code is the background they fitted their inks against, byte for byte; the
+// the plate on screen is the artifact its author made. The background under the
+// code is the background they fitted their colours against, byte for byte; the
 // runs they left plain are set in their own body colour; and every coloured
 // run carries a colour that is in their own palette and was not derived from
 // it.
@@ -96,10 +96,10 @@ func TestTheFenceWearsTheBasesOwnGroundAndInks(t *testing.T) {
 
 			bg, ok := authored(m)
 			if !ok {
-				t.Fatalf("%s names no ground; this case cannot show one is worn", m.Name)
+				t.Fatalf("%s names no background; this case cannot show one is worn", m.Name)
 			}
 			if st.CodeBackground != bg {
-				t.Errorf("the fence's ground is %v, %s was drawn on %v", st.CodeBackground, m.Name, bg)
+				t.Errorf("the fence's background is %v, %s was drawn on %v", st.CodeBackground, m.Name, bg)
 			}
 			if plain := plainForeground(m); plain.IsSet() && st.CodeColor != fromChroma(plain) {
 				t.Errorf("plain code is set in %v, %s sets its body in %v",
@@ -118,13 +118,13 @@ func TestTheFenceWearsTheBasesOwnGroundAndInks(t *testing.T) {
 				}
 				coloured++
 				if !slices.Contains(inks, sp.Color) {
-					t.Errorf("a run is drawn in %v, which is not an ink %s holds", sp.Color, m.Name)
+					t.Errorf("a run is drawn in %v, which is not a colour %s holds", sp.Color, m.Name)
 				}
 			}
 			if coloured == 0 {
 				t.Fatal("no run carries a colour, so matching proves nothing")
 			}
-			t.Logf("%s: ground %v, body %v, %d of %d runs in %s's own inks",
+			t.Logf("%s: background %v, body %v, %d of %d runs in %s's own colours",
 				m.Name, st.CodeBackground, st.CodeColor, coloured, len(spans), m.Name)
 		})
 	}
@@ -133,8 +133,8 @@ func TestTheFenceWearsTheBasesOwnGroundAndInks(t *testing.T) {
 // TestNoInkIsAltered is the same claim made across the whole registry rather
 // than on the default: whatever base is chosen, in whichever appearance, the
 // colours reaching the renderer are colours its author wrote down. A ratio is
-// never consulted, so a palette drawn quiet stays quiet and a palette drawn
-// loud stays loud.
+// never consulted, so a palette drawn faint stays faint and a palette drawn
+// boldly stays bold.
 func TestNoInkIsAltered(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
@@ -153,12 +153,12 @@ func TestNoInkIsAltered(t *testing.T) {
 				}
 				checked++
 			}
-			t.Logf("%d bases, %d coloured runs, every one of them an ink off the base itself", checked, runs)
+			t.Logf("%d bases, %d coloured runs, every one of them a colour off the base itself", checked, runs)
 		})
 	}
 }
 
-// TestTheGroundIsTheAuthorsOrTheChips sweeps the grounds: a base that names a
+// TestTheGroundIsTheAuthorsOrTheChips sweeps the backgrounds: a base that names a
 // background is drawn on it exactly, and one that names none — four of the
 // embedded styles — is drawn on the fill an inline chip sits on, which is what
 // a fence had before any base was chosen.
@@ -174,7 +174,7 @@ func TestTheGroundIsTheAuthorsOrTheChips(t *testing.T) {
 					groundless = append(groundless, name)
 					chip := markdown.FromTokens(sc.tok, tokens.DefaultTypography).CodeChip
 					if st.CodeBackground != chip {
-						t.Errorf("%s names no ground and is drawn on %v, want the chip's fill %v",
+						t.Errorf("%s names no background and is drawn on %v, want the chip's fill %v",
 							name, st.CodeBackground, chip)
 					}
 					continue
@@ -183,7 +183,7 @@ func TestTheGroundIsTheAuthorsOrTheChips(t *testing.T) {
 					t.Errorf("%s was drawn on %v and its fence is filled with %v", name, bg, st.CodeBackground)
 				}
 			}
-			t.Logf("%d bases fitted to no ground, each on the chip's fill: %v", len(groundless), groundless)
+			t.Logf("%d bases fitted to no background, each on the chip's fill: %v", len(groundless), groundless)
 		})
 	}
 }
@@ -191,7 +191,7 @@ func TestTheGroundIsTheAuthorsOrTheChips(t *testing.T) {
 // TestAFenceIsBoundedOnItsPage: a block has to look like a block, and the fill
 // is not what says so. The theme's own fence is a whisper off its light paper
 // — 1.018:1 — so the theme edges its own fence and every dressed one takes the
-// same edge, derived against the ground it encloses at the 3:1 a graphic
+// same edge, derived against the background it encloses at the 3:1 a graphic
 // carrying meaning owes. Every base, with no exceptions and no comparison.
 func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 	for _, sc := range schemes() {
@@ -206,7 +206,7 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 				}
 				r := color.ContrastRatio(st.CodeBorder, st.CodeBackground)
 				if r < edgeFloor {
-					t.Errorf("%s: edge %v measures %.3f:1 against the ground %v it encloses, under the %.1f:1 floor",
+					t.Errorf("%s: edge %v measures %.3f:1 against the background %v it encloses, under the %.1f:1 floor",
 						name, st.CodeBorder, r, st.CodeBackground, edgeFloor)
 				}
 				if r < worst {
@@ -215,7 +215,7 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 			}
 			st := worn(t, DefaultBase, sc.tok)
 			t.Logf("%s: %d bases, every one edged; the thinnest margin is %s at %.3f:1. "+
-				"The default's ground %v stands %.3f:1 off the page and its edge %v measures %.3f:1 against the page and %.3f:1 against the ground",
+				"The default's background %v stands %.3f:1 off the page and its edge %v measures %.3f:1 against the page and %.3f:1 against the background",
 				sc.name, len(styles.Names()), worstName, worst, st.CodeBackground,
 				color.ContrastRatio(st.CodeBackground, sc.tok.Background), st.CodeBorder,
 				color.ContrastRatio(st.CodeBorder, sc.tok.Background),
@@ -227,7 +227,7 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 // TestTheEdgeFollowsTheGround: what the edge answers is whether the block can
 // be told from the fill it encloses, so the answer moves when that fill moves
 // and not when anything else does. The two extremes of the registry worn on
-// one theme — the palest ground and the deepest — take two different lines,
+// one theme — the palest background and the deepest — take two different lines,
 // because each is measured against what it is actually drawn on.
 //
 // The extremes are found rather than named, so the registry can gain and lose
@@ -255,12 +255,12 @@ func TestTheEdgeFollowsTheGround(t *testing.T) {
 		deepName, deep.CodeBackground, darkest, deep.CodeBorder)
 
 	if pale.CodeBorder == deep.CodeBorder {
-		t.Errorf("a fence on %v and one on %v take the same edge %v, so the edge is not following the ground",
+		t.Errorf("a fence on %v and one on %v take the same edge %v, so the edge is not following the background",
 			pale.CodeBackground, deep.CodeBackground, pale.CodeBorder)
 	}
 	for _, st := range []markdown.Style{pale, deep} {
 		if r := color.ContrastRatio(st.CodeBorder, st.CodeBackground); r < edgeFloor {
-			t.Errorf("edge %v measures %.3f:1 against its own ground %v, under the %.1f:1 floor",
+			t.Errorf("edge %v measures %.3f:1 against its own background %v, under the %.1f:1 floor",
 				st.CodeBorder, r, st.CodeBackground, edgeFloor)
 		}
 	}
@@ -276,7 +276,7 @@ func TestTheEdgeFollowsTheGround(t *testing.T) {
 }
 
 // TestAStyleNamingNoPaperTakesTheSameEdge: a Style built by hand carries no
-// paper, and since the edge is derived against the fence's own ground rather
+// paper, and since the edge is derived against the fence's own background rather
 // than against the page, that costs it nothing. A caller who never heard of
 // the field sees exactly the fence a constructor-built Style sees.
 func TestAStyleNamingNoPaperTakesTheSameEdge(t *testing.T) {
@@ -298,29 +298,29 @@ func TestAStyleNamingNoPaperTakesTheSameEdge(t *testing.T) {
 
 // TestThreeFlavoursShowThreeGrounds is the case that says what a verbatim
 // fence is worth. Three dark flavours of one family differ from each other
-// mostly by the ground they are drawn on: re-fitted onto one surface they came
-// out very nearly the same plate three times, and worn they are three.
+// mostly by the background they are drawn on: re-fitted onto one surface they
+// came out very nearly the same plate three times, and worn they are three.
 func TestThreeFlavoursShowThreeGrounds(t *testing.T) {
 	flavours := []string{"catppuccin-frappe", "catppuccin-macchiato", "catppuccin-mocha"}
 	seen := map[stdcolor.NRGBA]string{}
 	for _, name := range flavours {
 		st := worn(t, name, tokens.DefaultDark)
 		if first, dup := seen[st.CodeBackground]; dup {
-			t.Errorf("%s and %s are drawn on the same ground %v", first, name, st.CodeBackground)
+			t.Errorf("%s and %s are drawn on the same background %v", first, name, st.CodeBackground)
 		}
 		seen[st.CodeBackground] = name
-		t.Logf("%-22s ground %v, %.3f:1 off the page, edge %v",
+		t.Logf("%-22s background %v, %.3f:1 off the page, edge %v",
 			name, st.CodeBackground,
 			color.ContrastRatio(st.CodeBackground, tokens.DefaultDark.Background), st.CodeBorder)
 	}
 	if len(seen) != len(flavours) {
-		t.Errorf("%d flavours came out on %d grounds", len(flavours), len(seen))
+		t.Errorf("%d flavours came out on %d backgrounds", len(flavours), len(seen))
 	}
 }
 
 // TestWearTakesThePairMemberForTheScheme asserts one base name reaches both
 // members: the light tokens wear github, the dark ones github-dark, and naming
-// either member gets the same pair. The ground is what says which arrived.
+// either member gets the same pair. The background is what says which arrived.
 func TestWearTakesThePairMemberForTheScheme(t *testing.T) {
 	for _, pair := range []struct{ light, dark string }{
 		{"catppuccin-latte", "catppuccin-mocha"},
@@ -450,7 +450,7 @@ func TestAPairWithANameThisBuildLacks(t *testing.T) {
 	st := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypography)
 	WearPair(&st, p, tokens.DefaultDark)
 	if want, _ := authored(member(t, p.Dark, true)); st.CodeBackground != want {
-		t.Errorf("the fence is filled with %v, want %s's own ground %v", st.CodeBackground, p.Dark, want)
+		t.Errorf("the fence is filled with %v, want %s's own background %v", st.CodeBackground, p.Dark, want)
 	}
 }
 
@@ -494,7 +494,7 @@ func TestWearLeavesTheRegistryAlone(t *testing.T) {
 // TestWearTouchesOnlyTheCodeFields: the fence is content and the rest of the
 // document is paper, so a base reaches four fields and no others. The chip an
 // inline code span sits on is the one this is most about — a page of prose
-// spotted with somebody else's grounds is the thing not being built.
+// spotted with somebody else's backgrounds is the thing not being built.
 func TestWearTouchesOnlyTheCodeFields(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
@@ -507,7 +507,7 @@ func TestWearTouchesOnlyTheCodeFields(t *testing.T) {
 				t.Error("the prose style moved when a base was worn")
 			}
 			if got.CodeBackground == plain.CodeBackground {
-				t.Error("the fence's ground did not move at all, so this proves nothing")
+				t.Error("the fence's background did not move at all, so this proves nothing")
 			}
 			// Every remaining field, compared by putting the four that are
 			// allowed to move back and dropping the highlighter, a func being
@@ -522,17 +522,17 @@ func TestWearTouchesOnlyTheCodeFields(t *testing.T) {
 	}
 }
 
-// TestAuthoredContrastSweep records what every base measures on the ground its
-// author drew it on, and names the worst of them. It fails nothing.
+// TestAuthoredContrastSweep records what every base measures on the background
+// its author drew it on, and names the worst of them. It fails nothing.
 //
 // The floor is a fact about a base and not a bar it has to clear. Contrast in
 // content is surfaced rather than enforced — a style shows as its author drew
 // it, and a reader who finds one unreadable picks another — so what a gate can
 // honestly do here is keep the number where somebody looking for it will find
-// it. A third of all authored inks across the embedded set sit under the
+// it. A third of all authored colours across the embedded set sit under the
 // normal-text floor, most of them on token types real code rarely reaches
-// (diff markers, error highlights, whitespace), and the quietest of them are
-// drawn deliberately: a marker for deleted text drawn in the ground colour
+// (diff markers, error highlights, whitespace), and the faintest of them are
+// drawn deliberately: a marker for deleted text drawn in the background colour
 // itself measures 1.00:1 and is meant to.
 //
 // What it would take to fail here is structural: a base that resolves to
@@ -582,13 +582,13 @@ func TestAuthoredContrastSweep(t *testing.T) {
 				t.Fatal("the sweep measured nothing")
 			}
 			sort.Slice(worst, func(i, j int) bool { return worst[i].r < worst[j].r })
-			t.Logf("%d bases, %d authored inks, %d under %.1f:1 (%.0f%%), on the ground each was drawn on",
+			t.Logf("%d bases, %d authored colours, %d under %.1f:1 (%.0f%%), on the background each was drawn on",
 				len(worst), entries, below, contrastFloor, 100*float64(below)/float64(entries))
 			for _, w := range worst[:8] {
-				t.Logf("  quietest ink: %-24s %-28s %.2f:1", w.base, w.tt, w.r)
+				t.Logf("  faintest colour: %-24s %-28s %.2f:1", w.base, w.tt, w.r)
 			}
 			for _, w := range worst[len(worst)-3:] {
-				t.Logf("  quietest ink: %-24s %-28s %.2f:1  (the loudest of the quiet)", w.base, w.tt, w.r)
+				t.Logf("  faintest colour: %-24s %-28s %.2f:1  (the most pronounced of the faint)", w.base, w.tt, w.r)
 			}
 			if len(inkless) > 0 {
 				t.Logf("bases colouring nothing at all: %v", inkless)
