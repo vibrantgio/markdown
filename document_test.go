@@ -983,8 +983,8 @@ func TestFromTokensDefaults(t *testing.T) {
 	// storey, lighter than the page it lies on, in both schemes. A plain
 	// ramp step off the pin would not do — it darkens in a light scheme and
 	// lightens in a dark one, reading as two opposite depths.
-	if st.CodeBackground != c.SurfaceAt(tokens.Level1) {
-		t.Errorf("CodeBackground = %v, want the raised storey %v", st.CodeBackground, c.SurfaceAt(tokens.Level1))
+	if st.CodeBackground != c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill {
+		t.Errorf("CodeBackground = %v, want the raise off the content %v", st.CodeBackground, c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill)
 	}
 	// The fill is a whisper above a light paper, so the rim is what says
 	// where the fence is, and it owes WCAG 1.4.11's 3:1 against the fill it

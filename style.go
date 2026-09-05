@@ -140,14 +140,12 @@ type Style struct {
 	// off the page on its own needs.
 	//
 	// It is for the ground that does not, which is every ground a fence
-	// takes. The ladder climbs toward the light in both
-	// schemes and a light scheme has 3.1 L* of room above its paper to climb
-	// into, so a raised fence there is a whisper — 1.02:1 off the page — and
-	// laid on it unbounded the block stops being a block and the code reads
-	// as a paragraph in a monospace face. A syntax palette fitted to paper
-	// puts its own near-white in the same position. The line is what says
-	// where the fence is when its fill no longer does, and [FromTokens]
-	// derives it against whatever fill it is edging (see codeRim).
+	// takes. A raise says a fence is raised; it does not say where the fence
+	// ENDS, and a white block laid unbounded on an off-white page stops being
+	// a block — the code reads as a paragraph in a monospace face. A syntax
+	// palette fitted to paper puts its own near-white in the same position.
+	// The line is what says where the fence is, and [FromTokens] derives it
+	// against whatever fill it is edging (see codeRim).
 	CodeBorder color.NRGBA
 	// CodeChip fills the rounded chip an inline code span sits on. A zero
 	// alpha — a Style built by hand rather than by [FromTokens] — sets inline
@@ -351,7 +349,7 @@ type Style struct {
 // typography: the paper is the theme's own background, headings take the six
 // stops of the typography's document heading scale, body text follows
 // richtext.FromTokens on the BodyLarge role, code sits on the elevation
-// ladder's raised storey (see codeFill) with the ink codeInk derives, inline
+// raise walked off the content (see codeFill) with the ink codeInk derives, inline
 // code on the same fill while keeping the body's own ink so a quoted word
 // reads as the sentence's, the quote bar is Primary with Neutral 700 text,
 // rules and table grid lines are separators and use Divider, and the table
@@ -416,7 +414,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		Mono:                  font.Typeface(typo.Code.Typeface),
 		CodeSize:              unit.Sp(typo.Code.Size),
 		CodeColor:             codeInk(c),  // see codeInk
-		CodeBackground:        codeFill(c), // the raised storey, see codeFill
+		CodeBackground:        codeFill(c), // the raise off the content, see codeFill
 		CodeBorder:            codeRim(c),  // the edge that says where it is
 		CodeChip:              codeFill(c), // one code surface, not two
 		CodeChipBorder:        codeRim(c),  // one code edge, not two
@@ -436,20 +434,20 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 }
 
 // codeFill is the surface quoted code sits on, block and chip alike: the
-// elevation ladder's raised storey, asked of the palette.
+// raise walked from the content the document is set on
+// ([tokens.ColorTokens.RaisedOn]).
 //
-// A fence is a raised chip — lighter than the page it lies on, in both
+// A fence is a raised inset — lighter than the page it lies on, in both
 // schemes — which is what the measured reference shows and what walking the
-// neutral ramp one rung off the pin cannot give, that step darkening in a
+// neutral ramp one step off the pin cannot give, that step darkening in a
 // light scheme and lightening in a dark one.
 //
-// On the default palettes the dark fence lands on #222222 over #181818, and
-// the light one on #F8F8F8 over #F6F6F6 — a whisper, 0.7 L*, the light scheme
-// having spent nearly all of its tonal axis on the paper already. That is the
-// ladder's trade: whisper steps toward white, with a derived hairline carrying
-// the visible edge. codeRim is that hairline.
+// On the default palettes the dark fence lands on #222222 over #181818 and
+// the light one on #FFFFFF over #F1F1F1, a whole band step in either scheme.
+// codeRim is the hairline drawn around it in both; the fill says the fence is
+// raised, the line says where it ends.
 func codeFill(c tokens.ColorTokens) color.NRGBA {
-	return c.SurfaceAt(tokens.Level1)
+	return c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill
 }
 
 // codeRim is the hairline drawn around a code surface: the neutral rung
@@ -463,10 +461,8 @@ func codeFill(c tokens.ColorTokens) color.NRGBA {
 // being text owes WCAG 1.4.11's 3:1, so the line takes it.
 //
 // Both schemes take the line. The dark fence's fill measures 1.12:1 off its
-// page — no more a floor than the light fence's 1.02:1, only more of a hint —
-// so edging one and not the other would be a per-scheme rule. On the default
-// palettes the line lands on #797979 in the light scheme, 4.10:1 on the fence
-// and 4.03:1 on the paper, and on #9E9E9E in the dark one, 5.94:1 and 6.63:1.
+// page and the light one 1.13:1 — one band step in either — so edging one and
+// not the other would be a per-scheme rule.
 func codeRim(c tokens.ColorTokens) color.NRGBA {
 	return c.MarkOn(tokens.RoleNeutral, codeFill(c), codeFloor)
 }
