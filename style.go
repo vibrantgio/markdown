@@ -280,6 +280,32 @@ type Style struct {
 	// Indent is the per-level indentation of list items and the inset of
 	// blockquote content.
 	Indent unit.Dp
+	// Measure is the width a top-level block may reach. When the region is
+	// wider, every block lays out at this width and the run of them is
+	// centred in it: nothing widens to fill, and content that keeps its own
+	// size — a code block, a table — scrolls inside the measure rather than
+	// past it. A region narrower than the measure gives the blocks what
+	// there is, which is what every document had before this field existed.
+	//
+	// Long lines tire the reader, which is the whole of it: a window dragged
+	// out to the width of a screen should give the reader more of the
+	// document, not longer lines to walk back along.
+	//
+	// Gutter is not part of it and is not centred with it. The gutter is the
+	// strip a scrollbar sits in at the viewport's own trailing edge, so it
+	// comes off first and the measure is centred in what the viewport shows
+	// rather than in what the gutter leaves. The two rules only meet when
+	// the measure is within a gutter's width of the viewport itself: centring
+	// would then run a block under the bar, so the run is seated as close to
+	// centre as the gutter allows and no closer.
+	//
+	// Only [Document.Layout] and [Document.LayoutScrollbar] spend it, as they
+	// alone spend Gutter, StartSpace and EndSpace: a document laid out with
+	// [Document.LayoutColumn] is a passage inside somebody else's
+	// composition, and the width it is read at is theirs to set.
+	//
+	// Zero, the default, gives the blocks the full width.
+	Measure unit.Dp
 	// Gutter is a trailing inset on every top-level block: the prose stops
 	// short of the viewport's edge by this much, and nothing is drawn in
 	// the strip left over. It is what lets a scrollbar sit where the

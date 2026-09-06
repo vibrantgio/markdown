@@ -223,11 +223,62 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 		if b == last {
 			bottom += end
 		}
-		return layout.Inset{Top: top, Bottom: bottom, Right: style.Gutter}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints.Min = image.Point{}
-			return d.markedBlock(gtx, shaper, style, b, marked)
+		return layout.Inset{Top: top, Bottom: bottom}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return measured(gtx, style, func(gtx layout.Context) layout.Dimensions {
+				gtx.Constraints.Min = image.Point{}
+				return d.markedBlock(gtx, shaper, style, b, marked)
+			})
 		})
 	}
+}
+
+// measured lays one top-level block out between the horizontal insets
+// [blockInsets] gives it, and reports the width it was given back including
+// them, the way [layout.Inset] reports its own. It is the horizontal half of
+// the row's inset, spent here in pixels rather than in Dp because the two
+// margins that centre a block are a division of what is there and not
+// authored space.
+func measured(gtx layout.Context, style Style, w layout.Widget) layout.Dimensions {
+	lead, trail := blockInsets(gtx, style)
+	cgtx := gtx
+	cgtx.Constraints.Max.X = max(gtx.Constraints.Max.X-lead-trail, 0)
+	cgtx.Constraints.Min.X = min(gtx.Constraints.Min.X, cgtx.Constraints.Max.X)
+	if lead > 0 {
+		defer op.Offset(image.Pt(lead, 0)).Push(gtx.Ops).Pop()
+	}
+	dims := w(cgtx)
+	return layout.Dimensions{
+		Size:     image.Pt(dims.Size.X+lead+trail, dims.Size.Y),
+		Baseline: dims.Baseline,
+	}
+}
+
+// blockInsets returns the leading and trailing insets one top-level block sits
+// between, in pixels.
+//
+// The gutter comes off the trailing edge first and is no part of the measure:
+// it is the strip a scrollbar sits in at the viewport's own edge, reserved
+// whether a measure is set or not. What is left is what the measure is tested
+// against, and a block no wider than it is then centred in the viewport rather
+// than in what the gutter leaves — the reading column sits at the middle of
+// the window the reader is looking at.
+//
+// The two rules meet only where the measure comes within a gutter's width of
+// the viewport: centring would leave less than the gutter on the trailing side
+// and run the block under the bar, so the column is seated as close to centre
+// as the gutter allows and no closer. Wider still and the measure asks for
+// more than the viewport has, so every block simply takes what there is —
+// which is what a document with no measure at all does at every width.
+func blockInsets(gtx layout.Context, style Style) (lead, trail int) {
+	gutter := gtx.Dp(style.Gutter)
+	full := gtx.Constraints.Max.X
+	avail := max(full-gutter, 0)
+	m := gtx.Dp(style.Measure)
+	if m <= 0 || m >= avail {
+		return 0, gutter
+	}
+	lead = min((full-m)/2, avail-m)
+	return lead, full - m - lead
 }
 
 // blockPlacement is where a block sits among its siblings, which is what damps

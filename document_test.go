@@ -460,6 +460,236 @@ func TestShortCodeBlockDrawsNoScroller(t *testing.T) {
 	}
 }
 
+// ---- Measure ----
+
+// measureSource is the note the measure tests render: prose long enough to
+// wrap several times at a reading width and not once at the viewport's, above
+// a fence whose first line runs past the reading width either way. One image
+// then carries both halves of what a measure is for — lines that stop where
+// the reader can find the next one, and content that keeps its own size
+// scrolling inside the column instead of widening it.
+const measureSource = "## A sample\n\n" +
+	"A line of prose is easier to read when it stops well short of a wide " +
+	"window: the eye finds the start of the next line without hunting back " +
+	"along it. So the paragraph wraps at the measure however wide the " +
+	"window is opened, and the page shows on both sides of it.\n\n" +
+	"```go\n" +
+	"// A wikilink inside code is a code sample, not navigation:\n" +
+	"// [[Design/Principles]]\n" +
+	"func main() {}\n" +
+	"```\n"
+
+// measureWidth is the reading width the measure tests set, and
+// measureWideSize the viewport they set it in: wide enough that the column
+// stands well clear of both edges, so a capture shows the page beside it
+// rather than a column that merely happens to fit.
+const measureWidth = unit.Dp(360)
+
+var measureWideSize = image.Pt(900, 380)
+
+// measurePage is the leading edge of the region a themed document is laid
+// out in — themed's own inset — and measureRegion the width of that region
+// inside measureWideSize. The insets the measure divides are taken from the
+// region and not from the image.
+const measurePage = 8
+
+var measureRegion = measureWideSize.X - 2*measurePage
+
+// measuredStyle builds the light or dark measure style: the token style with
+// the reading width set and nothing else changed.
+func measuredStyle(c tokens.ColorTokens) markdown.Style {
+	style := markdown.FromTokens(c, tokens.DefaultTypography)
+	style.Measure = measureWidth
+	return style
+}
+
+// pageExtent returns the first and last column of img holding anything other
+// than the page colour, and reports whether it found any. With a measure set
+// that pair is the reading column's own edges, which is what says where the
+// column was seated and how wide it came out.
+func pageExtent(img *image.RGBA, page color.NRGBA) (lead, trail int, ok bool) {
+	b := img.Bounds()
+	lead, trail = b.Max.X, b.Min.X-1
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			p := img.RGBAAt(x, y)
+			if p.R == page.R && p.G == page.G && p.B == page.B && p.A == page.A {
+				continue
+			}
+			lead = min(lead, x)
+			trail = max(trail, x)
+		}
+	}
+	return lead, trail, lead <= trail
+}
+
+// TestMeasureGolden records or diffs a document read at a measure in a
+// viewport far wider than it: the column is centred with page showing on both
+// sides, and the fence inside it is cut at the measure — the long line
+// dissolving at the column's own trailing edge rather than running on to the
+// window's. Both schemes are recorded because the fence's fill and the
+// dissolve over it are what say where the column ends, and neither is
+// scheme-symmetric.
+func TestMeasureGolden(t *testing.T) {
+	shaper := defaultShaper(t)
+	blocks := markdown.Parse([]byte(measureSource))
+	cases := []struct {
+		name   string
+		colors tokens.ColorTokens
+	}{
+		{"measure-wide-light", tokens.DefaultLight},
+		{"measure-wide-dark", tokens.DefaultDark},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := markdown.NewDocument(blocks)
+			golden.Render(t, tc.name, measureWideSize,
+				themed(d, shaper, measuredStyle(tc.colors), tc.colors))
+		})
+	}
+}
+
+// TestMeasureCentresTheColumn asserts the two halves of the rule over the
+// same pixels: a block stops at the measure however wide the viewport is, and
+// what is left over is divided evenly on either side of it. The zero measure
+// is the control, taken in the same viewport: it gives the blocks the whole
+// region, which is what every other stored golden here was recorded at.
+func TestMeasureCentresTheColumn(t *testing.T) {
+	shaper := defaultShaper(t)
+	c := tokens.DefaultLight
+	blocks := markdown.Parse([]byte(measureSource))
+
+	full := golden.Capture(t, measureWideSize,
+		themed(markdown.NewDocument(blocks), shaper, markdown.FromTokens(c, tokens.DefaultTypography), c))
+	lead, trail, ok := pageExtent(full, c.Background)
+	if !ok {
+		t.Fatal("a document with no measure drew nothing")
+	}
+	if got := trail - lead + 1; got != measureRegion {
+		t.Errorf("with no measure the blocks came out %d px wide in a %d px region; a zero measure takes the width", got, measureRegion)
+	}
+
+	held := golden.Capture(t, measureWideSize,
+		themed(markdown.NewDocument(blocks), shaper, measuredStyle(c), c))
+	lead, trail, ok = pageExtent(held, c.Background)
+	if !ok {
+		t.Fatal("a document read at a measure drew nothing")
+	}
+	if got, want := trail-lead+1, int(measureWidth); got != want {
+		t.Errorf("the column came out %d px wide, want the measure's %d", got, want)
+	}
+	before, after := lead-measurePage, measurePage+measureRegion-1-trail
+	if d := before - after; d > 1 || d < -1 {
+		t.Errorf("the column sits %d px from the leading edge and %d from the trailing one; a measure centres what it does not fill", before, after)
+	}
+}
+
+// fenceRow returns a row of img running through the code block — the middle
+// of the longest run of rows holding the fence's own fill — or -1 when the
+// capture holds no fence. A gesture aimed at a hard-coded row lands wherever
+// the prose above it happens to end.
+func fenceRow(img *image.RGBA, fill color.NRGBA) int {
+	b := img.Bounds()
+	best, bestLen, run := -1, 0, 0
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		on := false
+		for x := b.Min.X; x < b.Max.X && !on; x++ {
+			p := img.RGBAAt(x, y)
+			on = p.R == fill.R && p.G == fill.G && p.B == fill.B && p.A == fill.A
+		}
+		if on {
+			run++
+			if run > bestLen {
+				bestLen, best = run, y-run/2
+			}
+			continue
+		}
+		run = 0
+	}
+	return best
+}
+
+// TestMeasureBoundsTheScrollArea asserts that wide content inside a measured
+// column scrolls inside the column: a horizontal gesture over the fence moves
+// code, and every pixel it moves lies between the column's own edges. A
+// scroll area wider than the measure would paint the moved code out over the
+// page beside the column, and this is what would catch it.
+func TestMeasureBoundsTheScrollArea(t *testing.T) {
+	shaper := defaultShaper(t)
+	c := tokens.DefaultLight
+	blocks := markdown.Parse([]byte(measureSource))
+	style := measuredStyle(c)
+
+	rest := golden.Capture(t, measureWideSize,
+		themed(markdown.NewDocument(blocks), shaper, style, c))
+	lead, trail, ok := pageExtent(rest, c.Background)
+	if !ok {
+		t.Fatal("a document read at a measure drew nothing")
+	}
+
+	fence := fenceRow(rest, style.CodeBackground)
+	if fence < 0 {
+		t.Fatal("no fence in the capture; the gesture would land on prose")
+	}
+	w := themed(markdown.NewDocument(blocks), shaper, style, c)
+	driveDocument(w, measureWideSize, pointer.Event{
+		Kind:     pointer.Scroll,
+		Position: f32.Pt(float32(lead+40), float32(fence)),
+		Scroll:   f32.Pt(400, 0),
+		Source:   pointer.Mouse,
+	})
+	scrolled := golden.Capture(t, measureWideSize, w)
+	if n := golden.PixelDiff(rest, scrolled); n == 0 {
+		t.Fatal("a horizontal gesture over the fence moved nothing; the code inside the measure does not scroll")
+	}
+	outside := 0
+	b := rest.Bounds()
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			if x >= lead && x <= trail {
+				continue
+			}
+			if rest.RGBAAt(x, y) != scrolled.RGBAAt(x, y) {
+				outside++
+			}
+		}
+	}
+	if outside != 0 {
+		t.Errorf("%d pixels outside the column changed when the fence scrolled; the scroll area is wider than the measure", outside)
+	}
+}
+
+// TestMeasureKeepsTheGutterAtTheEdge asserts the one place the two rules meet.
+// A measure within a gutter's width of the region cannot be centred without
+// running the column under the bar, so the column is seated leading of centre
+// and the gutter is left whole — the strip a scrollbar needs is the
+// viewport's, not the measure's to spend.
+func TestMeasureKeepsTheGutterAtTheEdge(t *testing.T) {
+	shaper := defaultShaper(t)
+	c := tokens.DefaultLight
+	const gutter = 12
+	style := markdown.FromTokens(c, tokens.DefaultTypography)
+	style.Gutter = gutter
+	style.Measure = unit.Dp(measureRegion - gutter - 2)
+	blocks := markdown.Parse([]byte(measureSource))
+
+	img := golden.Capture(t, measureWideSize,
+		themed(markdown.NewDocument(blocks), shaper, style, c))
+	lead, trail, ok := pageExtent(img, c.Background)
+	if !ok {
+		t.Fatal("a document read at a near-region measure drew nothing")
+	}
+	if got, want := trail-lead+1, int(style.Measure); got != want {
+		t.Errorf("the column came out %d px wide, want the measure's %d", got, want)
+	}
+	if got := measurePage + measureRegion - 1 - trail; got != gutter {
+		t.Errorf("the column left %d px at the trailing edge, want the gutter's %d", got, gutter)
+	}
+	if got := lead - measurePage; got != 2 {
+		t.Errorf("the column sits %d px from the leading edge, want the 2 px the gutter leaves it", got)
+	}
+}
+
 // ---- Layout tests ----
 
 func measureDoc(shaper *text.Shaper, style markdown.Style, blocks []markdown.Block, size image.Point) layout.Dimensions {
