@@ -2,12 +2,13 @@ package markdown
 
 // This file is an internal test (package markdown, not markdown_test) so it
 // can exercise checkboxBorder, checkboxFill and checkmarkInk directly, the
-// way `theme/tokens/ink_test.go` exercises ColorTokens.InkOn and
-// `patterns/tabs/ink_sweep_test.go` exercises its underline colour. The Style
-// fields these three feed are exported and could be read back through
-// FromTokens, but the derivations are the seam the claims belong to: a test
-// that went through the constructor would still be measuring these functions
-// and would say so less plainly.
+// way `theme/tokens/foreground_test.go` exercises
+// ColorTokens.ForegroundOnAtFloor and `patterns/tabs/ink_sweep_test.go`
+// exercises its underline colour. The Style fields these three feed are
+// exported and could be read back through FromTokens, but the derivations
+// are the seam the claims belong to: a test that went through the
+// constructor would still be measuring these functions and would say so
+// less plainly.
 
 import (
 	"fmt"

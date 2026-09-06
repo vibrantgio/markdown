@@ -494,7 +494,7 @@ const codeFloor = tokens.GraphicFloor
 // see. Asking the palette for a foreground measures it instead, and the canonical
 // seed's bar is unchanged.
 func quoteBar(c tokens.ColorTokens) color.NRGBA {
-	return c.InkOn(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
+	return c.ForegroundOnAtFloor(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
 }
 
 // checkboxBorder is the outline of an open task's box: the brand's own colour
@@ -511,7 +511,7 @@ func quoteBar(c tokens.ColorTokens) color.NRGBA {
 // can find. Over the seed sweep 208 of 414 light schemes put that pin under
 // this floor.
 func checkboxBorder(c tokens.ColorTokens) color.NRGBA {
-	return c.InkOn(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
+	return c.ForegroundOnAtFloor(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
 }
 
 // checkboxFill is the body of a completed task's box, and it is the pin,
