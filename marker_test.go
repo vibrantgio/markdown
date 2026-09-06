@@ -32,11 +32,11 @@ const markerProbe = "- [ ] FLAT TEXT AT THE LINE\n" +
 // text right of it.
 const markerColumn = 24
 
-// `inkBands` returns the vertical extent of every run of rows carrying drawn
+// `drawnBands` returns the vertical extent of every run of rows carrying drawn
 // pixels within the column [x0, x1), in order, as half-open [top, bottom)
 // intervals. A row carries pixels at the same luminance departure from the
 // background that the rhythm scan uses.
-func inkBands(img *image.RGBA, x0, x1 int) [][2]int {
+func drawnBands(img *image.RGBA, x0, x1 int) [][2]int {
 	b := img.Bounds()
 	lum := func(x, y int) float64 {
 		c := img.RGBAAt(x, y)
@@ -46,16 +46,16 @@ func inkBands(img *image.RGBA, x0, x1 int) [][2]int {
 	var out [][2]int
 	top := -1
 	for y := b.Min.Y; y < b.Max.Y; y++ {
-		ink := false
-		for x := x0; x < x1 && x < b.Max.X && !ink; x++ {
+		drawn := false
+		for x := x0; x < x1 && x < b.Max.X && !drawn; x++ {
 			if d := lum(x, y) - bg; d > 24 || d < -24 {
-				ink = true
+				drawn = true
 			}
 		}
 		switch {
-		case ink && top < 0:
+		case drawn && top < 0:
 			top = y
-		case !ink && top >= 0:
+		case !drawn && top >= 0:
 			out = append(out, [2]int{top, y})
 			top = -1
 		}
@@ -101,8 +101,8 @@ func TestAListMarkerCentresOnItsFirstTextLine(t *testing.T) {
 				return d.LayoutColumn(gtx, shaper, style)
 			})
 
-			markers := inkBands(img, 0, markerColumn)
-			lines := inkBands(img, markerColumn, img.Bounds().Max.X)
+			markers := drawnBands(img, 0, markerColumn)
+			lines := drawnBands(img, markerColumn, img.Bounds().Max.X)
 			if len(markers) != 3 || len(lines) != 3 {
 				t.Fatalf("scanned %d marker bands and %d text bands, want 3 of each (one per item): %v / %v; the probe or the scan has drifted", len(markers), len(lines), markers, lines)
 			}
@@ -183,8 +183,8 @@ func TestAMarkerHangsLevelBesideACodeOpeningRow(t *testing.T) {
 				return d.LayoutColumn(gtx, shaper, style)
 			})
 
-			markers := inkBands(img, 0, markerColumn)
-			lines := inkBands(img, markerColumn, img.Bounds().Max.X)
+			markers := drawnBands(img, 0, markerColumn)
+			lines := drawnBands(img, markerColumn, img.Bounds().Max.X)
 			if len(markers) != 2 || len(lines) != 2 {
 				t.Fatalf("scanned %d marker bands and %d text bands, want 2 of each (one per row): %v / %v; the probe or the scan has drifted", len(markers), len(lines), markers, lines)
 			}

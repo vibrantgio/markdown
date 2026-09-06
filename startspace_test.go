@@ -62,12 +62,12 @@ func startShot(t *testing.T, src string, size image.Point, start unit.Dp, move f
 // blankAbove returns the number of rows at the head of img carrying nothing
 // drawn.
 func blankAbove(img *image.RGBA) int {
-	ground := tokens.DefaultLight.Background
+	background := tokens.DefaultLight.Background
 	b := img.Bounds()
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			c := img.RGBAAt(x, y)
-			if c.R != ground.R || c.G != ground.G || c.B != ground.B {
+			if c.R != background.R || c.G != background.G || c.B != background.B {
 				return y - b.Min.Y
 			}
 		}

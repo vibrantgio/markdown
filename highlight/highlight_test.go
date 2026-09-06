@@ -202,14 +202,14 @@ func TestWornSnippetGolden(t *testing.T) {
 	}
 }
 
-// TestInlineChipsStayOnTheQuietFill is the other half of a worn fence: the
+// TestInlineChipsStayOnTheThemesFill is the other half of a worn fence: the
 // document around it does not change. A chip is a word of code inside a
 // sentence, and giving it a foreign background would spot a page of prose with
 // backgrounds that belong to a palette rather than to this theme — so the chip
 // keeps the theme's fill and the body's own colour while the block down the page
 // shows the base whole. Measured on a document holding both, by counting the
 // pixels of each fill.
-func TestInlineChipsStayOnTheQuietFill(t *testing.T) {
+func TestInlineChipsStayOnTheThemesFill(t *testing.T) {
 	const source = "A sentence with an `inline chip` in it.\n\n" +
 		"```go\n" + goSnippet + "\n```\n"
 	size := image.Pt(560, 160)

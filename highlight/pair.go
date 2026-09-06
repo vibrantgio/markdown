@@ -125,8 +125,8 @@ func CompletePair(name string) BasePair {
 		return DefaultBases()
 	}
 	self, _ := listed(name)
-	dark, grounded := polarity(s)
-	if !grounded {
+	dark, withBackground := polarity(s)
+	if !withBackground {
 		return BasePair{Light: self, Dark: self}
 	}
 	other := counterpart(s, !dark)
@@ -158,7 +158,7 @@ func listed(name string) (string, bool) {
 // polarity measures which appearance a style was fitted to, and reports
 // whether it was fitted to one at all. It is [BaseSuits]'s own measurement,
 // reachable from a style rather than from a name.
-func polarity(s *chroma.Style) (dark, grounded bool) {
+func polarity(s *chroma.Style) (dark, withBackground bool) {
 	bg := s.Get(chroma.Background).Background
 	if !bg.IsSet() {
 		return false, false
@@ -172,7 +172,7 @@ func polarity(s *chroma.Style) (dark, grounded bool) {
 // measure at all.
 func counterpart(s *chroma.Style, dark bool) string {
 	if cp, ok := lookup(s.Counterpart); ok {
-		if cpDark, grounded := polarity(cp); grounded && cpDark == dark {
+		if cpDark, withBackground := polarity(cp); withBackground && cpDark == dark {
 			declared, _ := listed(s.Counterpart)
 			return declared
 		}
@@ -206,7 +206,7 @@ func nearest(s *chroma.Style, dark bool) (string, bool) {
 		if !ok || c == s {
 			continue
 		}
-		if cDark, grounded := polarity(c); !grounded || cDark != dark {
+		if cDark, withBackground := polarity(c); !withBackground || cDark != dark {
 			continue
 		}
 		d, ok := distance(s, c)
@@ -274,13 +274,13 @@ func distanceWith(a, b *chroma.Style, family float64) (float64, bool) {
 	plainA, plainB := plainForeground(a), plainForeground(b)
 	var sum, weight float64
 	for _, tt := range hueClasses {
-		inkA, okA := classInk(a, plainA, tt)
-		inkB, okB := classInk(b, plainB, tt)
+		foregroundA, okA := classForeground(a, plainA, tt)
+		foregroundB, okB := classForeground(b, plainB, tt)
 		if !okA || !okB {
 			continue
 		}
-		_, chromaA, hueA := color.OKLChFromNRGBA(inkA)
-		_, chromaB, hueB := color.OKLChFromNRGBA(inkB)
+		_, chromaA, hueA := color.OKLChFromNRGBA(foregroundA)
+		_, chromaB, hueB := color.OKLChFromNRGBA(foregroundB)
 		w := classFloor + math.Min(chromaA, chromaB)
 		sum += w * math.Min(hueGap(hueA, hueB), family) / family
 		weight += w
@@ -291,8 +291,8 @@ func distanceWith(a, b *chroma.Style, family float64) (float64, bool) {
 	return sum / weight, true
 }
 
-// classInk is the colour a style draws one class of token in, or false when it
-// has no colour for that class.
+// classForeground is the colour a style draws one class of token in, or false
+// when it has no colour for that class.
 //
 // "No colour" includes resolving to the style's plain foreground, which is the
 // same reading the highlighter itself makes: a run that comes out in the body
@@ -300,7 +300,7 @@ func distanceWith(a, b *chroma.Style, family float64) (float64, bool) {
 // colourless so the theme's own text colour shows through. Counting it as a
 // decision would have every style that declares a body colour agreeing with
 // every other about every class neither of them colours.
-func classInk(s *chroma.Style, plain chroma.Colour, tt chroma.TokenType) (stdcolor.NRGBA, bool) {
+func classForeground(s *chroma.Style, plain chroma.Colour, tt chroma.TokenType) (stdcolor.NRGBA, bool) {
 	e := s.Get(tt)
 	if !e.Colour.IsSet() || e.Colour == plain {
 		return stdcolor.NRGBA{}, false

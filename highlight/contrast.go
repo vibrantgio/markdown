@@ -46,9 +46,9 @@ var readingClasses = hueClasses
 // [AuthoredContrast.BelowFloor]; a caller wanting to say how much of a palette
 // is faint has the fraction.
 type AuthoredContrast struct {
-	// `Inks` is how many reading colours were measured — the body colour, and
+	// `Colors` is how many reading colours were measured — the body colour, and
 	// each reading class the base colours differently from it.
-	Inks int
+	Colors int
 	// Below is how many of those measure under [ContrastFloor].
 	Below int
 }
@@ -65,7 +65,7 @@ type AuthoredContrast struct {
 // mentioning.
 //
 // The zero value reads false: nothing measured is not a finding.
-func (a AuthoredContrast) BelowFloor() bool { return a.Inks > 0 && 2*a.Below > a.Inks }
+func (a AuthoredContrast) BelowFloor() bool { return a.Colors > 0 && 2*a.Below > a.Colors }
 
 // BaseContrast measures the base named against the background its author
 // fitted it to: the colour it sets plain code in, and the colour it gives each
@@ -96,12 +96,12 @@ func BaseContrast(name string) (AuthoredContrast, bool) {
 	if !bg.IsSet() {
 		return AuthoredContrast{}, false
 	}
-	ground := fromChroma(bg)
+	background := fromChroma(bg)
 
 	var a AuthoredContrast
-	read := func(ink stdcolor.NRGBA) {
-		a.Inks++
-		if color.ContrastRatio(ink, ground) < ContrastFloor {
+	read := func(foreground stdcolor.NRGBA) {
+		a.Colors++
+		if color.ContrastRatio(foreground, background) < ContrastFloor {
 			a.Below++
 		}
 	}
@@ -110,9 +110,9 @@ func BaseContrast(name string) (AuthoredContrast, bool) {
 		read(fromChroma(plain))
 	}
 	for _, tt := range readingClasses {
-		if ink, ok := classInk(s, plain, tt); ok {
-			read(ink)
+		if foreground, ok := classForeground(s, plain, tt); ok {
+			read(foreground)
 		}
 	}
-	return a, a.Inks > 0
+	return a, a.Colors > 0
 }

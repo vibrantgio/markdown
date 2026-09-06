@@ -72,7 +72,7 @@ type Document struct {
 // index outside the document or any fill with no alpha in it.
 type blockMark struct {
 	block int
-	wash  color.NRGBA
+	fill  color.NRGBA
 }
 
 // imageState is a cached provider result: the [layout.Widget] serving a
@@ -121,8 +121,8 @@ func (d *Document) Blocks() []Block { return d.blocks }
 // lifetime and its going, handing a fill whose alpha it has scaled, and sets
 // it before every [Document.Layout]. An index outside the document, or a
 // fill with no alpha in it, marks nothing.
-func (d *Document) Highlight(block int, wash color.NRGBA) {
-	d.mark = blockMark{block: block, wash: wash}
+func (d *Document) Highlight(block int, fill color.NRGBA) {
+	d.mark = blockMark{block: block, fill: fill}
 }
 
 // ClearHighlight unmarks whatever [Document.Highlight] marked.
@@ -132,7 +132,7 @@ func (d *Document) ClearHighlight() { d.mark = blockMark{block: -1} }
 // It resolves to a block value rather than an index because the layout paths
 // see one block at a time and know it by identity, not by position.
 func (d *Document) marked() Block {
-	if d.mark.wash.A == 0 || d.mark.block < 0 || d.mark.block >= len(d.blocks) {
+	if d.mark.fill.A == 0 || d.mark.block < 0 || d.mark.block >= len(d.blocks) {
 		return nil
 	}
 	return d.blocks[d.mark.block]
@@ -146,9 +146,9 @@ func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style St
 	}
 	macro := op.Record(gtx.Ops)
 	dims := d.block(gtx, shaper, style, b)
-	ink := macro.Stop()
-	paint.FillShape(gtx.Ops, d.mark.wash, clip.Rect{Max: dims.Size}.Op())
-	ink.Add(gtx.Ops)
+	drawn := macro.Stop()
+	paint.FillShape(gtx.Ops, d.mark.fill, clip.Rect{Max: dims.Size}.Op())
+	drawn.Add(gtx.Ops)
 	return dims
 }
 

@@ -307,7 +307,7 @@ func TestTheLinePitchInsideAParagraphMatchesTheReference(t *testing.T) {
 			clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return d.LayoutColumn(gtx, shaper, style)
 	})
-	bands := inkBands(img, 0, img.Bounds().Max.X)
+	bands := drawnBands(img, 0, img.Bounds().Max.X)
 	if len(bands) < 4 {
 		t.Fatalf("scanned %d drawn bands, want at least 4 (one per wrapped line): %v; the probe did not wrap", len(bands), bands)
 	}

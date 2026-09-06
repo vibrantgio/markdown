@@ -28,8 +28,8 @@ import (
 // took no position on, and is passed over — so a fixture painting four classes
 // in one literal colour would be a fixture with one reading in it.
 var (
-	loudInks  = []string{"#1a1a1a", "#203020", "#301a1a", "#1a1a30", "#2a1a2a"}
-	faintInks = []string{"#e8e8e8", "#e4e9e4", "#eae4e4", "#e4e4ea", "#e9e9e2"}
+	strongColors = []string{"#1a1a1a", "#203020", "#301a1a", "#1a1a30", "#2a1a2a"}
+	faintColors  = []string{"#e8e8e8", "#e4e9e4", "#eae4e4", "#e4e4ea", "#e9e9e2"}
 )
 
 // The classes the fixtures paint. They are chosen so that no two of them stand
@@ -44,20 +44,20 @@ const (
 	fFunc    = `<entry type="NameFunction" style="%s"/>`
 )
 
-// `ink` writes one entry in one colour.
-func ink(entry, colour string) string { return fmt.Sprintf(entry, colour) }
+// `writtenIn` writes one entry in one colour.
+func writtenIn(entry, colour string) string { return fmt.Sprintf(entry, colour) }
 
 // fixture loads a style whose entries are as named, on a white background,
 // through the same folder that a style somebody wrote themselves arrives by.
 // It returns the name to ask about.
 func fixture(t *testing.T, name string, entries ...string) string {
 	t.Helper()
-	return ground(t, name, `  <entry type="Background" style="bg:#ffffff"/>`, entries...)
+	return fixtureOn(t, name, `  <entry type="Background" style="bg:#ffffff"/>`, entries...)
 }
 
-// `ground` is [fixture] with the background entry handed in, so a case can
+// `fixtureOn` is [fixture] with the background entry handed in, so a case can
 // write a style that names none.
-func ground(t *testing.T, name, bg string, entries ...string) string {
+func fixtureOn(t *testing.T, name, bg string, entries ...string) string {
 	t.Helper()
 	var b strings.Builder
 	fmt.Fprintf(&b, "<style name=%q>\n", name)
@@ -82,59 +82,59 @@ func ground(t *testing.T, name, bg string, entries ...string) string {
 // summary exists for, and it reads below the floor.
 func TestAFaintPaletteIsNamedFaint(t *testing.T) {
 	name := fixture(t, "fixture-faint",
-		ink(fBody, faintInks[0]),
-		ink(fComment, faintInks[1]),
-		ink(fString, faintInks[2]),
-		ink(fFunc, faintInks[3]),
-		ink(fNumber, loudInks[0]),
+		writtenIn(fBody, faintColors[0]),
+		writtenIn(fComment, faintColors[1]),
+		writtenIn(fString, faintColors[2]),
+		writtenIn(fFunc, faintColors[3]),
+		writtenIn(fNumber, strongColors[0]),
 	)
 	a, ok := BaseContrast(name)
 	if !ok {
 		t.Fatal("a style with a background and colours measured nothing")
 	}
-	if a.Inks != 5 || a.Below != 4 {
-		t.Errorf("measured %d of %d colours under the floor, want 4 of 5", a.Below, a.Inks)
+	if a.Colors != 5 || a.Below != 4 {
+		t.Errorf("measured %d of %d colours under the floor, want 4 of 5", a.Below, a.Colors)
 	}
 	if !a.BelowFloor() {
 		t.Error("a palette drawn four fifths faint does not read as faint")
 	}
 }
 
-// TestOneFaintInkIsNotAFaintPalette is the rule's whole point. A palette that
+// TestOneFaintColorIsNotAFaintPalette is the rule's whole point. A palette that
 // draws its code plainly and lets one class recede — which is what a comment
 // colour is for — has not been drawn faint, and saying so about it would be
 // saying it about nearly every style there is.
-func TestOneFaintInkIsNotAFaintPalette(t *testing.T) {
+func TestOneFaintColorIsNotAFaintPalette(t *testing.T) {
 	name := fixture(t, "fixture-one-faint-colour",
-		ink(fBody, loudInks[0]),
-		ink(fString, loudInks[1]),
-		ink(fFunc, loudInks[2]),
-		ink(fNumber, loudInks[3]),
-		ink(fComment, faintInks[0]),
+		writtenIn(fBody, strongColors[0]),
+		writtenIn(fString, strongColors[1]),
+		writtenIn(fFunc, strongColors[2]),
+		writtenIn(fNumber, strongColors[3]),
+		writtenIn(fComment, faintColors[0]),
 	)
 	a, ok := BaseContrast(name)
 	if !ok {
 		t.Fatal("a style with a background and colours measured nothing")
 	}
-	if a.Below != 1 || a.Inks != 5 {
-		t.Errorf("measured %d of %d colours under the floor, want 1 of 5", a.Below, a.Inks)
+	if a.Below != 1 || a.Colors != 5 {
+		t.Errorf("measured %d of %d colours under the floor, want 1 of 5", a.Below, a.Colors)
 	}
 	if a.BelowFloor() {
 		t.Error("a palette with one receding class reads as faint, so the rule is the worst colour and not the majority")
 	}
 }
 
-// TestAMarkerDrawnInTheGroundIsNotMeasured: the faintest entries in chroma's
+// TestAMarkerDrawnInTheBackgroundIsNotMeasured: the faintest entries in chroma's
 // set are markers for things that are not code — a deleted line, an error span
 // — and several of them are drawn in the background colour itself, at one to
 // one, on purpose. They are not runs anybody reads code in, and counting them
 // would call a plainly-drawn palette faint on the strength of a marker its
 // author meant nobody to see.
-func TestAMarkerDrawnInTheGroundIsNotMeasured(t *testing.T) {
+func TestAMarkerDrawnInTheBackgroundIsNotMeasured(t *testing.T) {
 	body := []string{
-		ink(fBody, loudInks[0]),
-		ink(fString, loudInks[1]),
-		ink(fComment, loudInks[2]),
+		writtenIn(fBody, strongColors[0]),
+		writtenIn(fString, strongColors[1]),
+		writtenIn(fComment, strongColors[2]),
 	}
 	markers := []string{
 		`<entry type="GenericDeleted" style="#ffffff"/>`,
@@ -157,50 +157,50 @@ func TestAMarkerDrawnInTheGroundIsNotMeasured(t *testing.T) {
 	}
 }
 
-// TestTheBodyInkIsOneOfTheReadings: most of the characters on screen are the
+// TestTheBodyColorIsOneOfTheReadings: most of the characters on screen are the
 // ones the style took no position on, so the colour it sets them in is the colour
 // a reader spends the most time on. A summary that only walked the classes
 // would miss a style that draws its code faint and its keywords pronounced.
-func TestTheBodyInkIsOneOfTheReadings(t *testing.T) {
+func TestTheBodyColorIsOneOfTheReadings(t *testing.T) {
 	name := fixture(t, "fixture-faint-body",
-		ink(fBody, faintInks[0]),
-		ink(fString, loudInks[0]),
+		writtenIn(fBody, faintColors[0]),
+		writtenIn(fString, strongColors[0]),
 	)
 	a, ok := BaseContrast(name)
 	if !ok {
 		t.Fatal("a style with a background and colours measured nothing")
 	}
-	if a.Inks != 2 || a.Below != 1 {
-		t.Errorf("measured %d of %d, want the body colour counted beside the one class", a.Below, a.Inks)
+	if a.Colors != 2 || a.Below != 1 {
+		t.Errorf("measured %d of %d, want the body colour counted beside the one class", a.Below, a.Colors)
 	}
 }
 
-// TestAnInkResolvingToTheBodyColourIsNotCountedTwice: a class whose entry is
+// TestAClassResolvingToTheBodyColourIsNotCountedTwice: a class whose entry is
 // the style's own plain foreground is a class the style took no position on —
 // the highlighter emits it colourless — so it is the body reading and not a
 // second one.
-func TestAnInkResolvingToTheBodyColourIsNotCountedTwice(t *testing.T) {
+func TestAClassResolvingToTheBodyColourIsNotCountedTwice(t *testing.T) {
 	name := fixture(t, "fixture-restated-body",
-		ink(fBody, loudInks[0]),
-		ink(fString, loudInks[0]),
-		ink(fFunc, loudInks[0]),
-		ink(fComment, faintInks[0]),
+		writtenIn(fBody, strongColors[0]),
+		writtenIn(fString, strongColors[0]),
+		writtenIn(fFunc, strongColors[0]),
+		writtenIn(fComment, faintColors[0]),
 	)
 	a, _ := BaseContrast(name)
-	if a.Inks != 2 {
-		t.Errorf("measured %d colours, want the body colour once and the one class that differs from it", a.Inks)
+	if a.Colors != 2 {
+		t.Errorf("measured %d colours, want the body colour once and the one class that differs from it", a.Colors)
 	}
 }
 
-// TestABaseFittedToNoGroundHasNoAuthoredContrast: the ratios are a fact about
+// TestABaseFittedToNoBackgroundHasNoAuthoredContrast: the ratios are a fact about
 // the pairing an author made, and an author who named no background made no
 // pairing. Measuring such a style against a surface somebody else chose would
 // report a number about that surface.
-func TestABaseFittedToNoGroundHasNoAuthoredContrast(t *testing.T) {
-	inks := []string{ink(fBody, faintInks[0]), ink(fComment, faintInks[1])}
-	groundless := ground(t, "fixture-without-background", "", inks...)
-	control := fixture(t, "fixture-with-background", inks...)
-	if _, ok := BaseContrast(groundless); ok {
+func TestABaseFittedToNoBackgroundHasNoAuthoredContrast(t *testing.T) {
+	entries := []string{writtenIn(fBody, faintColors[0]), writtenIn(fComment, faintColors[1])}
+	noBackground := fixtureOn(t, "fixture-without-background", "", entries...)
+	control := fixture(t, "fixture-with-background", entries...)
+	if _, ok := BaseContrast(noBackground); ok {
 		t.Error("a style fitted to no background reports an authored contrast anyway")
 	}
 	a, ok := BaseContrast(control)
@@ -224,35 +224,35 @@ func TestABaseColouringNothingHasNothingToMeasure(t *testing.T) {
 	}
 }
 
-// TestTheSummaryIsMeasuredOnTheAuthorsOwnGround checks the arithmetic against
+// TestTheSummaryIsMeasuredOnTheAuthorsOwnBackground checks the arithmetic against
 // the ratios themselves on a style whose background is nothing like the page:
 // every colour it counted below the floor is one that measures below the floor
 // there, and the count is the whole of what it walked.
-func TestTheSummaryIsMeasuredOnTheAuthorsOwnGround(t *testing.T) {
+func TestTheSummaryIsMeasuredOnTheAuthorsOwnBackground(t *testing.T) {
 	for _, name := range []string{"catppuccin-mocha", "solarized-light", "github"} {
 		s, ok := lookup(name)
 		if !ok {
 			t.Fatalf("%s does not resolve", name)
 		}
-		ground, ok := authored(s)
+		background, ok := authored(s)
 		if !ok {
 			t.Fatalf("%s names no background", name)
 		}
 		plain := plainForeground(s)
 		want := AuthoredContrast{}
 		if plain.IsSet() {
-			want.Inks++
-			if color.ContrastRatio(fromChroma(plain), ground) < ContrastFloor {
+			want.Colors++
+			if color.ContrastRatio(fromChroma(plain), background) < ContrastFloor {
 				want.Below++
 			}
 		}
 		for _, tt := range readingClasses {
-			ink, ok := classInk(s, plain, tt)
+			foreground, ok := classForeground(s, plain, tt)
 			if !ok {
 				continue
 			}
-			want.Inks++
-			if color.ContrastRatio(ink, ground) < ContrastFloor {
+			want.Colors++
+			if color.ContrastRatio(foreground, background) < ContrastFloor {
 				want.Below++
 			}
 		}
@@ -285,10 +285,10 @@ func TestTheShippedSetSplitsOnTheRule(t *testing.T) {
 			named++
 		}
 		if faint[name] && !a.BelowFloor() {
-			t.Errorf("%s reads plain at %d of %d colours under the floor", name, a.Below, a.Inks)
+			t.Errorf("%s reads plain at %d of %d colours under the floor", name, a.Below, a.Colors)
 		}
 		if plain[name] && a.BelowFloor() {
-			t.Errorf("%s reads faint at %d of %d colours under the floor", name, a.Below, a.Inks)
+			t.Errorf("%s reads faint at %d of %d colours under the floor", name, a.Below, a.Colors)
 		}
 	}
 	if named == 0 || named == measured {

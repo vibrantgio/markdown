@@ -291,23 +291,24 @@ func TestEveryBaseIsOfferedUnderOneAppearanceOrBoth(t *testing.T) {
 	}
 }
 
-// TestTheGroundDecidesTheAppearance, and not the name: a style whose title says
-// one thing and whose background says the other is offered under what it draws
-// on. Both fixtures are loaded from a folder, which is also the assertion that
-// a style somebody wrote themselves is classified exactly like one that ships.
-func TestTheGroundDecidesTheAppearance(t *testing.T) {
+// TestTheBackgroundDecidesTheAppearance, and not the name: a style whose
+// title says one thing and whose background says the other is offered under
+// what it draws on. Both fixtures are loaded from a folder, which is also the
+// assertion that a style somebody wrote themselves is classified exactly like
+// one that ships.
+func TestTheBackgroundDecidesTheAppearance(t *testing.T) {
 	const misnamed = `<style name="lantern-night-in-name-only">
   <entry type="Background" style="bg:#fdf6e3 #586e75"/>
   <entry type="Keyword" style="bold #d33682"/>
 </style>
 `
-	const groundless = `<style name="lantern-nowhere">
+	const noBackground = `<style name="lantern-nowhere">
   <entry type="Keyword" style="bold #d33682"/>
 </style>
 `
 	dir := folder(t, map[string]string{
 		"day.xml": lanternXML, "night.xml": lanternNightXML,
-		"misnamed.xml": misnamed, "groundless.xml": groundless,
+		"misnamed.xml": misnamed, "nobackground.xml": noBackground,
 	})
 	if _, skipped := LoadDir(dir); len(skipped) > 0 {
 		t.Fatalf("the folder skipped %v", skipped)

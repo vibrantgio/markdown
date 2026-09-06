@@ -351,13 +351,14 @@ type Style struct {
 // FromTokens derives the default document style from colour tokens and a
 // typography: the paper is the theme's own background, headings take the six
 // stops of the typography's document heading scale, body text follows
-// richtext.FromTokens on the BodyLarge role, code sits on the elevation
-// raise walked off the content (see codeFill) with the colour codeInk derives,
-// inline code on the same fill while keeping the body's own colour so a quoted
-// word reads as the sentence's, the quote bar is Primary with Neutral 700 text,
-// rules and table grid lines are separators and use Divider, and the table
-// header row sits on the Neutral 300 tinted fill. Highlight and Images stay
-// nil — both are opt-in. Pass tokens.DefaultTypography for the default look.
+// richtext.FromTokens on the BodyLarge role, code sits on the elevation raise
+// walked off the content (see codeFill) with the colour codeForeground
+// derives, inline code on the same fill while keeping the body's own colour
+// so a quoted word reads as the sentence's, the quote bar is Primary with
+// Neutral 700 text, rules and table grid lines are separators and use
+// Divider, and the table header row sits on the Neutral 300 tinted fill.
+// Highlight and Images stay nil — both are opt-in. Pass
+// tokens.DefaultTypography for the default look.
 //
 // The paper is the theme's background because that is where a document lies,
 // and a holder that mounts one somewhere else says so by setting Paper
@@ -416,11 +417,11 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		HeadingSpaceBelow:     below,
 		Mono:                  font.Typeface(typo.Code.Typeface),
 		CodeSize:              unit.Sp(typo.Code.Size),
-		CodeColor:             codeInk(c),  // see codeInk
-		CodeBackground:        codeFill(c), // the raise off the content, see codeFill
-		CodeBorder:            codeRim(c),  // the edge that says where it is
-		CodeChip:              codeFill(c), // one code surface, not two
-		CodeChipBorder:        codeRim(c),  // one code edge, not two
+		CodeColor:             codeForeground(c), // see codeForeground
+		CodeBackground:        codeFill(c),       // the raise off the content, see codeFill
+		CodeBorder:            codeRim(c),        // the edge that says where it is
+		CodeChip:              codeFill(c),       // one code surface, not two
+		CodeChipBorder:        codeRim(c),        // one code edge, not two
 		CodeScrollbar:         codeScrollbar(c),
 		QuoteBar:              quoteBar(c),               // see quoteBar
 		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
@@ -429,7 +430,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		TableHeaderBackground: c.Ramps.Neutral.Step(300), // tinted fill
 		CheckboxBorder:        checkboxBorder(c),         // a stroke on the page
 		CheckboxFill:          checkboxFill(c),           // a fill keeps its brand
-		CheckmarkColor:        checkmarkInk(c),           // measured on that fill
+		CheckmarkColor:        checkmarkForeground(c),    // measured on that fill
 		BlockGap:              gap,
 		ListSpaceAbove:        listSeam(gap),
 		Indent:                unit.Dp(tokens.Spacing.S6),
@@ -531,7 +532,7 @@ func checkboxFill(c tokens.ColorTokens) color.NRGBA {
 	return c.Primary
 }
 
-// checkmarkInk is the tick drawn on [checkboxFill].
+// checkmarkForeground is the tick drawn on [checkboxFill].
 //
 // It is a mark and not text — a stroked glyph-shaped path carrying "done"
 // with no words in it — so the floor it owes the surface under it is WCAG
@@ -546,11 +547,11 @@ func checkboxFill(c tokens.ColorTokens) color.NRGBA {
 // The pairing is asserted per seed rather than assumed: a hand that moves
 // checkboxFill and leaves this alone orphans the tick on a fill it was never
 // measured against.
-func checkmarkInk(c tokens.ColorTokens) color.NRGBA {
+func checkmarkForeground(c tokens.ColorTokens) color.NRGBA {
 	return c.OnPrimary
 }
 
-// codeInk is what plain code is set in: the runs a highlighter leaves
+// codeForeground is what plain code is set in: the runs a highlighter leaves
 // colourless, and the whole of a block nothing highlights.
 //
 // It is the one colour in this constructor the two appearances take a different
@@ -570,7 +571,7 @@ func checkmarkInk(c tokens.ColorTokens) color.NRGBA {
 // the step below the body text and the dark one keeps the low-contrast text
 // step, and the two schemes set code at 70% and 80% of their own prose weight
 // where they set it at 58% and 80%.
-func codeInk(c tokens.ColorTokens) color.NRGBA {
+func codeForeground(c tokens.ColorTokens) color.NRGBA {
 	if darkScheme(c) {
 		return c.Ramps.Neutral.Step(700) // low-contrast text
 	}
@@ -613,8 +614,8 @@ func darkScheme(c tokens.ColorTokens) bool {
 //
 // That is a weight against a fill and not a match to the code's own colour,
 // which is why it stays on this step in both appearances while the light
-// appearance's code sits one step past it (see codeInk) — the bar lies on the
-// code surface, it is not a run of code, and a fence's one draggable
+// appearance's code sits one step past it (see codeForeground) — the bar lies
+// on the code surface, it is not a run of code, and a fence's one draggable
 // affordance does not get heavier because the reading got heavier.
 func codeScrollbar(c tokens.ColorTokens) scrollbar.Style {
 	s := scrollbar.FromTokens(c)

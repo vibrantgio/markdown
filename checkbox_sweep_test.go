@@ -1,9 +1,9 @@
 package markdown
 
 // This file is an internal test (package markdown, not markdown_test) so it
-// can exercise checkboxBorder, checkboxFill and checkmarkInk directly, the
+// can exercise checkboxBorder, checkboxFill and checkmarkForeground directly, the
 // way `theme/tokens/foreground_test.go` exercises
-// ColorTokens.ForegroundOnAtFloor and `patterns/tabs/ink_sweep_test.go`
+// ColorTokens.ForegroundOnAtFloor and `patterns/tabs/underline_sweep_test.go`
 // exercises its underline colour. The Style fields these three feed are
 // exported and could be read back through FromTokens, but the derivations
 // are the seam the claims belong to: a test that went through the
@@ -124,7 +124,7 @@ func TestCheckmarkClearsItsFloorOnTheFillForEverySeed(t *testing.T) {
 	for _, seed := range seeds {
 		for _, s := range checkboxSweepSchemes(seed) {
 			fill := checkboxFill(s.tok)
-			tick := checkmarkInk(s.tok)
+			tick := checkmarkForeground(s.tok)
 			got := color.ContrastRatio(tick, fill)
 			if got < tokens.GraphicFloor {
 				t.Errorf("seed %s: %s: check mark %s on fill %s measures %.2f:1, under the %.1f:1 graphic floor",
@@ -159,7 +159,7 @@ func TestTheCanonicalSeedKeepsEveryCheckboxPin(t *testing.T) {
 			t.Errorf("%s: checkbox fill is %s, not the Primary pin %s — a golden moved",
 				s.name, checkboxHex(got), checkboxHex(s.tok.Primary))
 		}
-		if got := checkmarkInk(s.tok); got != s.tok.OnPrimary {
+		if got := checkmarkForeground(s.tok); got != s.tok.OnPrimary {
 			t.Errorf("%s: check mark is %s, not the OnPrimary pin %s — a golden moved",
 				s.name, checkboxHex(got), checkboxHex(s.tok.OnPrimary))
 		}

@@ -25,7 +25,7 @@ const twinXML = `<style name="twin-day">
 </style>
 `
 
-func TestBasePaletteReadsInks(t *testing.T) {
+func TestBasePaletteReadsColors(t *testing.T) {
 	dir := folder(t, map[string]string{"twin.xml": twinXML})
 	if _, skipped := LoadDir(dir); len(skipped) != 0 {
 		t.Fatalf("loading the fixture: %v", skipped)
@@ -89,10 +89,10 @@ func TestCompletePairDeclared(t *testing.T) {
 	}
 }
 
-// TestCompletePairGroundless holds the rule for a base fitted to no
-// background: it is its own pair, because there is no appearance it is the
-// wrong choice for and none it is the right one for either.
-func TestCompletePairGroundless(t *testing.T) {
+// TestCompletePairOfABaseFittedToNoBackground holds the rule for a base
+// fitted to no background: it is its own pair, because there is no appearance
+// it is the wrong choice for and none it is the right one for either.
+func TestCompletePairOfABaseFittedToNoBackground(t *testing.T) {
 	var found []string
 	for _, name := range Bases() {
 		if !BaseSuits(name, true) || !BaseSuits(name, false) {
@@ -105,7 +105,7 @@ func TestCompletePairGroundless(t *testing.T) {
 		}
 	}
 	if len(found) == 0 {
-		t.Fatal("no groundless base in the embedded set; the rule is untested")
+		t.Fatal("every base in the embedded set names a background; the rule is untested")
 	}
 	t.Logf("bases fitted to no background: %v", found)
 }
@@ -235,7 +235,7 @@ func rankedWith(t *testing.T, name string, dark bool, family float64) []string {
 		if !ok || c == s {
 			continue
 		}
-		if cDark, grounded := polarity(c); !grounded || cDark != dark {
+		if cDark, withBackground := polarity(c); !withBackground || cDark != dark {
 			continue
 		}
 		if d, ok := distanceWith(s, c, family); ok {
@@ -284,8 +284,8 @@ func TestRediscoversDeclaredPairs(t *testing.T) {
 	const topN = 3
 	for _, pair := range declaredPairs(t) {
 		name, declared := pair[0], pair[1]
-		dark, grounded := func() (bool, bool) { s, _ := lookup(name); return polarity(s) }()
-		if !grounded {
+		dark, withBackground := func() (bool, bool) { s, _ := lookup(name); return polarity(s) }()
+		if !withBackground {
 			t.Fatalf("%s declares a counterpart but was fitted to no background", name)
 		}
 		order := ranked(t, name, !dark)
@@ -364,8 +364,8 @@ func TestHueFamilySitsInThePlateau(t *testing.T) {
 func TestRediscoveryMatchesTheSearch(t *testing.T) {
 	for _, name := range Bases() {
 		s, _ := lookup(name)
-		dark, grounded := polarity(s)
-		if !grounded {
+		dark, withBackground := polarity(s)
+		if !withBackground {
 			continue
 		}
 		order := ranked(t, name, !dark)
@@ -394,7 +394,7 @@ func TestRediscoveryMatchesTheSearch(t *testing.T) {
 // on the side it was asked for, and that the seed candidate is a colour the
 // style genuinely draws with.
 func TestSweepEveryBase(t *testing.T) {
-	var inkless []string
+	var colourless []string
 	for _, name := range styles.Names() {
 		pair := CompletePair(name)
 		for _, member := range []struct {
@@ -410,38 +410,38 @@ func TestSweepEveryBase(t *testing.T) {
 					name, member.name, appearance(member.dark))
 			}
 		}
-		if dark, grounded := func() (bool, bool) { s, _ := lookup(name); return polarity(s) }(); grounded {
+		if dark, withBackground := func() (bool, bool) { s, _ := lookup(name); return polarity(s) }(); withBackground {
 			if own := pair.Base(dark); own != name {
 				t.Errorf("%s: its own side of the pair is %q", name, own)
 			}
 		}
 
-		ink := BasePalette(name)
-		candidates := imageseed.ExtractPalette(ink)
-		if len(ink) == 0 {
+		colors := BasePalette(name)
+		candidates := imageseed.ExtractPalette(colors)
+		if len(colors) == 0 {
 			// A style that colours nothing has no seed in it. It is not a
 			// failure, it is a style drawn in one colour, and the sweep says
 			// which ones they are rather than pretending they extracted.
-			inkless = append(inkless, name)
+			colourless = append(colourless, name)
 			if len(candidates) != 0 {
 				t.Errorf("%s: colours nothing, yet %d candidates came out", name, len(candidates))
 			}
 			continue
 		}
 		if len(candidates) == 0 {
-			t.Errorf("%s: %d colours and no candidate", name, len(ink))
+			t.Errorf("%s: %d colours and no candidate", name, len(colors))
 			continue
 		}
-		if !slices.Contains(ink, candidates[0].Color) {
+		if !slices.Contains(colors, candidates[0].Color) {
 			t.Errorf("%s: the leading candidate %v is not a colour the style draws with",
 				name, candidates[0].Color)
 		}
 		t.Logf("%-22s -> light %-22s dark %-22s  seed #%02x%02x%02x (chroma %.3f, share %.2f of %d colours)",
 			name, pair.Light, pair.Dark,
 			candidates[0].Color.R, candidates[0].Color.G, candidates[0].Color.B,
-			candidates[0].Chroma, candidates[0].Share, len(ink))
+			candidates[0].Chroma, candidates[0].Share, len(colors))
 	}
-	t.Logf("bases that colour nothing, and so have no seed: %v", inkless)
+	t.Logf("bases that colour nothing, and so have no seed: %v", colourless)
 }
 
 func appearance(dark bool) string {

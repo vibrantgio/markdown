@@ -896,8 +896,8 @@ func TestDocumentLiveFrame(t *testing.T) {
 
 // ---- Token defaults ----
 
-// TestCodeReadsAtItsPagesWeight is the measurement behind codeInk, kept as a
-// gate so the two appearances cannot drift apart again.
+// TestCodeReadsAtItsPagesWeight is the measurement behind codeForeground,
+// kept as a gate so the two appearances cannot drift apart again.
 //
 // A document's code is less pronounced than its prose in both appearances,
 // deliberately — a fence is quoted matter, and it is set on its own fill
@@ -993,8 +993,8 @@ func TestFromTokensDefaults(t *testing.T) {
 	for _, tok := range []tokens.ColorTokens{tokens.DefaultLight, tokens.DefaultDark} {
 		s := markdown.FromTokens(tok, typo)
 		for _, edge := range []struct {
-			name        string
-			rim, ground color.NRGBA
+			name      string
+			rim, fill color.NRGBA
 		}{
 			{"CodeBorder", s.CodeBorder, s.CodeBackground},
 			{"CodeChipBorder", s.CodeChipBorder, s.CodeChip},
@@ -1003,13 +1003,13 @@ func TestFromTokensDefaults(t *testing.T) {
 				t.Errorf("%s is unset; a whisper of a fill cannot say where a code surface is on its own", edge.name)
 				continue
 			}
-			if r := themecolor.ContrastRatio(edge.rim, edge.ground); r < 3 {
-				t.Errorf("%s %v measures %.2f:1 against %v, under the 3:1 a graphic owes", edge.name, edge.rim, r, edge.ground)
+			if r := themecolor.ContrastRatio(edge.rim, edge.fill); r < 3 {
+				t.Errorf("%s %v measures %.2f:1 against %v, under the 3:1 a graphic owes", edge.name, edge.rim, r, edge.fill)
 			}
 		}
 	}
 	// Plain code is the one colour the two appearances take a different step
-	// for, and it is a measured difference rather than a taste: see codeInk.
+	// for, and it is a measured difference rather than a taste: see codeForeground.
 	// A light document sets code the step below its body text and a dark one
 	// the low-contrast text step, which is where both had it before the light
 	// half was measured against the dark half.

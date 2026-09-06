@@ -102,14 +102,14 @@ func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 	if fallback.A == 0 {
 		fallback = surface
 	}
-	st.CodeBackground = fenceGround(member, fallback)
+	st.CodeBackground = fenceBackground(member, fallback)
 	st.CodeBorder = fenceEdge(st.CodeBackground, c)
 }
 
-// fenceGround is the fence's fill under one member: the background its author
-// fitted their colours against, or fallback for the four embedded styles that
-// name no background at all.
-func fenceGround(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRGBA {
+// fenceBackground is the fence's fill under one member: the background its
+// author fitted their colours against, or fallback for the four embedded
+// styles that name no background at all.
+func fenceBackground(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRGBA {
 	if bg := member.Get(chroma.Background).Background; bg.IsSet() {
 		return fromChroma(bg)
 	}

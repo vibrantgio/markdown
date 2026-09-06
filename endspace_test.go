@@ -69,12 +69,12 @@ func endShot(t *testing.T, src string, size image.Point, end unit.Dp, move func(
 // blankBelow returns the number of rows at the foot of img carrying nothing
 // drawn.
 func blankBelow(img *image.RGBA) int {
-	ground := tokens.DefaultLight.Background
+	background := tokens.DefaultLight.Background
 	b := img.Bounds()
 	for y := b.Max.Y - 1; y >= b.Min.Y; y-- {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			c := img.RGBAAt(x, y)
-			if c.R != ground.R || c.G != ground.G || c.B != ground.B {
+			if c.R != background.R || c.G != background.G || c.B != background.B {
 				return b.Max.Y - 1 - y
 			}
 		}

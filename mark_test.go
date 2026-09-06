@@ -20,23 +20,23 @@ Short.
 A third paragraph, also wide, so the marked one is not the widest.
 `
 
-// markWash is the colour the marking is probed by: the reserved highlighter
+// markFill is the colour the marking is probed by: the reserved highlighter
 // resolved for the light scheme, which is the colour the arrival marking is
 // drawn in and is not any of this style's own.
-var markWash = tokens.DefaultLight.Highlight
+var markFill = tokens.DefaultLight.Highlight
 
-// `washBounds` returns the bounding box of the pixels painted exactly in
-// `markWash`, and how many there are. Glyphs drawn over the fill are
+// `fillBounds` returns the bounding box of the pixels painted exactly in
+// `markFill`, and how many there are. Glyphs drawn over the fill are
 // antialiased against it and do not answer, which is what makes the count a
 // measure of the field rather than of the text on it.
-func washBounds(img *image.RGBA) (image.Rectangle, int) {
+func fillBounds(img *image.RGBA) (image.Rectangle, int) {
 	box := image.Rectangle{Min: image.Pt(1<<30, 1<<30), Max: image.Pt(-1, -1)}
 	n := 0
 	b := img.Bounds()
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			c := img.RGBAAt(x, y)
-			if c.R != markWash.R || c.G != markWash.G || c.B != markWash.B {
+			if c.R != markFill.R || c.G != markFill.G || c.B != markFill.B {
 				continue
 			}
 			n++
@@ -49,9 +49,9 @@ func washBounds(img *image.RGBA) (image.Rectangle, int) {
 	return box, n
 }
 
-// inkBounds returns the bounding box of everything drawn over the document's
+// drawnBounds returns the bounding box of everything drawn over the document's
 // background.
-func inkBounds(img *image.RGBA, bg color.NRGBA) image.Rectangle {
+func drawnBounds(img *image.RGBA, bg color.NRGBA) image.Rectangle {
 	box := image.Rectangle{Min: image.Pt(1<<30, 1<<30), Max: image.Pt(-1, -1)}
 	b := img.Bounds()
 	for y := b.Min.Y; y < b.Max.Y; y++ {
@@ -87,31 +87,31 @@ func TestHighlightMarksOneBlockAndNothingElse(t *testing.T) {
 	}
 
 	plain := shot(func(*markdown.Document) {})
-	marked := shot(func(d *markdown.Document) { d.Highlight(1, markWash) })
+	marked := shot(func(d *markdown.Document) { d.Highlight(1, markFill) })
 	cleared := shot(func(d *markdown.Document) {
-		d.Highlight(1, markWash)
+		d.Highlight(1, markFill)
 		d.ClearHighlight()
 	})
 
-	box, n := washBounds(marked)
+	box, n := fillBounds(marked)
 	if n == 0 {
 		t.Fatal("Highlight painted no fill")
 	}
-	if _, n := washBounds(plain); n != 0 {
+	if _, n := fillBounds(plain); n != 0 {
 		t.Errorf("an unmarked document painted %d highlight pixels", n)
 	}
 	if diff := golden.PixelDiff(plain, cleared); diff != 0 {
 		t.Errorf("ClearHighlight left %d pixels changed; the marking is frame state", diff)
 	}
 
-	ink := inkBounds(plain, colors.Background)
-	if box.Max.X >= ink.Max.X {
+	drawn := drawnBounds(plain, colors.Background)
+	if box.Max.X >= drawn.Max.X {
 		t.Errorf("the fill reaches x=%d, the document's widest line reaches x=%d; "+
-			"the marking is sized to the column, not to the block", box.Max.X, ink.Max.X)
+			"the marking is sized to the column, not to the block", box.Max.X, drawn.Max.X)
 	}
-	if box.Min.X != ink.Min.X {
+	if box.Min.X != drawn.Min.X {
 		t.Errorf("the fill starts at x=%d, the content at x=%d; the marking must open on the block's own edge",
-			box.Min.X, ink.Min.X)
+			box.Min.X, drawn.Min.X)
 	}
 
 	// Every pixel the marking changed lies inside the fill's own box: the
@@ -149,10 +149,10 @@ func TestHighlightOutsideTheDocumentMarksNothing(t *testing.T) {
 		name string
 		mark func(*markdown.Document)
 	}{
-		{"past the last block", func(d *markdown.Document) { d.Highlight(len(blocks), markWash) }},
-		{"negative", func(d *markdown.Document) { d.Highlight(-1, markWash) }},
+		{"past the last block", func(d *markdown.Document) { d.Highlight(len(blocks), markFill) }},
+		{"negative", func(d *markdown.Document) { d.Highlight(-1, markFill) }},
 		{"transparent fill", func(d *markdown.Document) {
-			d.Highlight(1, color.NRGBA{R: markWash.R, G: markWash.G, B: markWash.B})
+			d.Highlight(1, color.NRGBA{R: markFill.R, G: markFill.G, B: markFill.B})
 		}},
 	}
 	for _, tc := range cases {
