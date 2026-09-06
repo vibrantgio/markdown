@@ -870,7 +870,7 @@ func TestTaskClickIdlePixelsUnchanged(t *testing.T) {
 }
 
 // TestDocumentLiveFrame drives Document.Layout through an input router for
-// two frames, exercising the live richtext path (link registration and event
+// two frames, exercising the live paragraph path (link registration and event
 // draining) over the full corpus without a GPU.
 func TestDocumentLiveFrame(t *testing.T) {
 	shaper := defaultShaper(t)

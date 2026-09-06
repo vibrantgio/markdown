@@ -8,7 +8,7 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 
-	"github.com/vibrantgio/components/richtext"
+	"github.com/vibrantgio/components/paragraph"
 	"github.com/vibrantgio/components/scrollbar"
 	themecolor "github.com/vibrantgio/theme/color"
 	"github.com/vibrantgio/theme/tokens"
@@ -103,15 +103,15 @@ type Style struct {
 	// document nearly always lies.
 	ContentSurface color.NRGBA
 	// Text is the paragraph default: body colour and size, link and focus
-	// colours, and the link callback (richtext.Style.OnLinkClick). Its
+	// colours, and the link callback (paragraph.Style.OnLinkClick). Its
 	// colours are the content's prose foregrounds.
-	Text richtext.Style
+	Text paragraph.Style
 	// HeadingSizes maps heading levels 1..6 (index 0..5) onto text sizes: the
 	// scale the content ranks its sections by, which is a reading scale and not
 	// the roles that size the one big line at the top of a screen.
 	HeadingSizes [6]unit.Sp
 	// HeadingLineHeights maps the same levels onto the line box each heading's
-	// lines occupy, the way [richtext.Style].LineHeight means it. A zero entry
+	// lines occupy, the way [paragraph.Style].LineHeight means it. A zero entry
 	// — a Style built by hand rather than by [FromTokens] — leaves that level's
 	// lines on their shaped metrics.
 	HeadingLineHeights [6]unit.Sp
@@ -351,7 +351,7 @@ type Style struct {
 // FromTokens derives the default document style from colour tokens and a
 // typography: the content surface is the theme's own background, headings take the six
 // stops of the typography's document heading scale, body text follows
-// richtext.FromTokens on the BodyLarge role, code sits on the elevation raise
+// paragraph.FromTokens on the BodyLarge role, code sits on the elevation raise
 // walked off the content (see codeFill) with the colour codeForeground
 // derives, inline code on the same fill while keeping the body's own colour
 // so a quoted word reads as the sentence's, the quote bar is Primary with
@@ -395,7 +395,7 @@ type Style struct {
 // came from.
 //
 // Of each role only Size lands in the Style: headings and paragraphs carry
-// their typeface, weight and slant per span (richtext.SpanStyle), so those
+// their typeface, weight and slant per span (paragraph.SpanStyle), so those
 // parts of a role reach the shaper through the document's spans rather than
 // through this constructor. Mono is the one typeface a Style names outright,
 // because code spans are built from it.
@@ -410,7 +410,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	above, below := headingSpacing(gap, sizes)
 	return Style{
 		ContentSurface:        c.Background, // the surface a document lies on
-		Text:                  richtext.FromTokens(c, typo.BodyLarge),
+		Text:                  paragraph.FromTokens(c, typo.BodyLarge),
 		HeadingSizes:          sizes,
 		HeadingLineHeights:    boxes,
 		HeadingSpaceAbove:     above,
@@ -783,11 +783,11 @@ func (s Style) listSpace() unit.Dp {
 	return s.BlockGap
 }
 
-// heading returns the richtext paragraph style for a heading of the given
+// heading returns the paragraph style for a heading of the given
 // level: the level's type-scale size and line box with body colours. A level
 // with no line box of its own falls back to the body's, which is the smallest
 // box any of them asks for and so cannot squeeze a heading's own metrics.
-func (s Style) heading(level int) richtext.Style {
+func (s Style) heading(level int) paragraph.Style {
 	st := s.Text
 	if level >= 1 && level <= len(s.HeadingSizes) {
 		st.Size = s.HeadingSizes[level-1]
@@ -799,16 +799,16 @@ func (s Style) heading(level int) richtext.Style {
 	return st
 }
 
-// codeSpans maps a code block's content onto richtext spans: highlighted
+// codeSpans maps a code block's content onto paragraph spans: highlighted
 // runs when the style's Highlighter recognises the language, one plain run
 // otherwise. Newlines opening a highlighted run (chroma's whitespace tokens
-// lead with them) are moved to the previous run's tail: richtext treats a
+// lead with them) are moved to the previous run's tail: paragraph treats a
 // trailing newline as a clean line end, while a leading one would skew the
 // line's metrics.
-func (s Style) codeSpans(cb *CodeBlock) []richtext.SpanStyle {
+func (s Style) codeSpans(cb *CodeBlock) []paragraph.SpanStyle {
 	if s.Highlight != nil {
 		if hl := s.Highlight(cb.Language, cb.Code); len(hl) > 0 {
-			out := make([]richtext.SpanStyle, 0, len(hl))
+			out := make([]paragraph.SpanStyle, 0, len(hl))
 			for _, h := range hl {
 				content := h.Text
 				if len(out) > 0 {
@@ -822,7 +822,7 @@ func (s Style) codeSpans(cb *CodeBlock) []richtext.SpanStyle {
 				if content == "" {
 					continue
 				}
-				rs := richtext.SpanStyle{Content: content, Color: h.Color, Typeface: s.Mono}
+				rs := paragraph.SpanStyle{Content: content, Color: h.Color, Typeface: s.Mono}
 				if h.Bold {
 					rs.Weight = font.Bold
 				}
@@ -834,7 +834,7 @@ func (s Style) codeSpans(cb *CodeBlock) []richtext.SpanStyle {
 			return out
 		}
 	}
-	return []richtext.SpanStyle{{Content: cb.Code, Typeface: s.Mono}}
+	return []paragraph.SpanStyle{{Content: cb.Code, Typeface: s.Mono}}
 }
 
 // The chip an inline code span sits on, read off a reference reading surface
@@ -871,14 +871,14 @@ func (s Style) codeSize(size unit.Sp) unit.Sp {
 	return size * s.CodeSize / s.Text.Size
 }
 
-// spanStyles maps model spans onto richtext spans against the style's
+// spanStyles maps model spans onto paragraph spans against the style's
 // typefaces. defWeight is the run weight for spans without their own bold
 // flag (font.Bold for headings), and size is the size the line is set at,
 // which inline code is sized against.
-func (s Style) spanStyles(spans []Span, defWeight font.Weight, size unit.Sp) []richtext.SpanStyle {
-	out := make([]richtext.SpanStyle, 0, len(spans))
+func (s Style) spanStyles(spans []Span, defWeight font.Weight, size unit.Sp) []paragraph.SpanStyle {
+	out := make([]paragraph.SpanStyle, 0, len(spans))
 	for _, sp := range spans {
-		rs := richtext.SpanStyle{
+		rs := paragraph.SpanStyle{
 			Content:       sp.Text,
 			URL:           sp.URL,
 			Strikethrough: sp.Strikethrough,
@@ -893,7 +893,7 @@ func (s Style) spanStyles(spans []Span, defWeight font.Weight, size unit.Sp) []r
 		if sp.Code {
 			rs.Typeface = s.Mono
 			rs.Size = s.codeSize(size)
-			rs.Chip = richtext.Chip{
+			rs.Chip = paragraph.Chip{
 				Color:   s.CodeChip,
 				Border:  s.CodeChipBorder,
 				Padding: codeChipPad,

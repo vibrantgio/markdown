@@ -18,7 +18,7 @@ renders it with components primitives:
   screen's own headline — each carrying its own vertical space, wider above
   than below, so a heading parts from the section it closes and binds to the
   one it opens
-- paragraphs as `components/richtext` span flows (bold, italic, inline code,
+- paragraphs as `components/paragraph` span flows (bold, italic, inline code,
   links, GFM strikethrough)
 - ordered/unordered lists with real nesting and indentation, including GFM
   task-list checkboxes
@@ -51,7 +51,7 @@ application decides what the target means.
 
 Tier 4 of the stack — `mvu → theme → components → effects → patterns → markdown` —
 alongside [patterns](https://github.com/vibrantgio/patterns). It imports `list`
-and `richtext` from [components](https://github.com/vibrantgio/components), `tokens` from
+and `paragraph` from [components](https://github.com/vibrantgio/components), `tokens` from
 [theme](https://github.com/vibrantgio/theme), and
 [svg](https://github.com/vibrantgio/svg) in the `svgimage` subpackage only. It
 imports neither mvu, effects nor patterns, and nothing in the design
@@ -390,11 +390,11 @@ excludes approximately nothing.
 ## Why not `gioui.org/x/markdown`?
 
 The existing community renderer was evaluated on 2026-07-20 and rejected as a
-dependency: it flattens the whole document into a single richtext flow and
+dependency: it flattens the whole document into a single styled-text flow and
 drops blockquotes, thematic rules, images, tables, list nesting, and all of
 GFM; headings are distinguished by size only; tabs render as tofu; there is no
 text selection. It served as a span-model reference only — the span shape
-lives on in `components/richtext`, and this module owns the block layer that
+lives on in `components/paragraph`, and this module owns the block layer that
 `x/markdown` lacks.
 
 ## For coding assistants
@@ -446,7 +446,7 @@ organization. What renders, renders well; these are the honest gaps.
   that fails visibly on only one of the two themes, so a typo fails at
   construction instead.
 - **Text is not selectable or copyable.** Neither this module nor
-  `components/richtext` implements selection — the same gap the comparison above
+  `components/paragraph` implements selection — the same gap the comparison above
   notes in `x/markdown`. Links are clickable and focusable; that is all.
 - **Image results are cached per document, failures included.** A destination
   that fails to load keeps rendering its alt text for the life of that

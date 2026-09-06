@@ -27,7 +27,7 @@ import (
 	"golang.org/x/image/math/fixed"
 
 	"github.com/vibrantgio/components/list"
-	"github.com/vibrantgio/components/richtext"
+	"github.com/vibrantgio/components/paragraph"
 	"github.com/vibrantgio/components/scrollarea"
 	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/theme/tokens"
@@ -43,9 +43,9 @@ import (
 type Document struct {
 	blocks []Block
 	list   *list.State
-	// text holds per-paragraph richtext link state, keyed by the pointer
+	// text holds per-paragraph link state, keyed by the pointer
 	// identity of the heading, paragraph, table cell, or image it backs.
-	text map[any]*richtext.State
+	text map[any]*paragraph.State
 	// code holds per-code-block horizontal scroll state.
 	code map[*CodeBlock]*scrollarea.State
 	// tables holds per-table horizontal scroll state, used when even the
@@ -89,7 +89,7 @@ func NewDocument(blocks []Block) *Document {
 	return &Document{
 		blocks: blocks,
 		list:   list.NewState(),
-		text:   make(map[any]*richtext.State),
+		text:   make(map[any]*paragraph.State),
 		code:   make(map[*CodeBlock]*scrollarea.State),
 		tables: make(map[*Table]*layout.List),
 		images: make(map[*Image]imageState),
@@ -322,9 +322,9 @@ func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b
 	switch b := b.(type) {
 	case *Heading:
 		h := style.heading(b.Level)
-		return richtext.Layout(gtx, d.textState(b), shaper, h, style.spanStyles(b.Spans, font.Bold, h.Size))
+		return paragraph.Layout(gtx, d.textState(b), shaper, h, style.spanStyles(b.Spans, font.Bold, h.Size))
 	case *Paragraph:
-		return richtext.Layout(gtx, d.textState(b), shaper, style.Text, style.spanStyles(b.Spans, font.Normal, style.Text.Size))
+		return paragraph.Layout(gtx, d.textState(b), shaper, style.Text, style.spanStyles(b.Spans, font.Normal, style.Text.Size))
 	case *List:
 		return d.listBlock(gtx, shaper, style, b)
 	case *Blockquote:
@@ -367,12 +367,12 @@ func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, 
 	return layout.Dimensions{Size: size}
 }
 
-// textState returns the persistent richtext state for a heading, paragraph,
+// textState returns the persistent paragraph state for a heading, paragraph,
 // table cell, or image fallback, keyed by pointer identity.
-func (d *Document) textState(b any) *richtext.State {
+func (d *Document) textState(b any) *paragraph.State {
 	s, ok := d.text[b]
 	if !ok {
-		s = richtext.NewState()
+		s = paragraph.NewState()
 		d.text[b] = s
 	}
 	return s
@@ -463,13 +463,13 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Style, cb *CodeBlock) layout.Dimensions {
 	pad := unit.Dp(tokens.Spacing.S3)
 	radius := gtx.Dp(unit.Dp(tokens.Radius.Base))
-	codeStyle := richtext.Style{Color: style.CodeColor, Size: style.CodeSize}
+	codeStyle := paragraph.Style{Color: style.CodeColor, Size: style.CodeSize}
 	spans := style.codeSpans(cb)
 	area := scrollarea.Style{Fade: unit.Dp(tokens.Spacing.S4), FadeColor: style.CodeBackground}
 
 	code := func(gtx layout.Context) layout.Dimensions {
 		return layout.Inset{Top: pad, Bottom: pad}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return richtext.Render(shaper, codeStyle, spans, richtext.Idle())(gtx)
+			return paragraph.Render(shaper, codeStyle, spans, paragraph.Idle())(gtx)
 		})
 	}
 	cgtx := gtx
@@ -522,9 +522,9 @@ func rule(gtx layout.Context, style Style) layout.Dimensions {
 	return layout.Dimensions{Size: image.Pt(w, th)}
 }
 
-// cellSpans returns a table cell's richtext spans; header cells are
+// cellSpans returns a table cell's paragraph spans; header cells are
 // emphasised with the bold run weight.
-func cellSpans(style Style, cell *TableCell, header bool) []richtext.SpanStyle {
+func cellSpans(style Style, cell *TableCell, header bool) []paragraph.SpanStyle {
 	w := font.Normal
 	if header {
 		w = font.Bold
@@ -566,7 +566,7 @@ func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t
 				break
 			}
 			m := op.Record(gtx.Ops)
-			dims := richtext.Render(shaper, style.Text, cellSpans(style, cell, ri == 0), richtext.Idle())(mgtx)
+			dims := paragraph.Render(shaper, style.Text, cellSpans(style, cell, ri == 0), paragraph.Idle())(mgtx)
 			m.Stop()
 			naturals[ci] = max(naturals[ci], dims.Size.X)
 		}
@@ -614,7 +614,7 @@ func minColumnWidths(gtx layout.Context, shaper *text.Shaper, style Style, rows 
 					w := sp
 					w.Content = word
 					m := op.Record(gtx.Ops)
-					dims := richtext.Render(shaper, style.Text, []richtext.SpanStyle{w}, richtext.Idle())(mgtx)
+					dims := paragraph.Render(shaper, style.Text, []paragraph.SpanStyle{w}, paragraph.Idle())(mgtx)
 					m.Stop()
 					mins[ci] = max(mins[ci], dims.Size.X)
 				}
@@ -705,7 +705,7 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 			}
 			cgtx.Constraints.Max.X = widths[ci]
 			m := op.Record(gtx.Ops)
-			dims := richtext.Layout(cgtx, d.textState(cell), shaper, style.Text, cellSpans(style, cell, ri == 0))
+			dims := paragraph.Layout(cgtx, d.textState(cell), shaper, style.Text, cellSpans(style, cell, ri == 0))
 			calls[ci] = m.Stop()
 			sizes[ci] = dims.Size
 			rowH = max(rowH, dims.Size.Y)
@@ -779,8 +779,8 @@ func (d *Document) image(gtx layout.Context, shaper *text.Shaper, style Style, n
 		if alt == "" {
 			alt = n.URL
 		}
-		spans := []richtext.SpanStyle{{Content: alt, Style: font.Italic}}
-		return richtext.Layout(gtx, d.textState(n), shaper, style.Text, spans)
+		spans := []paragraph.SpanStyle{{Content: alt, Style: font.Italic}}
+		return paragraph.Layout(gtx, d.textState(n), shaper, style.Text, spans)
 	}
 	if st.widget != nil {
 		return st.widget(gtx)
@@ -844,7 +844,7 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 		mgtx := gtx
 		mgtx.Constraints.Min = image.Point{}
 		mgtx.Constraints.Max.X = markerW
-		richtext.Render(shaper, style.Text, []richtext.SpanStyle{{Content: marker}}, richtext.Idle())(mgtx)
+		paragraph.Render(shaper, style.Text, []paragraph.SpanStyle{{Content: marker}}, paragraph.Idle())(mgtx)
 	default:
 		drawBullet(gtx, style, line.center)
 	}

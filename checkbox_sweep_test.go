@@ -21,7 +21,7 @@ import (
 )
 
 // checkboxSweepSeeds is the seed population this file reads the checkbox's
-// colour claims against, the same one theme/tokens, components/richtext and the
+// colour claims against, the same one theme/tokens, components/paragraph and the
 // pattern strips sweep their derivations with: the default seed, the nine
 // macOS system accents, both ends of the tonal axis, three pastels stated at
 // a dark scheme's tone, and four hundred random colours from a fixed source.

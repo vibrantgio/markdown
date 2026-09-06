@@ -140,7 +140,7 @@ func spanner(style *chroma.Style, plain chroma.Colour) markdown.Highlighter {
 			out = append(out, sp)
 		}
 		// Some lexers append a final newline the source never had; a trailing
-		// "\n" is a hard break to richtext, so it would add a blank line.
+		// "\n" is a hard break to paragraph, so it would add a blank line.
 		if len(out) > 0 && !strings.HasSuffix(code, "\n") {
 			last := &out[len(out)-1]
 			last.Text = strings.TrimSuffix(last.Text, "\n")

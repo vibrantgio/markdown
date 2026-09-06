@@ -6,7 +6,7 @@
 // tree of [Block] values whose inline content is expressed as styled [Span]
 // runs. [Document] lays the top-level blocks through components/list, so long
 // documents stay O(visible), and renders each block with the components
-// library: type-scale headings, richtext paragraphs, nested lists with task-list
+// library: type-scale headings, paragraphs, nested lists with task-list
 // checkboxes, inset blockquotes with a leading token-coloured bar, rules,
 // monospace code blocks on a surface background with tab expansion and
 // horizontal scrolling (a fence keeps its own line breaks, and a line too wide
