@@ -117,7 +117,7 @@ The fourth of those is what keeps a block a block. A palette fitted to a light
 page is drawn on a near-white and this page is a near-white too, so a fill alone
 can leave the reader guessing where the code begins: where a base's background
 stands less far off the page than your theme's own code fill does, `Wear`
-also sets `CodeBorder`, and the block takes a hairline in the theme's divider
+also sets `CodeBorder`, and the block takes a hairline in the theme's seam
 colour. Where the background stands off on its own, no line is drawn. A base
 that names no background at all — four of the embedded styles — is drawn on
 the fill an inline chip uses, which is what a fence had before any base was

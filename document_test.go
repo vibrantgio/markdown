@@ -393,7 +393,7 @@ func TestCodeBorderEdgesTheFenceWithoutMovingIt(t *testing.T) {
 	style := markdown.FromTokens(c, tokens.DefaultTypography)
 	style.CodeBackground = c.Background
 	edged := style
-	edged.CodeBorder = c.Divider
+	edged.CodeBorder = c.Seam
 
 	measure := func(st markdown.Style) int {
 		var ops op.Ops
@@ -427,7 +427,7 @@ func TestCodeBorderEdgesTheFenceWithoutMovingIt(t *testing.T) {
 	// rather than the total ignores the odd anti-aliased glyph pixel that
 	// happens to land on the same value.
 	width := size.X - 16
-	if got := count(rimmed, c.Divider) - count(plain, c.Divider); got < width {
+	if got := count(rimmed, c.Seam) - count(plain, c.Seam); got < width {
 		t.Errorf("%d pixels came out in the border colour; a rim around a block %d px wide is more than that", got, width)
 	}
 	if n := count(rimmed, style.CodeBackground); n == 0 {
@@ -947,7 +947,7 @@ func TestCodeReadsAtItsPagesWeight(t *testing.T) {
 // the theme's page, heading levels take the typography's document heading scale,
 // code shapes in the theme Code role's typeface and size on the Neutral 200
 // fill, the quote bar is Primary with Neutral 700 text, and rules are
-// separators using Divider.
+// separators using Seam.
 func TestFromTokensDefaults(t *testing.T) {
 	c, typo := tokens.DefaultLight, tokens.DefaultTypography
 	st := markdown.FromTokens(c, typo)
@@ -1031,11 +1031,11 @@ func TestFromTokensDefaults(t *testing.T) {
 	if st.QuoteBar != c.Primary || st.QuoteColor != c.Ramps.Neutral.Step(700) {
 		t.Errorf("quote colours = %v/%v, want Primary/Neutral 700", st.QuoteBar, st.QuoteColor)
 	}
-	if st.RuleColor != c.Divider {
-		t.Errorf("RuleColor = %v, want Divider %v", st.RuleColor, c.Divider)
+	if st.RuleColor != c.Seam {
+		t.Errorf("RuleColor = %v, want Seam %v", st.RuleColor, c.Seam)
 	}
-	if st.TableBorder != c.Divider || st.TableHeaderBackground != c.Ramps.Neutral.Step(300) {
-		t.Errorf("table colours = %v/%v, want Divider/Neutral 300", st.TableBorder, st.TableHeaderBackground)
+	if st.TableBorder != c.Seam || st.TableHeaderBackground != c.Ramps.Neutral.Step(300) {
+		t.Errorf("table colours = %v/%v, want Seam/Neutral 300", st.TableBorder, st.TableHeaderBackground)
 	}
 	if want := font.Typeface(tokens.DefaultTypography.Code.Typeface); st.Mono != want {
 		t.Errorf("Mono = %q, want the Code role's %q", st.Mono, want)

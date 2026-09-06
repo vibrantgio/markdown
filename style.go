@@ -356,7 +356,7 @@ type Style struct {
 // derives, inline code on the same fill while keeping the body's own colour
 // so a quoted word reads as the sentence's, the quote bar is Primary with
 // Neutral 700 text, rules and table grid lines are separators and use
-// Divider, and the table header row sits on the Neutral 300 tinted fill.
+// Seam, and the table header row sits on the Neutral 300 tinted fill.
 // Highlight and Images stay nil — both are opt-in. Pass
 // tokens.DefaultTypography for the default look.
 //
@@ -425,8 +425,8 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CodeScrollbar:         codeScrollbar(c),
 		QuoteBar:              quoteBar(c),               // see quoteBar
 		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
-		RuleColor:             c.Divider,
-		TableBorder:           c.Divider,
+		RuleColor:             c.Seam,
+		TableBorder:           c.Seam,
 		TableHeaderBackground: c.Ramps.Neutral.Step(300), // tinted fill
 		CheckboxBorder:        checkboxBorder(c),         // a stroke on the page
 		CheckboxFill:          checkboxFill(c),           // a fill keeps its brand
