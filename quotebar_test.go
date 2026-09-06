@@ -18,7 +18,7 @@ func barHex(c stdcolor.NRGBA) string { return fmt.Sprintf("#%02X%02X%02X", c.R, 
 // stored image in this design system is rendered from, and an accent stated at
 // a dark scheme's tone — the shape that a palette published for dark mode
 // hands out, and the shape whose light primary pin lands a whisper off the
-// paper. The bar carries the whole of "these lines are quoted" without being
+// content. The bar carries the whole of "these lines are quoted" without being
 // text, so it owes the page WCAG 1.4.11's 3:1 whichever seed it came from.
 //
 // The population claim behind it is the palette's, not this package's: the
@@ -39,14 +39,14 @@ func TestQuoteBarClearsTheGraphicFloor(t *testing.T) {
 			tok  tokens.ColorTokens
 		}{{"light", light}, {"dark", dark}} {
 			style := markdown.FromTokens(sc.tok, tokens.DefaultTypography)
-			got := color.ContrastRatio(style.QuoteBar, style.Paper)
+			got := color.ContrastRatio(style.QuoteBar, style.ContentSurface)
 			if got < 3.0 {
-				t.Errorf("%s, %s: quote bar %s on paper %s measures %.2f:1, under the 3:1 graphic floor",
-					s.name, sc.name, barHex(style.QuoteBar), barHex(style.Paper), got)
+				t.Errorf("%s, %s: quote bar %s on the content %s measures %.2f:1, under the 3:1 graphic floor",
+					s.name, sc.name, barHex(style.QuoteBar), barHex(style.ContentSurface), got)
 			}
-			t.Logf("%s, %s: quote bar %s on paper %s %.2f:1 (pin %s %.2f:1)",
-				s.name, sc.name, barHex(style.QuoteBar), barHex(style.Paper), got,
-				barHex(sc.tok.Primary), color.ContrastRatio(sc.tok.Primary, style.Paper))
+			t.Logf("%s, %s: quote bar %s on the content %s %.2f:1 (pin %s %.2f:1)",
+				s.name, sc.name, barHex(style.QuoteBar), barHex(style.ContentSurface), got,
+				barHex(sc.tok.Primary), color.ContrastRatio(sc.tok.Primary, style.ContentSurface))
 		}
 	}
 }
@@ -75,7 +75,7 @@ func TestTheCanonicalSeedsQuoteBarIsThePrimaryPin(t *testing.T) {
 func TestAPastelSeedsQuoteBarLeavesThePin(t *testing.T) {
 	light, _ := tokens.FromSeed(stdcolor.NRGBA{0x89, 0xb4, 0xfa, 0xff})
 	style := markdown.FromTokens(light, tokens.DefaultTypography)
-	if bare := color.ContrastRatio(light.Primary, style.Paper); bare >= 3.0 {
+	if bare := color.ContrastRatio(light.Primary, style.ContentSurface); bare >= 3.0 {
 		t.Fatalf("this seed's bare light pin now measures %.2f:1 — the test no longer reads the shape it was written for", bare)
 	}
 	if style.QuoteBar == light.Primary {

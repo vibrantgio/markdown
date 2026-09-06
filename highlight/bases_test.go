@@ -108,8 +108,8 @@ func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 // TestALoadedPairHasTwoSides: a style naming a counterpart that is also in the
 // folder behaves the way an embedded pair does — the light member on a light
 // theme, the dark one on a dark theme, from the one name. The background on the
-// fence is what says which member arrived, the two fixtures being fitted to
-// paper and to slate.
+// fence is what says which member arrived, the two fixtures being fitted to a
+// light page and to a dark one.
 func TestALoadedPairHasTwoSides(t *testing.T) {
 	forget(t, "lantern-day", "lantern-night")
 	dir := folder(t, map[string]string{"day.xml": lanternXML, "night.xml": lanternNightXML})

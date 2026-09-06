@@ -943,8 +943,8 @@ func TestCodeReadsAtItsPagesWeight(t *testing.T) {
 	}
 }
 
-// TestFromTokensDefaults pins the FromTokens contract: the paper is the
-// theme's page, heading levels take the typography's document heading scale,
+// TestFromTokensDefaults pins the FromTokens contract: the content surface is
+// the theme's page, heading levels take the typography's document heading scale,
 // code shapes in the theme Code role's typeface and size on the Neutral 200
 // fill, the quote bar is Primary with Neutral 700 text, and rules are
 // separators using Divider.
@@ -953,14 +953,14 @@ func TestFromTokensDefaults(t *testing.T) {
 	st := markdown.FromTokens(c, typo)
 
 	// The surface a document is read on is a role of the document's, and its
-	// value is the theme's page — the same colour the furniture round it
+	// value is the theme's page — the same colour the chrome round it
 	// fills a window with, held in the document's own name so that the two
 	// can part later without either being renamed for it.
-	if st.Paper != c.Background {
-		t.Errorf("Paper = %v, want the theme's background %v", st.Paper, c.Background)
+	if st.ContentSurface != c.Background {
+		t.Errorf("ContentSurface = %v, want the theme's background %v", st.ContentSurface, c.Background)
 	}
-	if dark := markdown.FromTokens(tokens.DefaultDark, typo); dark.Paper != tokens.DefaultDark.Background {
-		t.Errorf("dark Paper = %v, want that theme's background %v", dark.Paper, tokens.DefaultDark.Background)
+	if dark := markdown.FromTokens(tokens.DefaultDark, typo); dark.ContentSurface != tokens.DefaultDark.Background {
+		t.Errorf("dark ContentSurface = %v, want that theme's background %v", dark.ContentSurface, tokens.DefaultDark.Background)
 	}
 
 	var wantSizes [6]unit.Sp
@@ -987,7 +987,7 @@ func TestFromTokensDefaults(t *testing.T) {
 	if st.CodeBackground != c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill {
 		t.Errorf("CodeBackground = %v, want the raise off the content %v", st.CodeBackground, c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill)
 	}
-	// The fill is a whisper above a light paper, so the rim is what says
+	// The fill is a whisper above a light page, so the rim is what says
 	// where the fence is, and it owes WCAG 1.4.11's 3:1 against the fill it
 	// encloses.
 	for _, tok := range []tokens.ColorTokens{tokens.DefaultLight, tokens.DefaultDark} {

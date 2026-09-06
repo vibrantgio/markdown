@@ -189,7 +189,7 @@ func TestTheBackgroundIsTheAuthorsOrTheChips(t *testing.T) {
 }
 
 // TestAFenceIsBoundedOnItsPage: a block has to look like a block, and the fill
-// is not what says so. The theme's own fence is a whisper off its light paper
+// is not what says so. The theme's own fence is a whisper off its light page
 // — 1.018:1 — so the theme edges its own fence and every dressed one takes the
 // same edge, derived against the background it encloses at the 3:1 a graphic
 // carrying meaning owes. Every base, with no exceptions and no comparison.
@@ -233,7 +233,7 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 // The extremes are found rather than named, so the registry can gain and lose
 // bases without this test going stale.
 //
-// The paper is not read here at all, so a document inset into a panel takes
+// The content surface is not read here at all, so a document inset into a panel takes
 // the same edge it takes on the page.
 func TestTheEdgeFollowsTheBackground(t *testing.T) {
 	c := tokens.DefaultLight
@@ -267,29 +267,29 @@ func TestTheEdgeFollowsTheBackground(t *testing.T) {
 
 	onPage := worn(t, DefaultBase, c)
 	inset := markdown.FromTokens(c, tokens.DefaultTypography)
-	inset.Paper = tokens.DefaultDark.Background
+	inset.ContentSurface = tokens.DefaultDark.Background
 	Wear(&inset, DefaultBase, c)
 	if inset.CodeBorder != onPage.CodeBorder {
-		t.Errorf("the same base inset onto a dark panel takes the edge %v where on the page it takes %v — the paper is being read again",
+		t.Errorf("the same base inset onto a dark panel takes the edge %v where on the page it takes %v — the content surface is being read again",
 			inset.CodeBorder, onPage.CodeBorder)
 	}
 }
 
-// TestAStyleNamingNoPaperTakesTheSameEdge: a Style built by hand carries no
-// paper, and since the edge is derived against the fence's own background rather
+// TestAStyleNamingNoSurfaceTakesTheSameEdge: a Style built by hand names no
+// surface, and since the edge is derived against the fence's own background rather
 // than against the page, that costs it nothing. A caller who never heard of
 // the field sees exactly the fence a constructor-built Style sees.
-func TestAStyleNamingNoPaperTakesTheSameEdge(t *testing.T) {
+func TestAStyleNamingNoSurfaceTakesTheSameEdge(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
 			stated := worn(t, DefaultBase, sc.tok)
 
 			silent := markdown.FromTokens(sc.tok, tokens.DefaultTypography)
-			silent.Paper = stdcolor.NRGBA{}
+			silent.ContentSurface = stdcolor.NRGBA{}
 			Wear(&silent, DefaultBase, sc.tok)
 
 			if silent.CodeBorder != stated.CodeBorder {
-				t.Errorf("a Style naming no paper takes the edge %v where one on the theme's page takes %v",
+				t.Errorf("a Style naming no surface takes the edge %v where one on the theme's page takes %v",
 					silent.CodeBorder, stated.CodeBorder)
 			}
 		})
@@ -491,8 +491,8 @@ func TestWearLeavesTheRegistryAlone(t *testing.T) {
 	}
 }
 
-// TestWearTouchesOnlyTheCodeFields: the fence is content and the rest of the
-// document is paper, so a base reaches four fields and no others. The chip an
+// TestWearTouchesOnlyTheCodeFields: the fence is dressed and the rest of the
+// document is not, so a base reaches four fields and no others. The chip an
 // inline code span sits on is the one this is most about — a page of prose
 // spotted with somebody else's backgrounds is the thing not being built.
 func TestWearTouchesOnlyTheCodeFields(t *testing.T) {

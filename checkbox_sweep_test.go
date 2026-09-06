@@ -29,7 +29,7 @@ import (
 // The three pastels are the shape that breaks a naive derivation: a palette
 // published for a dark scheme states its accents high on the tonal axis, and a
 // brand seeded with one of them derives a light scheme whose primary pin sits
-// a whisper off its own paper.
+// a whisper off its own content.
 func checkboxSweepSeeds() []stdcolor.NRGBA {
 	rng := rand.New(rand.NewSource(20260827))
 	seeds := []stdcolor.NRGBA{
@@ -75,7 +75,7 @@ func checkboxSweepSchemes(seed stdcolor.NRGBA) []struct {
 // task's box is visible on the page it is drawn on.
 //
 // The surface is the theme's own background, which is what FromTokens puts in
-// Style.Paper in the same literal, and nothing in this package paints
+// Style.ContentSurface in the same literal, and nothing in this package paints
 // anything between the two: an unchecked box is a stroke and no fill, laid
 // straight on the document's own page.
 func TestCheckboxBorderClearsTheGraphicFloorForEverySeed(t *testing.T) {
@@ -169,7 +169,7 @@ func TestTheCanonicalSeedKeepsEveryCheckboxPin(t *testing.T) {
 // TestAPastelSeedLeavesTheBorderPinAndKeepsTheFill is the regression itself,
 // read on the shape that produced it: a light scheme seeded with a dark
 // scheme's accent. Before the split this seed outlined an open task in the
-// bare pin at a sub-floor ratio against its own paper — and it is the same
+// bare pin at a sub-floor ratio against its own content — and it is the same
 // assertion in reverse for the fill, which must NOT have followed the border
 // off the pin, because a fill that walked would slide out from under a tick
 // derived for the pin it left.

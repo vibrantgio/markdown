@@ -62,32 +62,32 @@ type WidgetImageProvider interface {
 // token-themed default with [FromTokens], then set Text.OnLinkClick and,
 // for a reader that writes GFM task markers, OnTaskClick.
 //
-// # Paper
+// # The content
 //
-// The surface a Style describes is paper: the plain surface running text is
-// read on, distinct from chrome — the rails, bars, cards and controls that
-// answer to the theme directly. Paper answers to the theme through roles of
-// its own, and the four that make it paper are:
+// The surface a Style describes is the content, level 0: the plain surface
+// running text is read on, distinct from chrome — the rails, bars, cards and
+// controls that answer to the theme directly. The content answers to the
+// theme through roles of its own, and the four that make it the content are:
 //
-//   - [Style.Paper], the surface the document is read on;
+//   - [Style.ContentSurface], the surface the document is read on;
 //   - [Style.Text]'s colours, the prose foregrounds — the body, its links
 //     and its focus ring;
 //   - [Style.HeadingSizes] with [Style.HeadingLineHeights], the heading
 //     scale a document is broken up by;
 //   - [Style.CodeChip], the fill under a word of code quoted into a sentence.
 //
-// The rest of the fields dress the blocks standing on that paper — a fence, a
+// The rest of the fields dress the blocks standing on the content — a fence, a
 // quote, a rule, a table, a task box.
 //
 // The invariant: every colour this package draws comes from a field of this
 // struct and from nowhere else. The layout code reads the theme for spacing
 // and for radii and for no colour at all, so a document looks like what its
-// Style says and nothing reaches around it. Deriving a paper role from a theme
-// token is fine; drawing a document with a token instead of with a role is
+// Style says and nothing reaches around it. Deriving a content role from a
+// theme token is fine; drawing a document with a token instead of with a role is
 // not, and nothing here does.
 type Style struct {
-	// Paper is the surface the document is read on: what lies behind the
-	// prose, under every block, out to the edges of whatever holds it.
+	// ContentSurface is the surface the document is read on: what lies behind
+	// the prose, under every block, out to the edges of whatever holds it.
 	//
 	// Nothing in this package paints it. A document is laid out into a space
 	// somebody else owns, and that owner fills it — so this is a
@@ -101,13 +101,13 @@ type Style struct {
 	//
 	// [FromTokens] sets it to the theme's own background, which is where a
 	// document nearly always lies.
-	Paper color.NRGBA
+	ContentSurface color.NRGBA
 	// Text is the paragraph default: body colour and size, link and focus
 	// colours, and the link callback (richtext.Style.OnLinkClick). Its
-	// colours are paper's prose foregrounds.
+	// colours are the content's prose foregrounds.
 	Text richtext.Style
 	// HeadingSizes maps heading levels 1..6 (index 0..5) onto text sizes: the
-	// scale paper ranks its sections by, which is a reading scale and not
+	// scale the content ranks its sections by, which is a reading scale and not
 	// the roles that size the one big line at the top of a screen.
 	HeadingSizes [6]unit.Sp
 	// HeadingLineHeights maps the same levels onto the line box each heading's
@@ -145,7 +145,7 @@ type Style struct {
 	// takes. A raise says a fence is raised; it does not say where the fence
 	// ENDS, and a white block laid unbounded on an off-white page stops being
 	// a block — the code reads as a paragraph in a monospace face. A syntax
-	// palette fitted to paper puts its own near-white in the same position.
+	// palette fitted to a light page puts its own near-white in that position.
 	// The line is what says where the fence is, and [FromTokens] derives it
 	// against whatever fill it is edging (see codeRim).
 	CodeBorder color.NRGBA
@@ -169,7 +169,7 @@ type Style struct {
 	// as [Style.CodeBorder] does for the fence. A zero alpha draws none.
 	//
 	// The chip and the fence are one construct at two sizes, so they take one
-	// fill, and in a light scheme that fill is a whisper above the paper —
+	// fill, and in a light scheme that fill is a whisper above the content —
 	// which a fence survives, having a rim and a radius and a screenful of
 	// area to be recognised by, and a word of code does not. A tint is not
 	// available as an answer: a hue in this system belongs to a role, and code
@@ -205,7 +205,7 @@ type Style struct {
 	// cells.
 	TableHeaderBackground color.NRGBA
 	// CheckboxBorder strokes the box of an unchecked task item. Nothing is
-	// painted inside it, so the stroke lies straight on [Style.Paper] and is
+	// painted inside it, so the stroke lies straight on [Style.ContentSurface] and is
 	// the whole of what says there is a task here and it is open — a graphic
 	// carrying meaning without being text, owing its page WCAG 1.4.11's 3:1.
 	//
@@ -218,11 +218,11 @@ type Style struct {
 	// CheckboxFill fills the box of a checked task item, wall to wall, with
 	// [Style.CheckmarkColor]'s tick drawn over it. It is a filled mark and
 	// not a foreground on the page: what it owes contrast to is the tick it
-	// carries, not the paper it covers, so it is entitled to be the brand's
+	// carries, not the surface it covers, so it is entitled to be the brand's
 	// own colour at the brand's own depth.
 	CheckboxFill color.NRGBA
 	// CheckmarkColor draws the check mark inside a checked checkbox. Its
-	// surface is CheckboxFill rather than [Style.Paper] — the fill covers the
+	// surface is CheckboxFill rather than [Style.ContentSurface] — the fill covers the
 	// box before the tick goes on — so it is a colour chosen against that
 	// fill, and a Style that moves the fill has to move this with it.
 	CheckmarkColor color.NRGBA
@@ -349,7 +349,7 @@ type Style struct {
 }
 
 // FromTokens derives the default document style from colour tokens and a
-// typography: the paper is the theme's own background, headings take the six
+// typography: the content surface is the theme's own background, headings take the six
 // stops of the typography's document heading scale, body text follows
 // richtext.FromTokens on the BodyLarge role, code sits on the elevation raise
 // walked off the content (see codeFill) with the colour codeForeground
@@ -360,8 +360,8 @@ type Style struct {
 // Highlight and Images stay nil — both are opt-in. Pass
 // tokens.DefaultTypography for the default look.
 //
-// The paper is the theme's background because that is where a document lies,
-// and a holder that mounts one somewhere else says so by setting Paper
+// The surface is the theme's background because that is where a document lies,
+// and a holder that mounts one somewhere else says so by setting ContentSurface
 // afterwards: this constructor answers for the theme and not for the
 // composition.
 //
@@ -409,7 +409,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	gap := blockRhythm - lineLeading
 	above, below := headingSpacing(gap, sizes)
 	return Style{
-		Paper:                 c.Background, // the surface a document lies on
+		ContentSurface:        c.Background, // the surface a document lies on
 		Text:                  richtext.FromTokens(c, typo.BodyLarge),
 		HeadingSizes:          sizes,
 		HeadingLineHeights:    boxes,
@@ -459,7 +459,7 @@ func codeFill(c tokens.ColorTokens) color.NRGBA {
 // fill it edges.
 //
 // It is the same derivation every other surface's edge in this design system
-// takes against its own fill. The fill carries 1.02:1 against a light paper,
+// takes against its own fill. The fill carries 1.02:1 against a light page,
 // so the line is the whole of what says a block of code is a block rather than
 // a paragraph in a monospace face. A graphic that carries meaning without
 // being text owes WCAG 1.4.11's 3:1, so the line takes it.
@@ -490,7 +490,7 @@ const codeFloor = tokens.GraphicFloor
 // The Primary pin will not serve: a pin is the brand colour at the brand's own
 // depth, chosen so that text laid on TOP of it reads, and it is not measured
 // against the page. On the canonical seed it measures 5.94:1 against the light
-// paper, but on an accent stated at a dark scheme's tone — the shape a palette
+// content, but on an accent stated at a dark scheme's tone — the shape a palette
 // published for dark mode hands out — it measures 1.95:1, a bar nobody can
 // see. Asking the palette for a foreground measures it instead, and the canonical
 // seed's bar is unchanged.
@@ -504,9 +504,9 @@ func quoteBar(c tokens.ColorTokens) color.NRGBA {
 // at the same floor, because it is the same kind of thing. An empty box is
 // nothing but its outline, so the outline carries the whole of "there is a
 // task here" without being text: WCAG 1.4.11's 3:1 against the page, which is
-// [Style.Paper], which is the theme's own background.
+// [Style.ContentSurface], which is the theme's own background.
 //
-// The derivation matters where the brand does NOT read on the paper: an accent
+// The derivation matters where the brand does NOT read on the content: an accent
 // stated at a dark scheme's tone derives a light palette whose primary pin sits
 // a whisper off its own page, and an open task box drawn in it is a box nobody
 // can find. Over the seed sweep 208 of 414 light schemes put that pin under
@@ -561,7 +561,7 @@ func checkmarkForeground(c tokens.ColorTokens) color.NRGBA {
 // The dark ramp's low-contrast text step sets code at 9.91:1 on the fence's
 // fill, 80% of the way from that fill to the weight the same document's prose
 // is set at; the light ramp's same step sets it at 5.46:1 and 58%. Code set
-// against paper was therefore a third less pronounced, relative to its own
+// against a light page was therefore a third less pronounced, relative to its own
 // page, than the identical document's code set against slate — which is what a
 // screenful of light-scheme code reads as: faint.
 //

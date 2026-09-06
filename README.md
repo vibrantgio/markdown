@@ -113,8 +113,8 @@ The prose, and the chip an inline code span sits on, stay the theme's — one
 call writes four fields of a `Style` (`Highlight`, `CodeColor`,
 `CodeBackground`, `CodeBorder`) and leaves the rest exactly as you had it.
 
-The fourth of those is what keeps a block a block. A palette fitted to paper
-is drawn on a near-white and this page is a near-white too, so a fill alone
+The fourth of those is what keeps a block a block. A palette fitted to a light
+page is drawn on a near-white and this page is a near-white too, so a fill alone
 can leave the reader guessing where the code begins: where a base's background
 stands less far off the page than your theme's own code fill does, `Wear`
 also sets `CodeBorder`, and the block takes a hairline in the theme's divider
@@ -136,7 +136,8 @@ and it re-dresses with the theme rather than staying where it was built.
 `catppuccin-mocha` is the dark member that same name reaches. It is a
 default, not a policy: pass any name chroma's registry holds. It is the
 default because its two members are one family drawn twice — the same token
-types on the same hues, fitted by their author to paper and to slate — so a
+types on the same hues, fitted by their author to a light page and to a dark
+one — so a
 change of appearance changes the whole plate rather than the sheet it is on.
 
 Where somebody has chosen a base for each appearance rather than one for
@@ -238,48 +239,51 @@ doc := markdown.NewDocument(markdown.Parse(source))
 doc.Layout(gtx, shaper, docsStyle(colors, typography))
 ```
 
-## The document is paper
+## The document is the content
 
-The surface a `Style` describes has a name: paper — the plain surface running
-text is read on. It is not chrome, chrome being the furniture a screen is
-assembled from, the rails and bars and cards and controls that answer to the
-theme directly. Paper answers to the theme too, but through roles of its own:
+The surface a `Style` describes is the content, level 0 — the plain surface
+running text is read on. It is not chrome, chrome being the regions a window
+is framed with, the rails and bars and cards and controls that answer to the
+theme directly. The content answers to the theme too, but through roles of its
+own:
 
-| paper role | field |
+| content role | field |
 | --- | --- |
-| the surface the document is read on | `Style.Paper` |
+| the surface the document is read on | `Style.ContentSurface` |
 | the prose foregrounds — body, link, focus ring | `Style.Text`'s colours |
 | the heading scale | `Style.HeadingSizes`, `Style.HeadingLineHeights` |
 | the fill under a word of code quoted into a sentence | `Style.CodeChip` |
 
-The remaining fields dress the blocks standing on that paper — a fence, a
-quote, a rule, a table, a task box — and they are paper's as well. Every colour
-this library draws comes from a field of `Style` and from nowhere else: the
-layout code reads the theme for spacing and for radii and for no colour at all,
-so a document looks like what its `Style` says and nothing reaches around it.
+The remaining fields dress the blocks standing on that surface — a fence, a
+quote, a rule, a table, a task box — and they are the content's as well. Every
+colour this library draws comes from a field of `Style` and from nowhere else:
+the layout code reads the theme for spacing and for radii and for no colour at
+all, so a document looks like what its `Style` says and nothing reaches around
+it.
 
-The roles are paper's own even where the values are chrome's today.
+The roles are the content's own even where the values are chrome's today.
 `FromTokens` takes the surface from the theme's background, the prose
 foreground from its body-text pin, the chip from the same neutral step a fence
 is filled with — the numbers a card or a toolbar would reach for, held here in
-paper's name.
+the content's name.
 Naming them apart costs nothing now and is what lets the reading surface move
-later without the furniture moving with it.
+later without the chrome moving with it.
 
-`Style.Paper` is a record rather than a draw. Nothing here fills the page: a
-document is laid into a space its holder owns and the holder paints the surface.
-But the library measures against it — a fence wearing a syntax base takes its
-edge from whether that base's background can be told from the paper, and "too near
-to be seen against it" is unanswerable without knowing which surface. A
-document mounted on something other than the theme's background says so:
+`Style.ContentSurface` is a record rather than a draw. Nothing here fills the
+page: a document is laid into a space its holder owns and the holder paints the
+surface. But the library measures against it — a fence wearing a syntax base
+takes its edge from whether that base's background can be told from the surface
+under it, and "too near to be seen against it" is unanswerable without knowing
+which surface. A document mounted on something other than the theme's
+background says so:
 
 ```go
 st := markdown.FromTokens(c, typo)
-st.Paper = panelFill // inset into a panel rather than laid on the page
+st.ContentSurface = panelFill // inset into a panel rather than laid on the page
 highlight.Wear(&st, highlight.DefaultBase, c)
 ```
 
-A `Style` built by hand names no paper, and the measure falls back to the
+A `Style` built by hand names no surface, and the measure falls back to the
 theme's background — which is what the constructor would have written there,
 so nothing about a fence changes for a caller who never sets the field.
 

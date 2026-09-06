@@ -3,10 +3,10 @@
 //
 // A syntax style's background, body colour and accents were curated together,
 // so the block shows the base whole: the author's own background under the
-// author's own colours, neither of them touched. The paper around it — the
+// author's own colours, neither of them touched. The content around it — the
 // page, the prose, the chip an inline span sits on — stays the theme's. What
 // the theme decides is which member of the pair is on screen, and that a block
-// on a page is bounded: a background too near the paper to be seen against it
+// on a page is bounded: a background too near the page to be seen against it
 // takes an edge.
 //
 // Contrast is surfaced, not enforced: no colour is moved and no style is
@@ -56,7 +56,7 @@ const (
 // is left exactly as the caller had it, so the ordinary shape of this is
 // [markdown.FromTokens] followed by one call. Nothing else is read: the
 // block's edge is decided against the background the base itself names, so a
-// document mounted on some other paper takes the same fence it takes on the
+// document mounted on some other surface takes the same fence it takes on the
 // theme's own page.
 //
 // A name missing from chroma's style registry panics, as in [New].
@@ -121,9 +121,10 @@ func fenceBackground(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRG
 // against the background the author fitted their colours to.
 //
 // The rim is derived against the fence's own fill rather than against the
-// paper, which is what makes it work for a background this package has never
+// content, which is what makes it work for a background this package has never
 // seen: a dressed fence lies on the page and its rim is read against the block
-// it encloses, so a palette fitted to paper and one fitted to slate are
+// it encloses, so a palette fitted to a light page and one fitted to a dark
+// one are
 // answered by the same call without either being named.
 func fenceEdge(fence stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
 	return c.MarkOn(tokens.RoleNeutral, fence, edgeFloor)
