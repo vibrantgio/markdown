@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"gioui.org/layout"
+	"gioui.org/op"
 )
 
 // Moving a document from outside its pointer events: a page in either
@@ -85,4 +86,66 @@ func (d *Document) page() int {
 		overlap = 0
 	}
 	return v - overlap
+}
+
+// ScrollToMatch brings the match at index i into view: a match already on
+// screen stays where it is, and one off screen is seated near the middle of
+// the viewport, which is where a reader stepping through matches looks.
+//
+// The index is [Document.Matches]'s, and one outside them moves nothing.
+//
+// Where a match lies is a result of the layout, and a list lays out only the
+// rows in the viewport, so a match off screen has no rectangle to move to
+// yet. The move then takes two frames — the first seats the match's block,
+// the second places the match inside it — and the document asks for the
+// second frame itself.
+func (d *Document) ScrollToMatch(i int) {
+	if i < 0 || i >= len(d.find.matches) {
+		return
+	}
+	d.find.seek = i
+	d.find.seated = false
+}
+
+// seekMatch carries out a pending [Document.ScrollToMatch] against what the
+// last frame painted, before this frame's record of the marks replaces it.
+// Every layout path that records marks calls it first.
+func (d *Document) seekMatch(gtx layout.Context) {
+	i := d.find.seek
+	if i < 0 {
+		return
+	}
+	if i >= len(d.find.matches) {
+		d.find.seek = -1
+		return
+	}
+	v := d.list.Viewport()
+	if v <= 0 {
+		// Before the first layout there is no viewport to place a match in;
+		// this frame makes one and the next carries the move out.
+		gtx.Execute(op.InvalidateCmd{})
+		return
+	}
+	r := d.Matches()[i].Rect
+	if r.Empty() {
+		if d.find.seated {
+			// The block was put at the top of the viewport and the match
+			// still painted nothing: the block is where the reader is taken,
+			// and there is nothing finer to move to.
+			d.find.seek = -1
+			return
+		}
+		d.find.seated = true
+		d.ScrollToBlock(d.find.matches[i].Block)
+		gtx.Execute(op.InvalidateCmd{})
+		return
+	}
+	seated := d.find.seated
+	d.find.seek = -1
+	d.find.seated = false
+	if !seated && r.Min.Y >= 0 && r.Max.Y <= v {
+		// The reader is already looking at it.
+		return
+	}
+	d.list.ScrollPixels(r.Min.Y - (v-r.Dy())/2)
 }

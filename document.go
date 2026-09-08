@@ -101,6 +101,7 @@ func NewDocument(blocks []Block) *Document {
 		mark:   blockMark{block: -1},
 		find: findState{
 			current: -1,
+			seek:    -1,
 			rows:    make(map[Block][2]int),
 			heights: make(map[Block]int),
 		},
@@ -184,6 +185,7 @@ func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style S
 // collection must hold for Style.Mono to resolve.
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	d.recordLine(gtx, style)
+	d.seekMatch(gtx)
 	d.findFrame(true)
 	return list.Layout(gtx, d.list, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
 }
@@ -205,6 +207,7 @@ func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) 
 // viewport wants.
 func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, style Style, bar scrollbar.Style, anchor list.Anchor) layout.Dimensions {
 	d.recordLine(gtx, style)
+	d.seekMatch(gtx)
 	d.findFrame(true)
 	return list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
 }

@@ -294,3 +294,160 @@ func TestFindRectanglesFollowTheScroll(t *testing.T) {
 		t.Fatal("a document seated at its fourth block reported no rectangle at all")
 	}
 }
+
+// longFindSource is a document far taller than any viewport it is read in,
+// carrying the query in its first section, in its middle and at its end: the
+// document a reader steps through rather than reads at a glance.
+func longFindSource() string {
+	var b strings.Builder
+	for i := 0; i < 40; i++ {
+		switch i {
+		case 0, 20, 39:
+			b.WriteString("Section with a needle in it.\n\n")
+		default:
+			b.WriteString("A section of prose that carries nothing anybody is looking for.\n\n")
+		}
+	}
+	return b.String()
+}
+
+// findViewport is the viewport the stepping tests read the long document in:
+// tall enough for several sections, far short of the whole.
+var findViewport = image.Pt(560, 240)
+
+// TestScrollToMatchBringsTheMatchIntoView is the step a reader takes: a match
+// far below the viewport is asked for, and the frames that follow put it on
+// screen — near the middle, where the eye is, rather than at the edge it came
+// over.
+func TestScrollToMatchBringsTheMatchIntoView(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	d := markdown.NewDocument(markdown.Parse([]byte(longFindSource())))
+	d.Find("needle", 0)
+	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.DefaultLight)) }
+	shot()
+	if r := d.Matches()[2].Rect; !r.Empty() {
+		t.Fatalf("the last match reports %v from the top of the document; it is not laid out there", r)
+	}
+
+	d.ScrollToMatch(2)
+	// Two frames: the first seats the match's block, the second places the
+	// match inside it.
+	shot()
+	shot()
+
+	r := d.Matches()[2].Rect
+	if r.Empty() {
+		t.Fatal("the match was asked for and still reports no rectangle")
+	}
+	if r.Min.Y < 0 || r.Max.Y > findViewport.Y {
+		t.Fatalf("the match sits at %v, outside the %d-high viewport", r, findViewport.Y)
+	}
+}
+
+// TestScrollToMatchSeatsTheMatchNearTheMiddle is where a match that had to be
+// brought in lands: near the middle of the viewport, which is where the eye
+// is, and not at the edge it came over. The match is one in the middle of the
+// document, because a match at either end is bounded by the document itself.
+func TestScrollToMatchSeatsTheMatchNearTheMiddle(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	d := markdown.NewDocument(markdown.Parse([]byte(longFindSource())))
+	d.Find("needle", 0)
+	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.DefaultLight)) }
+	shot()
+
+	d.ScrollToMatch(1)
+	shot()
+	shot()
+
+	r := d.Matches()[1].Rect
+	if r.Empty() {
+		t.Fatal("the match was asked for and still reports no rectangle")
+	}
+	mid := findViewport.Y / 2
+	if c := (r.Min.Y + r.Max.Y) / 2; c < mid-findViewport.Y/4 || c > mid+findViewport.Y/4 {
+		t.Errorf("the match centres on %d in a %d-high viewport; a match brought in is seated near the middle", c, findViewport.Y)
+	}
+}
+
+// TestScrollToMatchLeavesAMatchOnScreenWhereItIs is the other half of the
+// step: the reader is not moved for a match they are already looking at.
+func TestScrollToMatchLeavesAMatchOnScreenWhereItIs(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	d := markdown.NewDocument(markdown.Parse([]byte(longFindSource())))
+	d.Find("needle", 0)
+	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.DefaultLight)) }
+	shot()
+	shot()
+	before := d.Position()
+	if r := d.Matches()[0].Rect; r.Empty() || r.Min.Y < 0 || r.Max.Y > findViewport.Y {
+		t.Fatalf("the first match reports %v; the test needs it on screen to start with", r)
+	}
+
+	d.ScrollToMatch(0)
+	shot()
+	shot()
+	if after := d.Position(); after.First != before.First || after.Offset != before.Offset {
+		t.Errorf("stepping to a match already on screen moved the document from %+v to %+v", before, after)
+	}
+}
+
+// TestMatchPlacesRunDownTheDocument pins what the scrollbar is handed: one
+// place per match, in reading order, inside the unit interval — and, before
+// the document has measured anything, the block's index over the block count,
+// which is the approximation the estimate falls back to.
+func TestMatchPlacesRunDownTheDocument(t *testing.T) {
+	blocks := markdown.Parse([]byte(longFindSource()))
+	d := markdown.NewDocument(blocks)
+	d.Find("needle", 0)
+
+	places := d.MatchPlaces()
+	if len(places) != len(d.Matches()) {
+		t.Fatalf("%d matches have %d places; the scrollbar takes one for each", len(d.Matches()), len(places))
+	}
+	prev := float32(-1)
+	for i, p := range places {
+		if p < 0 || p > 1 {
+			t.Errorf("match %d lies at %v, outside the content", i, p)
+		}
+		if p < prev {
+			t.Errorf("match %d lies at %v, above match %d at %v; the places are in reading order", i, p, i-1, prev)
+		}
+		prev = p
+	}
+	n := float32(len(blocks))
+	for i, want := range []float32{0 / n, 20 / n, 39 / n} {
+		if places[i] != want {
+			t.Errorf("match %d of an unmeasured document lies at %v, want its block's index over the block count, %v", i, places[i], want)
+		}
+	}
+
+}
+
+// TestMatchPlacesCountTheHeightsTheLayoutMeasured is the other half of the
+// estimate: a document opening on a block far taller than the rest has that
+// height once it has drawn it, and the matches below the block are placed
+// further down than the bare block index would put them.
+func TestMatchPlacesCountTheHeightsTheLayoutMeasured(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("```\n")
+	for i := 0; i < 20; i++ {
+		b.WriteString("a line of a fence that opens the document\n")
+	}
+	b.WriteString("```\n\n")
+	for i := 0; i < 20; i++ {
+		b.WriteString("A short paragraph with a needle in it.\n\n")
+	}
+	d := markdown.NewDocument(markdown.Parse([]byte(b.String())))
+	d.Find("needle", 0)
+	before := d.MatchPlaces()
+
+	golden.Capture(t, findViewport, themed(d, defaultShaper(t),
+		markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography), tokens.DefaultLight))
+	after := d.MatchPlaces()
+	if after[0] <= before[0] {
+		t.Errorf("the first match lies at %v once the fence over it has been measured and at %v before; a measured height counts", after[0], before[0])
+	}
+}

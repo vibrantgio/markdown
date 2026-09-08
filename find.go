@@ -54,6 +54,53 @@ func (d *Document) Matches() []Match {
 	return out
 }
 
+// MatchPlaces returns where each match lies in the document, in reading order
+// and as a fraction of the content's height in [0,1] — one entry per entry of
+// [Document.Matches], which is what [scrollbar.Style].Matches takes.
+//
+// The places are an estimate, and the layout cannot give a better one: a list
+// lays out the rows in the viewport and no others, so the only block heights
+// the document has are those of blocks it has drawn. A block it has measured
+// counts its own height and one it has not counts the mean of the measured
+// ones, which leaves a document that has not laid out at all placing its
+// matches by block index over block count. Every match inside one block
+// reports that block's place.
+func (d *Document) MatchPlaces() []float32 {
+	n := len(d.blocks)
+	if n == 0 || len(d.find.matches) == 0 {
+		return nil
+	}
+	mean, measured := 0, 0
+	for _, h := range d.find.heights {
+		mean += h
+		measured++
+	}
+	if measured > 0 {
+		mean = max(mean/measured, 1)
+	} else {
+		mean = 1
+	}
+	tops := make([]int, n)
+	y := 0
+	for i, b := range d.blocks {
+		tops[i] = y
+		h, ok := d.find.heights[b]
+		if !ok || h <= 0 {
+			h = mean
+		}
+		y += h
+	}
+	out := make([]float32, len(d.find.matches))
+	if y <= 0 {
+		return out
+	}
+	for k, m := range d.find.matches {
+		i := min(max(m.Block, 0), n-1)
+		out[k] = float32(tops[i]) / float32(y)
+	}
+	return out
+}
+
 // Match is one occurrence of the find query.
 type Match struct {
 	// Block indexes [Document.Blocks]: the top-level block the match lies
@@ -88,12 +135,23 @@ type findState struct {
 	// rows and heights carry them the rest of the way. See [Document.shift].
 	found []foundRect
 	// rows records, per top-level block, the range of found entries its row
-	// painted, and heights the row height the last layout gave it. Both are
+	// painted, and heights the row height a layout gave it. Both are
 	// filled only by the list paths, which is what rowbased reports: a
 	// column lays its blocks out itself and its entries need no carrying.
+	//
+	// rows is one frame's; heights keeps every height ever measured, because
+	// a list measures only the rows it draws and [Document.MatchPlaces] has
+	// the whole document to place. A height held from an earlier frame is
+	// replaced the next time its row is drawn.
 	rows     map[Block][2]int
 	heights  map[Block]int
 	rowbased bool
+	// seek is the match [Document.ScrollToMatch] was asked for and the next
+	// layout carries out, or -1 when there is nothing to carry out; seated
+	// records that the match's block has already been put at the top of the
+	// viewport, which bounds the move to the two frames it can need.
+	seek   int
+	seated bool
 }
 
 // spanMark is one match inside one block's text: the byte range to fill and
@@ -404,5 +462,4 @@ func (d *Document) findFrame(rows bool) {
 		return
 	}
 	clear(d.find.rows)
-	clear(d.find.heights)
 }
