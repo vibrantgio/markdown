@@ -21,6 +21,17 @@
 // vibrantgio/svg. Only goldmark stops here rather than one level further out,
 // so components never sees it.
 //
+// # Two marks, two causes
+//
+// A document carries two marks, and they answer two different questions.
+// [Document.Highlight] marks one top-level block whole: it says where the
+// reader was brought — the block a followed link arrived at — and the caller
+// that made the move owns it. [Document.Find] marks the matches of a query:
+// they say what the reader asked for, every occurrence marked and the current
+// one marked more strongly. Both die with their cause: the block mark when
+// the arrival stops being news, the match marks when the query is cleared.
+// They compose, and nothing about one reads the other.
+//
 // # The monospace font comes from the theme
 //
 // [FromTokens] resolves Style.Mono and Style.CodeSize from the Code role of

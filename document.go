@@ -65,6 +65,9 @@ type Document struct {
 	line int
 	// mark is the highlight this layout draws; see [Document.Highlight].
 	mark blockMark
+	// find is the query the document marks its matches of, and where the
+	// last layout painted those marks; see find.go.
+	find findState
 }
 
 // blockMark is a highlight over one top-level block: the block's index and
@@ -96,6 +99,11 @@ func NewDocument(blocks []Block) *Document {
 		tasks:  make(map[*ListItem]*taskState),
 		place:  placements(blocks),
 		mark:   blockMark{block: -1},
+		find: findState{
+			current: -1,
+			rows:    make(map[Block][2]int),
+			heights: make(map[Block]int),
+		},
 	}
 }
 
@@ -121,6 +129,9 @@ func (d *Document) Blocks() []Block { return d.blocks }
 // lifetime and its going, handing a fill whose alpha it has scaled, and sets
 // it before every [Document.Layout]. An index outside the document, or a
 // fill with no alpha in it, marks nothing.
+//
+// It marks where the reader was brought, which is not what [Document.Find]
+// marks; see the package documentation.
 func (d *Document) Highlight(block int, fill color.NRGBA) {
 	d.mark = blockMark{block: block, fill: fill}
 }
@@ -162,6 +173,7 @@ func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style St
 // [Style.EndSpace] is not spent here: the space below an embedded document's
 // end belongs to whoever is scrolling it.
 func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
+	d.findFrame(false)
 	return d.column(gtx, shaper, style, d.blocks)
 }
 
@@ -172,6 +184,7 @@ func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style S
 // collection must hold for Style.Mono to resolve.
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	d.recordLine(gtx, style)
+	d.findFrame(true)
 	return list.Layout(gtx, d.list, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
 }
 
@@ -192,6 +205,7 @@ func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) 
 // viewport wants.
 func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, style Style, bar scrollbar.Style, anchor list.Anchor) layout.Dimensions {
 	d.recordLine(gtx, style)
+	d.findFrame(true)
 	return list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
 }
 
@@ -223,12 +237,18 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 		if b == last {
 			bottom += end
 		}
-		return layout.Inset{Top: top, Bottom: bottom}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return measured(gtx, style, func(gtx layout.Context) layout.Dimensions {
+		from := len(d.find.found)
+		dims := layout.Inset{Top: top, Bottom: bottom}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return d.measured(gtx, style, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = image.Point{}
 				return d.markedBlock(gtx, shaper, style, b, marked)
 			})
 		})
+		if d.find.active() {
+			d.shift(from, image.Pt(0, gtx.Dp(top)))
+			d.recordRow(b, from, dims.Size.Y)
+		}
+		return dims
 	}
 }
 
@@ -238,7 +258,7 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 // the row's inset, spent here in pixels rather than in Dp because the two
 // margins that centre a block are a division of what is there and not
 // authored space.
-func measured(gtx layout.Context, style Style, w layout.Widget) layout.Dimensions {
+func (d *Document) measured(gtx layout.Context, style Style, w layout.Widget) layout.Dimensions {
 	lead, trail := blockInsets(gtx, style)
 	cgtx := gtx
 	cgtx.Constraints.Max.X = max(gtx.Constraints.Max.X-lead-trail, 0)
@@ -246,7 +266,9 @@ func measured(gtx layout.Context, style Style, w layout.Widget) layout.Dimension
 	if lead > 0 {
 		defer op.Offset(image.Pt(lead, 0)).Push(gtx.Ops).Pop()
 	}
+	from := len(d.find.found)
 	dims := w(cgtx)
+	d.shift(from, image.Pt(lead, 0))
 	return layout.Dimensions{
 		Size:     image.Pt(dims.Size.X+lead+trail, dims.Size.Y),
 		Baseline: dims.Baseline,
@@ -373,9 +395,11 @@ func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b
 	switch b := b.(type) {
 	case *Heading:
 		h := style.heading(b.Level)
-		return paragraph.Layout(gtx, d.textState(b), shaper, h, style.spanStyles(b.Spans, font.Bold, h.Size))
+		spans, key := d.fills(style, b, style.spanStyles(b.Spans, font.Bold, h.Size))
+		return paragraph.Layout(gtx, d.textState(b), shaper, d.filled(h, key), spans)
 	case *Paragraph:
-		return paragraph.Layout(gtx, d.textState(b), shaper, style.Text, style.spanStyles(b.Spans, font.Normal, style.Text.Size))
+		spans, key := d.fills(style, b, style.spanStyles(b.Spans, font.Normal, style.Text.Size))
+		return paragraph.Layout(gtx, d.textState(b), shaper, d.filled(style.Text, key), spans)
 	case *List:
 		return d.listBlock(gtx, shaper, style, b)
 	case *Blockquote:
@@ -408,9 +432,11 @@ func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, 
 		if i > 0 {
 			size.Y += closing + gtx.Dp(top)
 		}
+		from := len(d.find.found)
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
 		dims := d.markedBlock(cgtx, shaper, style, b, marked)
 		tr.Pop()
+		d.shift(from, image.Pt(0, size.Y))
 		size.Y += dims.Size.Y
 		size.X = max(size.X, dims.Size.X)
 		closing = gtx.Dp(bottom)
@@ -471,9 +497,11 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
 	cgtx.Constraints.Max.X -= inset
+	from := len(d.find.found)
 	macro := op.Record(gtx.Ops)
 	content := d.column(cgtx, shaper, qs, q.Blocks)
 	call := macro.Stop()
+	d.shift(from, image.Pt(inset, 0))
 
 	paint.FillShape(gtx.Ops, style.QuoteBar, clip.Rect{
 		Max: image.Pt(gtx.Dp(quoteBarWidth), content.Size.Y),
@@ -518,6 +546,8 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	spans := style.codeSpans(cb)
 	area := scrollarea.Style{Fade: unit.Dp(tokens.Spacing.S4), FadeColor: style.CodeBackground}
 
+	spans, key := d.fills(style, cb, spans)
+	codeStyle = d.filled(codeStyle, key)
 	code := func(gtx layout.Context) layout.Dimensions {
 		return layout.Inset{Top: pad, Bottom: pad}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return paragraph.Render(shaper, codeStyle, spans, paragraph.Idle())(gtx)
@@ -531,6 +561,7 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	// shorter.
 	cgtx.Constraints.Max.Y += 2 * gtx.Dp(pad)
 	state := d.codeState(cb)
+	from := len(d.find.found)
 	macro := op.Record(gtx.Ops)
 	content := layout.Inset{Left: pad, Right: pad}.Layout(cgtx, func(gtx layout.Context) layout.Dimensions {
 		if style.CodeScrollbar.Width() > 0 {
@@ -539,6 +570,10 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 		return area.Layout(gtx, state, code)
 	})
 	call := macro.Stop()
+	// The padding the code is drawn inside, both axes. What the scroll area
+	// has moved sideways is not in it: a mark in a fence scrolled off the
+	// viewport is reported where it sits in the code.
+	d.shift(from, image.Pt(gtx.Dp(pad), gtx.Dp(pad)))
 
 	total := image.Pt(gtx.Constraints.Max.X, content.Size.Y)
 	box := image.Rectangle{Max: total}
@@ -745,6 +780,10 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 	}
 	calls := make([]op.CallOp, cols)
 	sizes := make([]image.Point, cols)
+	// The marks a cell paints are recorded in the cell's own coordinates and
+	// carried out to the grid's when the cell is placed, which is the first
+	// moment its alignment within the column is known.
+	marks := make([][2]int, cols)
 	for ri, row := range rows {
 		hline()
 		rowH := 0
@@ -755,9 +794,12 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 				break
 			}
 			cgtx.Constraints.Max.X = widths[ci]
+			from := len(d.find.found)
+			spans, key := d.fills(style, cell, cellSpans(style, cell, ri == 0))
 			m := op.Record(gtx.Ops)
-			dims := paragraph.Layout(cgtx, d.textState(cell), shaper, style.Text, cellSpans(style, cell, ri == 0))
+			dims := paragraph.Layout(cgtx, d.textState(cell), shaper, d.filled(style.Text, key), spans)
 			calls[ci] = m.Stop()
+			marks[ci] = [2]int{from, len(d.find.found)}
 			sizes[ci] = dims.Size
 			rowH = max(rowH, dims.Size.Y)
 		}
@@ -786,6 +828,7 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 			calls[ci].Add(gtx.Ops)
 			tr.Pop()
 			cl.Pop()
+			d.shiftRange(marks[ci][0], marks[ci][1], image.Pt(x+pad+dx, y+pad))
 			x += widths[ci] + 2*pad + border
 		}
 		y += rowH + 2*pad
@@ -884,9 +927,11 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
 	cgtx.Constraints.Max.X = max(cgtx.Constraints.Max.X-col, 0)
+	from := len(d.find.found)
 	macro := op.Record(gtx.Ops)
 	content := d.column(cgtx, shaper, style, item.Blocks)
 	call := macro.Stop()
+	d.shift(from, image.Pt(col, 0))
 
 	switch {
 	case item.Task:

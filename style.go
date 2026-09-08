@@ -226,6 +226,22 @@ type Style struct {
 	// box before the tick goes on — so it is a colour chosen against that
 	// fill, and a Style that moves the fill has to move this with it.
 	CheckmarkColor color.NRGBA
+	// MatchFill marks a match of the document's find query, painted behind
+	// the matched glyphs on the line's box and under the text, in every kind
+	// of block the query is searched in. Nothing is marked until a query is
+	// set; see [Document.Find].
+	//
+	// [FromTokens] takes the theme's highlight, the fill this system reserves
+	// for marking content the reader is being shown.
+	MatchFill color.NRGBA
+	// CurrentMatchFill marks the one match the caller is on, so the reader
+	// can tell it from the others while stepping through them.
+	//
+	// [FromTokens] takes the same highlight carried one step further from the
+	// page on the scheme's own scale, which is deeper in a light scheme and
+	// brighter in a dark one: the current match wears more of the fill the
+	// rest wear, rather than a second colour.
+	CurrentMatchFill color.NRGBA
 	// BlockGap is the vertical space between sibling blocks. It is authored
 	// space, not what the reader sees: the shaped lines put their own leading
 	// between their glyphs and the edges of their line boxes, so the blank run in
@@ -457,10 +473,27 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CheckboxBorder:        checkboxBorder(c),         // a stroke on the page
 		CheckboxFill:          checkboxFill(c),           // a fill keeps its brand
 		CheckmarkColor:        checkmarkForeground(c),    // measured on that fill
+		MatchFill:             c.Highlight,               // the reserved fill, on the content
+		CurrentMatchFill:      currentMatchFill(c),       // the same fill, one step further off the page
 		BlockGap:              gap,
 		ListSpaceAbove:        listSeam(gap),
 		Indent:                unit.Dp(tokens.Spacing.S6),
 	}
+}
+
+// currentMatchFill is the fill the current match is marked with: the theme's
+// highlight walked one step toward the deep end of the scheme's own scale
+// ([tokens.ColorTokens.PinnedStateColor]), at the highlight's own hue and
+// chroma.
+//
+// The walk rather than a second reserved colour, because the two marks have
+// to read as one kind of mark at two strengths — the reader is stepping
+// through matches, not looking at two things. And the walk rather than a
+// fixed darkening, because the scale it counts on turns over between the
+// schemes: the step is deeper than the page in a light scheme and brighter
+// than it in a dark one, which is what "stronger" means on either.
+func currentMatchFill(c tokens.ColorTokens) color.NRGBA {
+	return c.PinnedStateColor(c.Highlight, tokens.StateHover)
 }
 
 // codeFill is the surface quoted code sits on, block and chip alike: the
