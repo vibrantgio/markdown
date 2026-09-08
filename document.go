@@ -843,9 +843,9 @@ func (d *Document) image(gtx layout.Context, shaper *text.Shaper, style Style, n
 	}.Layout(gtx)
 }
 
-// listBlock renders a list's items as marker-plus-content rows; nested lists
-// recurse through the item content column, indenting one marker column per
-// level.
+// listBlock renders a list's items as number-or-bullet-plus-content rows;
+// nested lists recurse through the item content column, indenting by their own
+// column per level.
 //
 // A whole list is one block of the reading flow, so the reading rhythm stands
 // above and below it and nowhere inside it: the items are spaced by the list's
@@ -857,13 +857,14 @@ func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	gap := gtx.Dp(unit.Dp(tokens.Spacing.S1))
 	style = style.compact(unit.Dp(tokens.Spacing.S2))
 	// One reading of the shaped body line for the whole list: every item's
-	// first line is set in the same style, so every marker hangs from the
-	// same anchor.
+	// first line is set in the same style, so every number and bullet hangs
+	// from the same anchor.
 	line := firstLine(gtx, shaper, style)
+	col := listColumn(gtx, shaper, style, l)
 	var size image.Point
 	for i, item := range l.Items {
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
-		dims := d.listItem(gtx, shaper, style, l, item, i, line)
+		dims := d.listItem(gtx, shaper, style, l, item, i, line, col)
 		tr.Pop()
 		size.Y += dims.Size.Y
 		if i < len(l.Items)-1 {
@@ -874,15 +875,15 @@ func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	return layout.Dimensions{Size: size}
 }
 
-// listItem renders one item: its marker (bullet, number, or task checkbox)
-// in a fixed Indent-wide column, then the content blocks. line is the
-// geometry of the item's first text line, which anchors the marker.
-func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style, l *List, item *ListItem, i int, line lineGeometry) layout.Dimensions {
-	markerW := gtx.Dp(style.Indent)
-
+// listItem renders one item: its number, bullet, or task checkbox in a column
+// col wide, then the content blocks beside it. line is the geometry of the
+// item's first text line, which anchors the number, bullet, or checkbox; col
+// comes from the list, so every item of one list sets its content at the same
+// edge.
+func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style, l *List, item *ListItem, i int, line lineGeometry, col int) layout.Dimensions {
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
-	cgtx.Constraints.Max.X = max(cgtx.Constraints.Max.X-markerW, 0)
+	cgtx.Constraints.Max.X = max(cgtx.Constraints.Max.X-col, 0)
 	macro := op.Record(gtx.Ops)
 	content := d.column(cgtx, shaper, style, item.Blocks)
 	call := macro.Stop()
@@ -891,21 +892,65 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 	case item.Task:
 		d.drawTask(gtx, style, item, line.center)
 	case l.Ordered:
-		marker := fmt.Sprintf("%d.", l.Start+i)
 		mgtx := gtx
 		mgtx.Constraints.Min = image.Point{}
-		mgtx.Constraints.Max.X = markerW
-		paragraph.Render(shaper, style.Text, []paragraph.SpanStyle{{Content: marker}}, paragraph.Idle())(mgtx)
+		mgtx.Constraints.Max.X = col
+		paragraph.Render(shaper, style.Text, []paragraph.SpanStyle{{Content: listNumber(l, i)}}, paragraph.Idle())(mgtx)
 	default:
 		drawBullet(gtx, style, line.center)
 	}
 
-	tr := op.Offset(image.Pt(markerW, 0)).Push(gtx.Ops)
+	tr := op.Offset(image.Pt(col, 0)).Push(gtx.Ops)
 	call.Add(gtx.Ops)
 	tr.Pop()
 
 	h := max(content.Size.Y, line.height)
-	return layout.Dimensions{Size: image.Pt(markerW+content.Size.X, h)}
+	return layout.Dimensions{Size: image.Pt(col+content.Size.X, h)}
+}
+
+// listNumber is what an ordered list sets beside its item i: the item's number
+// and the period after it.
+func listNumber(l *List, i int) string { return fmt.Sprintf("%d.", l.Start+i) }
+
+// listColumn is the width of the column an item's number, bullet, or checkbox
+// stands in, shared by every item of the list.
+//
+// It is [Style.Indent], and for a numbered list no less than the widest number
+// the list sets plus the gap that number keeps from the content: an indent
+// sized for a digit and a period holds neither the three-digit number a long
+// list reaches nor the same digits set at a heading's size, and a number given
+// less room than it needs loses its period and paints over the words beside
+// it. The widest number is measured rather than counted in digits, because a
+// face is free to set its figures at different widths.
+//
+// The gap is one spacing step, which a digit and a period leave inside the
+// default indent: a list numbered within one digit keeps the column it always
+// had. One column for the whole list is what lines the items' content edges up
+// with each other; a nested list measures its own.
+func listColumn(gtx layout.Context, shaper *text.Shaper, style Style, l *List) int {
+	col := gtx.Dp(style.Indent)
+	if !l.Ordered {
+		return col
+	}
+	gap := gtx.Dp(unit.Dp(tokens.Spacing.S2))
+	for i, item := range l.Items {
+		if item.Task {
+			// A task item sets a checkbox in the column, not its number.
+			continue
+		}
+		col = max(col, measureText(gtx, shaper, style, listNumber(l, i))+gap)
+	}
+	return col
+}
+
+// measureText is the width the style's text takes with nothing to wrap
+// against, shaped through the path that draws it so the two agree.
+func measureText(gtx layout.Context, shaper *text.Shaper, style Style, s string) int {
+	gtx.Constraints = layout.Constraints{Max: image.Pt(1<<16, 1<<16)}
+	macro := op.Record(gtx.Ops)
+	dims := paragraph.Render(shaper, style.Text, []paragraph.SpanStyle{{Content: s}}, paragraph.Idle())(gtx)
+	macro.Stop()
+	return dims.Size.X
 }
 
 // lineGeometry is the vertical geometry of an item's first text line, in
@@ -986,7 +1031,7 @@ func firstLine(gtx layout.Context, shaper *text.Shaper, style Style) lineGeometr
 	}
 }
 
-// drawBullet paints an unordered item's marker: a small filled disc centred
+// drawBullet paints an unordered item's bullet: a small filled disc centred
 // on the first text line.
 func drawBullet(gtx layout.Context, style Style, center int) {
 	r := gtx.Dp(unit.Dp(2.5))
