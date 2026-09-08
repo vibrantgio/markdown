@@ -309,6 +309,30 @@ place.
 The colour is the caller's: nothing here decides what a marking means or
 which of a theme's colours says it.
 
+## The heading word
+
+A word of the prose that a heading of the same document equals or contains —
+whole word, case ignored — is a heading word. While the command key is held
+with the pointer over it, it is a link: it wears the link fill and the
+underline the document's own links wear, shows the pointing hand, and
+operating it goes to that heading. Release the key or move off the word and
+the prose comes back; at rest the page keeps its own face.
+
+```go
+doc.Layout(gtx, shaper, style) // nothing to switch on: it comes with the document
+```
+
+The key is ⌘ on macOS and Ctrl on Windows and Linux, which is the key Gio's
+`key.ModShortcut` names. Where several headings match, the first in reading
+order wins; a word inside a link or an inline code span is not a heading word.
+Nothing is looked up while the key is up, and while it is held only the block
+under the pointer is looked in.
+
+Following one is a move the document makes itself, so the document owns the
+marking it leaves: `Style.ArrivalFill` on the heading it seated, shown at once
+and faded off moments later. It is drawn beside whatever the caller marked
+with `Highlight`, not instead of it.
+
 ## The monospace font comes from the theme
 
 `FromTokens` resolves `Style.Mono` and `Style.CodeSize` from the Code role of

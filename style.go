@@ -242,6 +242,15 @@ type Style struct {
 	// brighter in a dark one: the current match wears more of the fill the
 	// rest wear, rather than a second colour.
 	CurrentMatchFill color.NRGBA
+	// ArrivalFill marks the heading a followed heading word took the reader
+	// to: the block's own box filled under its content, showing at once and
+	// fading by itself moments later. It is the document's own marking, not
+	// the caller's — see [Document.Highlight] for that one — because the
+	// document made the move.
+	//
+	// [FromTokens] takes the theme's highlight, the fill this system reserves
+	// for marking content the reader is being shown.
+	ArrivalFill color.NRGBA
 	// BlockGap is the vertical space between sibling blocks. It is authored
 	// space, not what the reader sees: the shaped lines put their own leading
 	// between their glyphs and the edges of their line boxes, so the blank run in
@@ -474,6 +483,7 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CheckboxFill:          checkboxFill(c),           // a fill keeps its brand
 		CheckmarkColor:        checkmarkForeground(c),    // measured on that fill
 		MatchFill:             c.Highlight,               // the reserved fill, on the content
+		ArrivalFill:           c.Highlight,               // one highlighter, whatever brought the reader
 		CurrentMatchFill:      currentMatchFill(c),       // the same fill, one step further off the page
 		BlockGap:              gap,
 		ListSpaceAbove:        listSeam(gap),

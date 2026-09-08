@@ -68,6 +68,9 @@ type Document struct {
 	// find is the query the document marks its matches of, and where the
 	// last layout painted those marks; see find.go.
 	find findState
+	// word is the heading-word state: the command key, the word under the
+	// pointer, and the marking a followed heading word left; see word.go.
+	word wordState
 }
 
 // blockMark is a highlight over one top-level block: the block's index and
@@ -104,6 +107,10 @@ func NewDocument(blocks []Block) *Document {
 			seek:    -1,
 			rows:    make(map[Block][2]int),
 			heights: make(map[Block]int),
+		},
+		word: wordState{
+			block: -1,
+			cands: make(map[any][]wordRange),
 		},
 	}
 }
@@ -150,16 +157,24 @@ func (d *Document) marked() Block {
 	return d.blocks[d.mark.block]
 }
 
-// markedBlock lays b out and, when b is the marked one, paints the fill under
-// the content at exactly the size b laid out to.
-func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style Style, b, marked Block) layout.Dimensions {
-	if b != marked {
+// markedBlock lays b out and, when b carries a marking, paints the fill under
+// the content at exactly the size b laid out to. There are two markings and
+// they compose: the caller's, set through [Document.Highlight], and the one a
+// followed heading word left on the heading it went to.
+func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style Style, b, marked, arrived Block) layout.Dimensions {
+	if b != marked && b != arrived {
 		return d.block(gtx, shaper, style, b)
 	}
 	macro := op.Record(gtx.Ops)
 	dims := d.block(gtx, shaper, style, b)
 	drawn := macro.Stop()
-	paint.FillShape(gtx.Ops, d.mark.fill, clip.Rect{Max: dims.Size}.Op())
+	box := clip.Rect{Max: dims.Size}.Op()
+	if b == marked {
+		paint.FillShape(gtx.Ops, d.mark.fill, box)
+	}
+	if b == arrived {
+		paint.FillShape(gtx.Ops, d.arrivalFill(style), box)
+	}
 	drawn.Add(gtx.Ops)
 	return dims
 }
@@ -174,6 +189,7 @@ func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style St
 // [Style.EndSpace] is not spent here: the space below an embedded document's
 // end belongs to whoever is scrolling it.
 func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
+	d.wordFrame(gtx)
 	d.findFrame(false)
 	return d.column(gtx, shaper, style, d.blocks)
 }
@@ -185,6 +201,7 @@ func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style S
 // collection must hold for Style.Mono to resolve.
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	d.recordLine(gtx, style)
+	d.wordFrame(gtx)
 	d.seekMatch(gtx)
 	d.findFrame(true)
 	return list.Layout(gtx, d.list, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
@@ -207,6 +224,7 @@ func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) 
 // viewport wants.
 func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, style Style, bar scrollbar.Style, anchor list.Anchor) layout.Dimensions {
 	d.recordLine(gtx, style)
+	d.wordFrame(gtx)
 	d.seekMatch(gtx)
 	d.findFrame(true)
 	return list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
@@ -222,7 +240,7 @@ func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, styl
 //
 // A document of one block takes both, being its own first and last.
 func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) func(layout.Context, Block) layout.Dimensions {
-	marked := d.marked()
+	marked, arrived := d.marked(), d.arrived()
 	var first, last Block
 	if n := len(d.blocks); n > 0 {
 		if start > 0 {
@@ -244,7 +262,7 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 		dims := layout.Inset{Top: top, Bottom: bottom}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.measured(gtx, style, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = image.Point{}
-				return d.markedBlock(gtx, shaper, style, b, marked)
+				return d.markedBlock(gtx, shaper, style, b, marked, arrived)
 			})
 		})
 		if d.find.active() {
@@ -398,11 +416,9 @@ func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b
 	switch b := b.(type) {
 	case *Heading:
 		h := style.heading(b.Level)
-		spans, key := d.fills(style, b, style.spanStyles(b.Spans, font.Bold, h.Size))
-		return paragraph.Layout(gtx, d.textState(b), shaper, d.filled(h, key), spans)
+		return d.prose(gtx, shaper, style, h, b, b.Spans, style.spanStyles(b.Spans, font.Bold, h.Size))
 	case *Paragraph:
-		spans, key := d.fills(style, b, style.spanStyles(b.Spans, font.Normal, style.Text.Size))
-		return paragraph.Layout(gtx, d.textState(b), shaper, d.filled(style.Text, key), spans)
+		return d.prose(gtx, shaper, style, style.Text, b, b.Spans, style.spanStyles(b.Spans, font.Normal, style.Text.Size))
 	case *List:
 		return d.listBlock(gtx, shaper, style, b)
 	case *Blockquote:
@@ -427,7 +443,7 @@ func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b
 func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, blocks []Block) layout.Dimensions {
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
-	marked := d.marked()
+	marked, arrived := d.marked(), d.arrived()
 	var size image.Point
 	closing := 0 // the space the previous block closes with
 	for i, b := range blocks {
@@ -437,7 +453,7 @@ func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, 
 		}
 		from := len(d.find.found)
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
-		dims := d.markedBlock(cgtx, shaper, style, b, marked)
+		dims := d.markedBlock(cgtx, shaper, style, b, marked, arrived)
 		tr.Pop()
 		d.shift(from, image.Pt(0, size.Y))
 		size.Y += dims.Size.Y

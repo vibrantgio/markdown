@@ -404,15 +404,24 @@ func (d *Document) matchFill(style Style, match int) color.NRGBA {
 	return style.MatchFill
 }
 
-// onFill returns the hook that records where the marks land, keyed by the
-// map [Document.fills] returned. A block with no mark on it gets no hook, so
-// a document with no query pays nothing for this.
+// onFill returns the hook that records where the fills land, keyed by the
+// map [Document.fills] returned. A block with neither a mark nor a word on
+// it gets no hook, so a document with no query and no key held pays nothing
+// for this.
+//
+// The key carries both kinds: a find match counts up from zero and a heading
+// word down from minus one, so one hook serves the marks the reader asked for
+// and the colourless fills that say where the words under the pointer are.
 func (d *Document) onFill(key [][]int) func(span, fill int, r image.Rectangle) {
 	if key == nil {
 		return nil
 	}
 	return func(span, fill int, r image.Rectangle) {
 		if span < 0 || span >= len(key) || fill < 0 || fill >= len(key[span]) {
+			return
+		}
+		if m := key[span][fill]; m < 0 {
+			d.word.placed = append(d.word.placed, wordRect{cand: placeKey(m), r: r})
 			return
 		}
 		d.find.found = append(d.find.found, foundRect{match: key[span][fill], r: r})

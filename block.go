@@ -32,6 +32,26 @@
 // the arrival stops being news, the match marks when the query is cleared.
 // They compose, and nothing about one reads the other.
 //
+// A heading word makes the first kind of mark without a caller: the document
+// made that move itself, so it owns that marking's life — [Style].ArrivalFill
+// shown at once on the heading it seated and faded off it moments later —
+// and the caller's own marking is untouched beside it.
+//
+// # The heading word
+//
+// A word of the prose that a heading of the same document equals or contains
+// — whole word, case ignored — is a heading word, and while the command key
+// is held with the pointer over it, it is a link: the link fill, the
+// underline and the pointing hand every other link in the document has, and
+// operating it goes to that heading. The key released or the pointer moved
+// off the word restores the prose; at rest the page keeps its own face, and
+// nothing is looked up while the key is up. The key is ⌘ on macOS and Ctrl on
+// Windows and Linux, the key Gio's ModShortcut names.
+//
+// Where several headings match, the first in reading order wins. A word
+// inside a link or an inline code span is not a heading word: it is a control
+// already, or it is quoted out of the prose.
+//
 // # The monospace font comes from the theme
 //
 // [FromTokens] resolves Style.Mono and Style.CodeSize from the Code role of
