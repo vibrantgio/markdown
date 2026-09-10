@@ -231,16 +231,16 @@ type Style struct {
 	// of block the query is searched in. Nothing is marked until a query is
 	// set; see [Document.Find].
 	//
-	// [FromTokens] takes the theme's highlight, the fill this system reserves
-	// for marking content the reader is being shown.
+	// [FromTokens] takes the theme's highlight laid over
+	// [Style.ContentSurface], so a Style that moves that surface has to move
+	// this with it.
 	MatchFill color.NRGBA
 	// CurrentMatchFill marks the one match the caller is on, so the reader
 	// can tell it from the others while stepping through them.
 	//
-	// [FromTokens] takes the same highlight carried one step further from the
-	// page on the scheme's own scale, which is deeper in a light scheme and
-	// brighter in a dark one: the current match wears more of the fill the
-	// rest wear, rather than a second colour.
+	// [FromTokens] takes the same yellow over the same surface at a higher
+	// coverage: the current match is the fill the rest wear laid on more
+	// strongly, not a second colour.
 	CurrentMatchFill color.NRGBA
 	// ArrivalFill marks the heading a followed heading word took the reader
 	// to: the block's own box filled under its content, showing at once and
@@ -248,8 +248,9 @@ type Style struct {
 	// the caller's — see [Document.Highlight] for that one — because the
 	// document made the move.
 	//
-	// [FromTokens] takes the theme's highlight, the fill this system reserves
-	// for marking content the reader is being shown.
+	// [FromTokens] takes the theme's highlight laid over
+	// [Style.ContentSurface], the same fill a match wears: one highlight,
+	// whatever brought the reader.
 	ArrivalFill color.NRGBA
 	// BlockGap is the vertical space between sibling blocks. It is authored
 	// space, not what the reader sees: the shaped lines put their own leading
@@ -414,7 +415,8 @@ type Style struct {
 // The surface is the theme's background because that is where a document lies,
 // and a holder that mounts one somewhere else says so by setting ContentSurface
 // afterwards: this constructor answers for the theme and not for the
-// composition.
+// composition. The three marking fills are laid over that same surface, so a
+// holder that moves ContentSurface moves them with it.
 //
 // The code surface is one step off the page and not three. A fence covers a
 // good deal of the column, and area amplifies a fill: the tinted-fill step
@@ -459,8 +461,9 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	}
 	gap := blockRhythm - lineLeading
 	above, below := headingSpacing(gap, sizes)
+	surface := c.Background // the surface a document lies on
 	return Style{
-		ContentSurface:        c.Background, // the surface a document lies on
+		ContentSurface:        surface,
 		Text:                  paragraph.FromTokens(c, typo.BodyLarge),
 		HeadingSizes:          sizes,
 		HeadingLineHeights:    boxes,
@@ -482,28 +485,13 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 		CheckboxBorder:        checkboxBorder(c),         // a stroke on the page
 		CheckboxFill:          checkboxFill(c),           // a fill keeps its brand
 		CheckmarkColor:        checkmarkForeground(c),    // measured on that fill
-		MatchFill:             c.Highlight,               // the reserved fill, on the content
-		ArrivalFill:           c.Highlight,               // one highlighter, whatever brought the reader
-		CurrentMatchFill:      currentMatchFill(c),       // the same fill, one step further off the page
+		MatchFill:             c.HighlightOn(surface),    // the highlight over the surface it marks
+		ArrivalFill:           c.HighlightOn(surface),    // one highlight, whatever brought the reader
+		CurrentMatchFill:      c.CurrentMatchOn(surface), // the same yellow, laid on more strongly
 		BlockGap:              gap,
 		ListSpaceAbove:        listSeam(gap),
 		Indent:                unit.Dp(tokens.Spacing.S6),
 	}
-}
-
-// currentMatchFill is the fill the current match is marked with: the theme's
-// highlight walked one step toward the deep end of the scheme's own scale
-// ([tokens.ColorTokens.PinnedStateColor]), at the highlight's own hue and
-// chroma.
-//
-// The walk rather than a second reserved colour, because the two marks have
-// to read as one kind of mark at two strengths — the reader is stepping
-// through matches, not looking at two things. And the walk rather than a
-// fixed darkening, because the scale it counts on turns over between the
-// schemes: the step is deeper than the page in a light scheme and brighter
-// than it in a dark one, which is what "stronger" means on either.
-func currentMatchFill(c tokens.ColorTokens) color.NRGBA {
-	return c.PinnedStateColor(c.Highlight, tokens.StateHover)
 }
 
 // codeFill is the surface quoted code sits on, block and chip alike: the
