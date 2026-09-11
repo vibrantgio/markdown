@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"math"
 	"strings"
 	"testing"
 
@@ -41,9 +40,9 @@ func defaultShaper(t *testing.T) *text.Shaper {
 
 // themed wraps a document in a Background-filled [layout.Widget] so goldens
 // capture the document on its token background.
-func themed(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.ColorTokens) layout.Widget {
+func themed(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.PlatformColors) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, c.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, c.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.Layout(gtx, shaper, style)
 		})
@@ -60,14 +59,14 @@ func TestCorpusDocumentGolden(t *testing.T) {
 	size := image.Pt(560, 1500)
 	cases := []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"corpus-light", tokens.DefaultLight},
-		{"corpus-dark", tokens.DefaultDark},
+		{"corpus-light", tokens.PlatformLight},
+		{"corpus-dark", tokens.PlatformDark},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, size, themed(d, shaper, style, tc.colors))
 		})
@@ -91,14 +90,14 @@ func TestTableDocumentGolden(t *testing.T) {
 	size := image.Pt(560, 180)
 	cases := []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"table-light", tokens.DefaultLight},
-		{"table-dark", tokens.DefaultDark},
+		{"table-light", tokens.PlatformLight},
+		{"table-dark", tokens.PlatformDark},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, size, themed(d, shaper, style, tc.colors))
 		})
@@ -116,10 +115,10 @@ func TestTableNarrowGolden(t *testing.T) {
 		"| Compactline | a shell arranging its regions around a compact single line of content |\n" +
 		"| Sidebar | a shell with a leading navigation region and a trailing content region |\n"
 	blocks := markdown.Parse([]byte(src))
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocument(blocks)
 	golden.Render(t, "table-narrow-light", image.Pt(300, 260),
-		themed(d, shaper, style, tokens.DefaultLight))
+		themed(d, shaper, style, tokens.PlatformLight))
 }
 
 // TestScrolledDocumentGolden records or diffs the corpus scrolled to the task
@@ -127,18 +126,18 @@ func TestTableNarrowGolden(t *testing.T) {
 func TestScrolledDocumentGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse(corpus(t))
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocumentAt(blocks, 9)
 	golden.Render(t, "corpus-scrolled", image.Pt(560, 420),
-		themed(d, shaper, style, tokens.DefaultLight))
+		themed(d, shaper, style, tokens.PlatformLight))
 }
 
 // scrolledWithBar is themed for LayoutScrollbar: the same document on the
 // same background, with the design system's bar in a reserved gutter.
-func scrolledWithBar(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.ColorTokens) layout.Widget {
-	bar := scrollbar.FromTokens(c)
+func scrolledWithBar(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.PlatformColors) layout.Widget {
+	bar := scrollbar.FromTokens(c, c.TextBackground)
 	return func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, c.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, c.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.LayoutScrollbar(gtx, shaper, style, bar, list.Occupy)
 		})
@@ -151,10 +150,10 @@ func scrolledWithBar(d *markdown.Document, shaper *text.Shaper, style markdown.S
 func TestScrollbarDocumentGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse(corpus(t))
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocumentAt(blocks, 9)
 	golden.Render(t, "corpus-scrollbar", image.Pt(560, 420),
-		scrolledWithBar(d, shaper, style, tokens.DefaultLight))
+		scrolledWithBar(d, shaper, style, tokens.PlatformLight))
 }
 
 // TestScrollbarOnlyWhenTheDocumentOverflows asserts the appearing half of the
@@ -164,14 +163,14 @@ func TestScrollbarDocumentGolden(t *testing.T) {
 // either way, so dimensions cannot tell the two apart, but pixels can.
 func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
-	bar := scrollbar.FromTokens(tokens.DefaultLight)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
+	bar := scrollbar.FromTokens(tokens.PlatformLight, tokens.PlatformLight.TextBackground)
 	size := image.Pt(400, 300)
 
 	render := func(blocks []markdown.Block) *image.RGBA {
 		d := markdown.NewDocument(blocks)
 		return golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
-			paint.FillShape(gtx.Ops, tokens.DefaultLight.Background,
+			paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground,
 				clip.Rect{Max: gtx.Constraints.Max}.Op())
 			return d.LayoutScrollbar(gtx, shaper, style, bar, list.Occupy)
 		})
@@ -179,7 +178,7 @@ func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 	// A blank background of the same size is the baseline: any difference in
 	// the gutter column is the bar.
 	blank := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background,
+		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground,
 			clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	})
@@ -269,21 +268,21 @@ func TestCodeOverflowGolden(t *testing.T) {
 	blocks := markdown.Parse([]byte(codeOverflowSource))
 	cases := []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"code-overflow-light", tokens.DefaultLight},
-		{"code-overflow-dark", tokens.DefaultDark},
+		{"code-overflow-light", tokens.PlatformLight},
+		{"code-overflow-dark", tokens.PlatformDark},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, codeOverflowSize, themed(d, shaper, style, tc.colors))
 		})
 	}
 
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
-	scrolled := themed(markdown.NewDocument(blocks), shaper, style, tokens.DefaultLight)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
+	scrolled := themed(markdown.NewDocument(blocks), shaper, style, tokens.PlatformLight)
 	driveDocument(scrolled, codeOverflowSize, pointer.Event{
 		Kind:     pointer.Scroll,
 		Position: f32.Pt(200, 70),
@@ -300,7 +299,7 @@ func TestCodeOverflowGolden(t *testing.T) {
 // wheeling down a note therefore never gets stuck on a code block.
 func TestCodeBlockClaimsHorizontalAxisOnly(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	// A long tail below the fence, so the document has somewhere to scroll to.
 	blocks := markdown.Parse([]byte(codeOverflowSource + strings.Repeat("Filler paragraph.\n\n", 40)))
 	cb, ok := blocks[1].(*markdown.CodeBlock)
@@ -322,7 +321,7 @@ func TestCodeBlockClaimsHorizontalAxisOnly(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			d := markdown.NewDocument(blocks)
-			driveDocument(themed(d, shaper, style, tokens.DefaultLight), codeOverflowSize,
+			driveDocument(themed(d, shaper, style, tokens.PlatformLight), codeOverflowSize,
 				pointer.Event{Kind: pointer.Scroll, Position: over, Scroll: tc.scroll, Source: pointer.Mouse})
 
 			code := markdown.CodeOffset(d, cb) > 0
@@ -343,13 +342,13 @@ func TestCodeBlockClaimsHorizontalAxisOnly(t *testing.T) {
 // however far forward — never on empty background past the code.
 func TestCodeOffsetBounds(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	blocks := markdown.Parse([]byte(codeOverflowSource))
 	cb := blocks[1].(*markdown.CodeBlock)
 	over := f32.Pt(200, 70)
 
 	d := markdown.NewDocument(blocks)
-	w := themed(d, shaper, style, tokens.DefaultLight)
+	w := themed(d, shaper, style, tokens.PlatformLight)
 	driveDocument(w, codeOverflowSize, pointer.Event{
 		Kind: pointer.Scroll, Position: over, Scroll: f32.Pt(10_000, 0), Source: pointer.Mouse,
 	})
@@ -386,14 +385,14 @@ func TestCodeOffsetBounds(t *testing.T) {
 // invisible, which is the case the field exists for.
 func TestCodeBorderEdgesTheFenceWithoutMovingIt(t *testing.T) {
 	shaper := defaultShaper(t)
-	c := tokens.DefaultLight
+	c := tokens.PlatformLight
 	size := image.Pt(420, 120)
 	blocks := markdown.Parse([]byte("```\nfits\n```\n"))
 
-	style := markdown.FromTokens(c, tokens.DefaultTypography)
-	style.CodeBackground = c.Background
+	style := markdown.FromTokens(c, tokens.DefaultTypography, color.NRGBA{})
+	style.CodeBackground = c.TextBackground
 	edged := style
-	edged.CodeBorder = c.Seam
+	edged.CodeBorder = themecolor.Flatten(c.Separator, c.TextBackground)
 
 	measure := func(st markdown.Style) int {
 		var ops op.Ops
@@ -427,7 +426,7 @@ func TestCodeBorderEdgesTheFenceWithoutMovingIt(t *testing.T) {
 	// rather than the total ignores the odd anti-aliased glyph pixel that
 	// happens to land on the same value.
 	width := size.X - 16
-	if got := count(rimmed, c.Seam) - count(plain, c.Seam); got < width {
+	if got := count(rimmed, edged.CodeBorder) - count(plain, edged.CodeBorder); got < width {
 		t.Errorf("%d pixels came out in the border colour; a rim around a block %d px wide is more than that", got, width)
 	}
 	if n := count(rimmed, style.CodeBackground); n == 0 {
@@ -443,17 +442,17 @@ func TestCodeBorderEdgesTheFenceWithoutMovingIt(t *testing.T) {
 // every stored golden in this package says, none of which moved.
 func TestShortCodeBlockDrawsNoScroller(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	size := image.Pt(420, 120)
 	blocks := markdown.Parse([]byte("```\nfits\n```\n"))
 
 	withBar := golden.Capture(t, size,
-		themed(markdown.NewDocument(blocks), shaper, style, tokens.DefaultLight))
+		themed(markdown.NewDocument(blocks), shaper, style, tokens.PlatformLight))
 
 	barless := style
 	barless.CodeScrollbar = scrollbar.Style{}
 	plain := golden.Capture(t, size,
-		themed(markdown.NewDocument(blocks), shaper, barless, tokens.DefaultLight))
+		themed(markdown.NewDocument(blocks), shaper, barless, tokens.PlatformLight))
 
 	if n := golden.PixelDiff(withBar, plain); n != 0 {
 		t.Errorf("a fence that fits drew %d pixels the same fence without a bar style did not; want none", n)
@@ -497,8 +496,8 @@ var measureRegion = measureWideSize.X - 2*measurePage
 
 // measuredStyle builds the light or dark measure style: the token style with
 // the reading width set and nothing else changed.
-func measuredStyle(c tokens.ColorTokens) markdown.Style {
-	style := markdown.FromTokens(c, tokens.DefaultTypography)
+func measuredStyle(c tokens.PlatformColors) markdown.Style {
+	style := markdown.FromTokens(c, tokens.DefaultTypography, color.NRGBA{})
 	style.Measure = measureWidth
 	return style
 }
@@ -535,10 +534,10 @@ func TestMeasureGolden(t *testing.T) {
 	blocks := markdown.Parse([]byte(measureSource))
 	cases := []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"measure-wide-light", tokens.DefaultLight},
-		{"measure-wide-dark", tokens.DefaultDark},
+		{"measure-wide-light", tokens.PlatformLight},
+		{"measure-wide-dark", tokens.PlatformDark},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -556,12 +555,12 @@ func TestMeasureGolden(t *testing.T) {
 // region, which is what every other stored golden here was recorded at.
 func TestMeasureCentresTheColumn(t *testing.T) {
 	shaper := defaultShaper(t)
-	c := tokens.DefaultLight
+	c := tokens.PlatformLight
 	blocks := markdown.Parse([]byte(measureSource))
 
 	full := golden.Capture(t, measureWideSize,
-		themed(markdown.NewDocument(blocks), shaper, markdown.FromTokens(c, tokens.DefaultTypography), c))
-	lead, trail, ok := pageExtent(full, c.Background)
+		themed(markdown.NewDocument(blocks), shaper, markdown.FromTokens(c, tokens.DefaultTypography, color.NRGBA{}), c))
+	lead, trail, ok := pageExtent(full, c.TextBackground)
 	if !ok {
 		t.Fatal("a document with no measure drew nothing")
 	}
@@ -571,7 +570,7 @@ func TestMeasureCentresTheColumn(t *testing.T) {
 
 	held := golden.Capture(t, measureWideSize,
 		themed(markdown.NewDocument(blocks), shaper, measuredStyle(c), c))
-	lead, trail, ok = pageExtent(held, c.Background)
+	lead, trail, ok = pageExtent(held, c.TextBackground)
 	if !ok {
 		t.Fatal("a document read at a measure drew nothing")
 	}
@@ -616,13 +615,13 @@ func fenceRow(img *image.RGBA, fill color.NRGBA) int {
 // page beside the column, and this is what would catch it.
 func TestMeasureBoundsTheScrollArea(t *testing.T) {
 	shaper := defaultShaper(t)
-	c := tokens.DefaultLight
+	c := tokens.PlatformLight
 	blocks := markdown.Parse([]byte(measureSource))
 	style := measuredStyle(c)
 
 	rest := golden.Capture(t, measureWideSize,
 		themed(markdown.NewDocument(blocks), shaper, style, c))
-	lead, trail, ok := pageExtent(rest, c.Background)
+	lead, trail, ok := pageExtent(rest, c.TextBackground)
 	if !ok {
 		t.Fatal("a document read at a measure drew nothing")
 	}
@@ -666,16 +665,16 @@ func TestMeasureBoundsTheScrollArea(t *testing.T) {
 // viewport's, not the measure's to spend.
 func TestMeasureKeepsTheGutterAtTheEdge(t *testing.T) {
 	shaper := defaultShaper(t)
-	c := tokens.DefaultLight
+	c := tokens.PlatformLight
 	const gutter = 12
-	style := markdown.FromTokens(c, tokens.DefaultTypography)
+	style := markdown.FromTokens(c, tokens.DefaultTypography, color.NRGBA{})
 	style.Gutter = gutter
 	style.Measure = unit.Dp(measureRegion - gutter - 2)
 	blocks := markdown.Parse([]byte(measureSource))
 
 	img := golden.Capture(t, measureWideSize,
 		themed(markdown.NewDocument(blocks), shaper, style, c))
-	lead, trail, ok := pageExtent(img, c.Background)
+	lead, trail, ok := pageExtent(img, c.TextBackground)
 	if !ok {
 		t.Fatal("a document read at a near-region measure drew nothing")
 	}
@@ -708,7 +707,7 @@ func measureDoc(shaper *text.Shaper, style markdown.Style, blocks []markdown.Blo
 // constraint.
 func TestLayoutColumnNaturalHeight(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	one := markdown.Parse([]byte("alpha\n"))
 	three := markdown.Parse([]byte("alpha\n\nbravo\n\n```\ncode\n```\n"))
 
@@ -738,7 +737,7 @@ func TestLayoutColumnNaturalHeight(t *testing.T) {
 // scrolls horizontally instead of wrapping).
 func TestCodeBlockOverflowScrolls(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	blocks := markdown.Parse([]byte("```\nthe first line is much much much much much wider than the narrow viewport\nshort line\n```\n"))
 
 	wide := measureDoc(shaper, style, blocks, image.Pt(2000, 1000))
@@ -813,7 +812,7 @@ func slicesEqual(a, b []int) bool {
 // horizontal scroll fallback.
 func TestTableNarrowKeepsWords(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	src := "| Shell | Description |\n" +
 		"|:------|:------------|\n" +
 		"| Compactline | a shell arranging its regions around a compact single line of content |\n" +
@@ -849,7 +848,7 @@ func (p *widgetProvider) ImageWidget(string) (layout.Widget, error) {
 	p.calls++
 	return func(gtx layout.Context) layout.Dimensions {
 		sz := image.Pt(40, 30)
-		paint.FillShape(gtx.Ops, tokens.DefaultLight.Primary, clip.Rect{Max: sz}.Op())
+		paint.FillShape(gtx.Ops, tokens.PlatformLight.ControlAccent, clip.Rect{Max: sz}.Op())
 		return layout.Dimensions{Size: sz}
 	}, nil
 }
@@ -859,7 +858,7 @@ func (p *widgetProvider) ImageWidget(string) (layout.Widget, error) {
 // up in the layout), and it is requested once per block, not per frame.
 func TestWidgetImageProvider(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	prov := &widgetProvider{}
 	style.Images = prov
 	blocks := markdown.Parse([]byte("![icon](icon.svg)\n"))
@@ -890,7 +889,7 @@ func TestWidgetImageProvider(t *testing.T) {
 // unconstrained.
 func TestNestedListIndents(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 
 	flat := markdown.Parse([]byte("- alpha\n"))
 	nested := markdown.Parse([]byte("- alpha\n  - alpha\n    - alpha\n"))
@@ -919,7 +918,7 @@ func (p memProvider) Image(url string) (image.Image, error) {
 // the alt-text paragraph.
 func TestImageProvider(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	style.Images = memProvider{
 		"logo.png": image.NewNRGBA(image.Rect(0, 0, 48, 100)),
 		"wide.png": image.NewNRGBA(image.Rect(0, 0, 2000, 100)),
@@ -960,7 +959,7 @@ func driveTaskFrame(w layout.Widget, ops *op.Ops, r *gioinput.Router, size image
 
 func taskColumn(d *markdown.Document, shaper *text.Shaper, style markdown.Style) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return d.LayoutColumn(gtx, shaper, style)
 	}
 }
@@ -983,7 +982,7 @@ func TestTaskClickFiresOnTaskClick(t *testing.T) {
 
 	var got *markdown.ListItem
 	var gotOps bool
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	style.OnTaskClick = func(gtx layout.Context, item *markdown.ListItem) {
 		got = item
 		gotOps = gtx.Ops != nil
@@ -1042,7 +1041,7 @@ func TestTaskClickKeyboardActivation(t *testing.T) {
 	open, done := l.Items[0], l.Items[1]
 
 	var clicks []*markdown.ListItem
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	style.OnTaskClick = func(_ layout.Context, item *markdown.ListItem) {
 		clicks = append(clicks, item)
 	}
@@ -1084,7 +1083,7 @@ func TestTaskClickKeyboardActivation(t *testing.T) {
 func TestTaskClickIdlePixelsUnchanged(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse([]byte("- [ ] open\n- [x] done\n"))
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	live := style
 	live.OnTaskClick = func(layout.Context, *markdown.ListItem) {}
 	size := image.Pt(400, 80)
@@ -1104,7 +1103,7 @@ func TestTaskClickIdlePixelsUnchanged(t *testing.T) {
 // draining) over the full corpus without a GPU.
 func TestDocumentLiveFrame(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse(corpus(t)))
 
 	r := new(gioinput.Router)
@@ -1126,160 +1125,139 @@ func TestDocumentLiveFrame(t *testing.T) {
 
 // ---- Token defaults ----
 
-// TestCodeReadsAtItsPagesWeight is the measurement behind codeForeground,
-// kept as a gate so the two appearances cannot drift apart again.
-//
-// A document's code is less pronounced than its prose in both appearances,
-// deliberately — a fence is quoted matter, and it is set on its own fill
-// besides. What must not differ is by how much, because a reader who switches
-// appearance is reading the same document: code that recedes a step in one and
-// half a page in the other is two different documents.
-//
-// The measurement is the travel from the fence's own fill to the code's colour,
-// against the travel from the page to the prose's, on the perceptual lightness
-// axis — "how far into the page's own range does this text go" — with the WCAG
-// ratios logged beside it because the floor the syntax palette is fitted to is
-// stated in those. Before the light half was moved a step it travelled 58% of
-// its page's range where the dark half travelled 80%.
-func TestCodeReadsAtItsPagesWeight(t *testing.T) {
-	const wantAtLeast = 0.66
-	travel := func(from, to color.NRGBA) float64 {
-		a, _, _ := themecolor.OKLChFromNRGBA(from)
-		b, _, _ := themecolor.OKLChFromNRGBA(to)
-		return math.Abs(a - b)
-	}
-	var share [2]float64
-	for i, tc := range []struct {
-		name string
-		c    tokens.ColorTokens
-	}{{"light", tokens.DefaultLight}, {"dark", tokens.DefaultDark}} {
-		st := markdown.FromTokens(tc.c, tokens.DefaultTypography)
-		prose := travel(tc.c.Background, st.Text.Color)
-		code := travel(st.CodeBackground, st.CodeColor)
-		share[i] = code / prose
-		t.Logf("%s: prose |Lc| %.2f on the page, code |Lc| %.2f on the fence — code travels %.0f%% of the page's own range",
-			tc.name, themecolor.Magnitude(st.Text.Color, tc.c.Background),
-			themecolor.Magnitude(st.CodeColor, st.CodeBackground), 100*share[i])
-		if share[i] < wantAtLeast {
-			t.Errorf("%s: code travels %.0f%% of the range its prose does; under %.0f%% a screenful of it reads faint",
-				tc.name, 100*share[i], 100*wantAtLeast)
-		}
-		if st.CodeColor == st.Text.Color {
-			t.Errorf("%s: code is set in the prose colour; a fence is quoted matter and reads as such", tc.name)
-		}
-	}
-	if d := math.Abs(share[0] - share[1]); d > 0.15 {
-		t.Errorf("code travels %.0f%% of its page's range in one appearance and %.0f%% in the other", 100*share[0], 100*share[1])
-	}
-}
-
-// TestFromTokensDefaults pins the FromTokens contract: the content surface is
-// the theme's page, heading levels take the typography's document heading scale,
-// code shapes in the theme Code role's typeface and size on the Neutral 200
-// fill, the quote bar is Primary with Neutral 700 text, and rules are
-// separators using Seam.
+// TestFromTokensDefaults pins the FromTokens contract against the platform's
+// colour set: the page a document is read on, the fence and its chip on the
+// platform's one step off that page inside a separator, code set in the text
+// colour, the quote bar and an open task's box at the weakest label strength,
+// rules the separator and a table's lines the platform's grid.
 func TestFromTokensDefaults(t *testing.T) {
-	t.Skip("Style.Text.LinkColor is no longer the Primary pin: the pin reads |Lc| 72.71 over the content where TextFloor is 75 and the derivation walks the ramp; the Material palette leaves in Phase CE (CE2.7).")
-	c, typo := tokens.DefaultLight, tokens.DefaultTypography
-	st := markdown.FromTokens(c, typo)
+	typo := tokens.DefaultTypography
+	for _, tc := range []struct {
+		name string
+		p    tokens.PlatformColors
+	}{{"light", tokens.PlatformLight}, {"dark", tokens.PlatformDark}} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := tc.p
+			st := markdown.FromTokens(p, typo, color.NRGBA{})
 
-	// The surface a document is read on is a role of the document's, and its
-	// value is the theme's page — the same colour the chrome round it
-	// fills a window with, held in the document's own name so that the two
-	// can part later without either being renamed for it.
-	if st.ContentSurface != c.Background {
-		t.Errorf("ContentSurface = %v, want the theme's background %v", st.ContentSurface, c.Background)
-	}
-	if dark := markdown.FromTokens(tokens.DefaultDark, typo); dark.ContentSurface != tokens.DefaultDark.Background {
-		t.Errorf("dark ContentSurface = %v, want that theme's background %v", dark.ContentSurface, tokens.DefaultDark.Background)
-	}
+			// Unstated, the surface a document is read on is the platform's
+			// text background — what it fills a text view with.
+			if st.ContentSurface != p.TextBackground {
+				t.Errorf("ContentSurface = %v, want TextBackground %v", st.ContentSurface, p.TextBackground)
+			}
+			// Stated, it is the caller's, and every mark laid over it follows.
+			card := p.CardFill
+			onCard := markdown.FromTokens(p, typo, card)
+			if onCard.ContentSurface != card {
+				t.Errorf("stated ContentSurface = %v, want %v", onCard.ContentSurface, card)
+			}
+			if onCard.MatchFill == st.MatchFill {
+				t.Errorf("a document on %v marks a match in %v, the same fill as one on %v; the marks are not following the surface",
+					card, onCard.MatchFill, st.ContentSurface)
+			}
 
-	var wantSizes [6]unit.Sp
-	for i := range wantSizes {
-		wantSizes[i] = unit.Sp(typo.DocumentHeadings.Level(i + 1).Size)
-	}
-	if st.HeadingSizes != wantSizes {
-		t.Errorf("HeadingSizes = %v, want the document scale's %v", st.HeadingSizes, wantSizes)
-	}
-	// The scale a document sets its headings in is not the one a screen sets
-	// its own headline in: borrowing the display roles back would put a
-	// document's title a quarter again taller than a reading surface sets one.
-	if st.HeadingSizes[0] >= unit.Sp(typo.HeadlineLarge.Size) {
-		t.Errorf("level 1 sets at %v, the HeadlineLarge display role at %v; the document scale must be the smaller of the two",
-			st.HeadingSizes[0], typo.HeadlineLarge.Size)
-	}
-	if st.Text.Color != c.Text || st.Text.LinkColor != c.Primary {
-		t.Errorf("Text colours = %v/%v, want Text/Primary", st.Text.Color, st.Text.LinkColor)
-	}
-	// A fence is a raised chip: it fills at the raise walked off the content,
-	// lighter than the page it lies on, in both schemes. A plain
-	// ramp step off the pin would not do — it darkens in a light scheme and
-	// lightens in a dark one, reading as two opposite depths.
-	if st.CodeBackground != c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill {
-		t.Errorf("CodeBackground = %v, want the raise off the content %v", st.CodeBackground, c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill)
-	}
-	// The fill is a whisper above a light page, so the rim is what says
-	// where the fence is, and it owes WCAG 1.4.11's 3:1 against the fill it
-	// encloses.
-	for _, tok := range []tokens.ColorTokens{tokens.DefaultLight, tokens.DefaultDark} {
-		s := markdown.FromTokens(tok, typo)
-		for _, edge := range []struct {
-			name      string
-			rim, fill color.NRGBA
-		}{
-			{"CodeBorder", s.CodeBorder, s.CodeBackground},
-			{"CodeChipBorder", s.CodeChipBorder, s.CodeChip},
-		} {
-			if edge.rim.A == 0 {
-				t.Errorf("%s is unset; a whisper of a fill cannot say where a code surface is on its own", edge.name)
-				continue
+			var wantSizes [6]unit.Sp
+			for i := range wantSizes {
+				wantSizes[i] = unit.Sp(typo.DocumentHeadings.Level(i + 1).Size)
 			}
-			if r := themecolor.Magnitude(edge.rim, edge.fill); r < tokens.GraphicFloor {
-				t.Errorf("%s %v measures |Lc| %.2f against %v, under the |Lc| %.1f a graphic owes", edge.name, edge.rim, r, edge.fill, tokens.GraphicFloor)
+			if st.HeadingSizes != wantSizes {
+				t.Errorf("HeadingSizes = %v, want the document scale's %v", st.HeadingSizes, wantSizes)
 			}
-		}
-	}
-	// Plain code is the one colour the two appearances take a different step
-	// for, and it is a measured difference rather than a taste: see codeForeground.
-	// A light document sets code the step below its body text and a dark one
-	// the low-contrast text step, which is where both had it before the light
-	// half was measured against the dark half.
-	if st.CodeColor != c.Ramps.Neutral.Step(800) {
-		t.Errorf("light CodeColor = %v, want Neutral 800 %v", st.CodeColor, c.Ramps.Neutral.Step(800))
-	}
-	if dark := markdown.FromTokens(tokens.DefaultDark, typo); dark.CodeColor != tokens.DefaultDark.Ramps.Neutral.Step(700) {
-		t.Errorf("dark CodeColor = %v, want Neutral 700 %v", dark.CodeColor, tokens.DefaultDark.Ramps.Neutral.Step(700))
-	}
-	// A fence and an inline chip are one surface, so the constructor may not
-	// quietly drift them apart — the edge included, the edge being half of
-	// what a code surface is.
-	if st.CodeChip != st.CodeBackground {
-		t.Errorf("CodeChip = %v, CodeBackground = %v; the code surface is one value", st.CodeChip, st.CodeBackground)
-	}
-	if st.CodeChipBorder != st.CodeBorder {
-		t.Errorf("CodeChipBorder = %v, CodeBorder = %v; the code surface's edge is one value", st.CodeChipBorder, st.CodeBorder)
-	}
-	if st.QuoteBar != c.Primary || st.QuoteColor != c.Ramps.Neutral.Step(700) {
-		t.Errorf("quote colours = %v/%v, want Primary/Neutral 700", st.QuoteBar, st.QuoteColor)
-	}
-	if st.RuleColor != c.Seam {
-		t.Errorf("RuleColor = %v, want Seam %v", st.RuleColor, c.Seam)
-	}
-	if st.TableBorder != c.Seam || st.TableHeaderBackground != c.Ramps.Neutral.Step(300) {
-		t.Errorf("table colours = %v/%v, want Seam/Neutral 300", st.TableBorder, st.TableHeaderBackground)
-	}
-	if want := font.Typeface(tokens.DefaultTypography.Code.Typeface); st.Mono != want {
-		t.Errorf("Mono = %q, want the Code role's %q", st.Mono, want)
-	}
-	if want := unit.Sp(tokens.DefaultTypography.Code.Size); st.CodeSize != want {
-		t.Errorf("CodeSize = %v, want the Code role's %v", st.CodeSize, want)
-	}
-	// Heading space is derived, not left to the caller: wider than the block
-	// gap above every level and tighter below it.
-	for i := range st.HeadingSpaceAbove {
-		if st.HeadingSpaceAbove[i] <= st.BlockGap || st.HeadingSpaceBelow[i] >= st.BlockGap {
-			t.Errorf("level %d heading space = %v/%v above/below against a %v block gap; want more above and less below",
-				i+1, st.HeadingSpaceAbove[i], st.HeadingSpaceBelow[i], st.BlockGap)
-		}
+			// The scale a document sets its headings in is not the one a screen
+			// sets its own headline in: borrowing the display roles back would
+			// put a document's title a quarter again taller than a reading
+			// surface sets one.
+			if st.HeadingSizes[0] >= unit.Sp(typo.HeadlineLarge.Size) {
+				t.Errorf("level 1 sets at %v, the HeadlineLarge display role at %v; the document scale must be the smaller of the two",
+					st.HeadingSizes[0], typo.HeadlineLarge.Size)
+			}
+
+			if st.Text.Color != p.Text || st.Text.LinkColor != p.Link {
+				t.Errorf("prose colours = %v/%v, want Text %v and Link %v", st.Text.Color, st.Text.LinkColor, p.Text, p.Link)
+			}
+			if want := themecolor.Flatten(p.AlternatingContentBackground, p.TextBackground); st.CodeBackground != want {
+				t.Errorf("CodeBackground = %v, want the alternating content fill over the page %v", st.CodeBackground, want)
+			}
+			if want := themecolor.Flatten(p.Separator, st.CodeBackground); st.CodeBorder != want {
+				t.Errorf("CodeBorder = %v, want the separator over the fence %v", st.CodeBorder, want)
+			}
+			if st.CodeColor != p.Text {
+				t.Errorf("CodeColor = %v, want Text %v — code is text, in a monospace face", st.CodeColor, p.Text)
+			}
+			// A fence and an inline chip are one surface, so the constructor may
+			// not quietly drift them apart — the edge included, the edge being
+			// half of what a code surface is.
+			if st.CodeChip != st.CodeBackground {
+				t.Errorf("CodeChip = %v, CodeBackground = %v; the code surface is one value", st.CodeChip, st.CodeBackground)
+			}
+			if st.CodeChipBorder != st.CodeBorder {
+				t.Errorf("CodeChipBorder = %v, CodeBorder = %v; the code surface's edge is one value", st.CodeChipBorder, st.CodeBorder)
+			}
+
+			mark := themecolor.Flatten(p.TertiaryLabel, p.TextBackground)
+			if st.QuoteBar != mark || st.CheckboxBorder != mark {
+				t.Errorf("quote bar %v and open task box %v, want the weakest label over the page %v", st.QuoteBar, st.CheckboxBorder, mark)
+			}
+			if want := themecolor.Flatten(p.SecondaryLabel, p.TextBackground); st.QuoteColor != want {
+				t.Errorf("QuoteColor = %v, want SecondaryLabel over the page %v", st.QuoteColor, want)
+			}
+			if want := themecolor.Flatten(p.Separator, p.TextBackground); st.RuleColor != want {
+				t.Errorf("RuleColor = %v, want the separator over the page %v", st.RuleColor, want)
+			}
+			if st.TableBorder != p.Grid {
+				t.Errorf("TableBorder = %v, want Grid %v", st.TableBorder, p.Grid)
+			}
+			if st.TableHeaderBackground != st.CodeBackground {
+				t.Errorf("TableHeaderBackground = %v, want the one step a document takes off its page %v", st.TableHeaderBackground, st.CodeBackground)
+			}
+			if st.CheckboxFill != p.ControlAccent || st.CheckmarkColor != p.AlternateSelectedControlText {
+				t.Errorf("a set task's box = %v under %v, want ControlAccent under AlternateSelectedControlText", st.CheckboxFill, st.CheckmarkColor)
+			}
+
+			// The find marks are one measured colour at two strengths: the mark
+			// the reader is on is the platform's own pixel, the rest the same
+			// colour laid on less. An arrival is one mark and wears the strong end.
+			if st.CurrentMatchFill != p.FindHighlight {
+				t.Errorf("CurrentMatchFill = %v, want the platform's find highlight %v", st.CurrentMatchFill, p.FindHighlight)
+			}
+			if st.ArrivalFill != st.CurrentMatchFill {
+				t.Errorf("ArrivalFill = %v, CurrentMatchFill = %v; one highlight, whatever brought the reader", st.ArrivalFill, st.CurrentMatchFill)
+			}
+			if st.MatchFill == st.CurrentMatchFill {
+				t.Error("a match and the current match wear the same fill; the reader cannot tell which one they are on")
+			}
+			if st.MatchFill == st.ContentSurface {
+				t.Errorf("a match wears the page's own fill %v, so nothing is marked", st.MatchFill)
+			}
+			// Nothing this constructor hands the rasterizer is translucent.
+			for _, f := range []struct {
+				name string
+				c    color.NRGBA
+			}{
+				{"ContentSurface", st.ContentSurface}, {"CodeBackground", st.CodeBackground},
+				{"CodeBorder", st.CodeBorder}, {"QuoteBar", st.QuoteBar}, {"QuoteColor", st.QuoteColor},
+				{"RuleColor", st.RuleColor}, {"CheckboxBorder", st.CheckboxBorder},
+				{"MatchFill", st.MatchFill}, {"CurrentMatchFill", st.CurrentMatchFill}, {"ArrivalFill", st.ArrivalFill},
+			} {
+				if f.c.A != 0xff {
+					t.Errorf("%s = %v carries a coverage; every name is flattened onto the surface it lands on", f.name, f.c)
+				}
+			}
+
+			if want := font.Typeface(typo.Code.Typeface); st.Mono != want {
+				t.Errorf("Mono = %q, want the Code role's %q", st.Mono, want)
+			}
+			if want := unit.Sp(typo.Code.Size); st.CodeSize != want {
+				t.Errorf("CodeSize = %v, want the Code role's %v", st.CodeSize, want)
+			}
+			// Heading space is derived, not left to the caller: wider than the
+			// block gap above every level and tighter below it.
+			for i := range st.HeadingSpaceAbove {
+				if st.HeadingSpaceAbove[i] <= st.BlockGap || st.HeadingSpaceBelow[i] >= st.BlockGap {
+					t.Errorf("level %d heading space = %v/%v above/below against a %v block gap; want more above and less below",
+						i+1, st.HeadingSpaceAbove[i], st.HeadingSpaceBelow[i], st.BlockGap)
+				}
+			}
+		})
 	}
 }

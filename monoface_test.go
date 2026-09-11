@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"fmt"
+	stdcolor "image/color"
 	"testing"
 
 	"gioui.org/font"
@@ -30,7 +31,7 @@ func TestFencedBlockShapesInJetBrainsMono(t *testing.T) {
 	if typ.Code.Typeface != "JetBrains Mono" {
 		t.Fatalf("Code.Typeface = %q, want JetBrains Mono", typ.Code.Typeface)
 	}
-	style := markdown.FromTokens(tokens.DefaultDark, typ)
+	style := markdown.FromTokens(tokens.PlatformDark, typ, stdcolor.NRGBA{})
 	if style.Mono != "JetBrains Mono" {
 		t.Fatalf("FromTokens set Mono %q, want JetBrains Mono", style.Mono)
 	}
@@ -90,7 +91,7 @@ func TestFencedBlockShapesInJetBrainsMono(t *testing.T) {
 // stored goldens draw through. Choosing JetBrains Mono is a runtime
 // fact; it must not move these.
 func TestFromTokensDefaultMonoStaysRobotoMono(t *testing.T) {
-	st := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	st := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	if st.Mono != "Roboto Mono" {
 		t.Errorf("default Mono = %q, want Roboto Mono", st.Mono)
 	}

@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"image"
+	stdcolor "image/color"
 	"testing"
 
 	"gioui.org/layout"
@@ -72,12 +73,12 @@ func contentEdge(runs [][2]int) int {
 
 // renderList captures a document over a filled background, so the scans above
 // read one document's pixels against a colour they know.
-func renderList(t *testing.T, size image.Point, colors tokens.ColorTokens, style markdown.Style, src string) *image.RGBA {
+func renderList(t *testing.T, size image.Point, colors tokens.PlatformColors, style markdown.Style, src string) *image.RGBA {
 	t.Helper()
 	shaper := defaultShaper(t)
 	d := markdown.NewDocument(markdown.Parse([]byte(src)))
 	return golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return d.LayoutColumn(gtx, shaper, style)
 	})
 }
@@ -95,16 +96,16 @@ func TestALongNumberPaintsWholeBesideItsItem(t *testing.T) {
 	shaper := defaultShaper(t)
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"light", tokens.DefaultLight},
-		{"dark", tokens.DefaultDark},
+		{"light", tokens.PlatformLight},
+		{"dark", tokens.PlatformDark},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, stdcolor.NRGBA{})
 			size := image.Pt(360, 40)
 			alone := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
-				paint.FillShape(gtx.Ops, tc.colors.Background,
+				paint.FillShape(gtx.Ops, tc.colors.TextBackground,
 					clip.Rect{Max: gtx.Constraints.Max}.Op())
 				return paragraph.Render(shaper, style.Text,
 					[]paragraph.SpanStyle{{Content: "291."}}, paragraph.Idle())(gtx)
@@ -135,9 +136,9 @@ func TestALongNumberPaintsWholeBesideItsItem(t *testing.T) {
 // rather than to the item: numbers of three and of four digits stand in one
 // column, so the reader follows a single content edge down the list.
 func TestEveryItemOfAListSharesItsNumberColumn(t *testing.T) {
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	src := "998. " + numberProbeText + "\n999. " + numberProbeText + "\n1000. " + numberProbeText + "\n"
-	img := renderList(t, image.Pt(360, 100), tokens.DefaultLight, style, src)
+	img := renderList(t, image.Pt(360, 100), tokens.PlatformLight, style, src)
 	bands := drawnBands(img, 0, img.Bounds().Max.X)
 	if len(bands) != 3 {
 		t.Fatalf("scanned %d rows of drawn pixels, want the 3 items of the probe: %v", len(bands), bands)
@@ -160,10 +161,10 @@ func TestEveryItemOfAListSharesItsNumberColumn(t *testing.T) {
 // the column grows only when a number needs it, so a list numbered from 1 sets
 // its content exactly where a bulleted list does — at [markdown.Style.Indent].
 func TestASingleDigitListKeepsTheIndentColumn(t *testing.T) {
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	size := image.Pt(360, 40)
-	numbered := renderList(t, size, tokens.DefaultLight, style, "1. "+numberProbeText+"\n")
-	bulleted := renderList(t, size, tokens.DefaultLight, style, "- "+numberProbeText+"\n")
+	numbered := renderList(t, size, tokens.PlatformLight, style, "1. "+numberProbeText+"\n")
+	bulleted := renderList(t, size, tokens.PlatformLight, style, "- "+numberProbeText+"\n")
 	got := contentEdge(drawnRuns(numbered, 0, size.Y))
 	want := contentEdge(drawnRuns(bulleted, 0, size.Y))
 	if got < 0 || want < 0 {

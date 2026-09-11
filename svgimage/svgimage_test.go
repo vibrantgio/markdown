@@ -2,6 +2,7 @@ package svgimage_test
 
 import (
 	"image"
+	stdcolor "image/color"
 	"testing"
 	"testing/fstest"
 
@@ -30,7 +31,7 @@ func testFS() fstest.MapFS {
 // is served by the provider as vector geometry.
 func TestDocumentRendersSVGGolden(t *testing.T) {
 	shaper := tokens.DefaultTypography.DeterministicShaper()
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	style.Images = svgimage.New(testFS())
 	blocks := markdown.Parse([]byte("before\n\n![vector icon](icon.svg)\n\nafter\n"))
 	d := markdown.NewDocument(blocks)
@@ -38,7 +39,7 @@ func TestDocumentRendersSVGGolden(t *testing.T) {
 	// 200px is tall enough to hold all three blocks, the paragraph under the
 	// image included.
 	golden.Render(t, "svg-icon-light", image.Pt(200, 200), func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.Layout(gtx, shaper, style)
 		})

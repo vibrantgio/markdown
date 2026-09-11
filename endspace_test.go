@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"image"
+	stdcolor "image/color"
 	"testing"
 
 	"gioui.org/layout"
@@ -40,7 +41,7 @@ const endSpaceUnderTest = unit.Dp(40)
 func endShot(t *testing.T, src string, size image.Point, end unit.Dp, move func(*markdown.Document)) int {
 	t.Helper()
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	style.EndSpace = end
 	doc := markdown.NewDocument(markdown.Parse([]byte(src)))
 
@@ -60,7 +61,7 @@ func endShot(t *testing.T, src string, size image.Point, end unit.Dp, move func(
 	frame()
 
 	img := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return doc.Layout(gtx, shaper, style)
 	})
 	return blankBelow(img)
@@ -69,7 +70,7 @@ func endShot(t *testing.T, src string, size image.Point, end unit.Dp, move func(
 // blankBelow returns the number of rows at the foot of img carrying nothing
 // drawn.
 func blankBelow(img *image.RGBA) int {
-	background := tokens.DefaultLight.Background
+	background := tokens.PlatformLight.TextBackground
 	b := img.Bounds()
 	for y := b.Max.Y - 1; y >= b.Min.Y; y-- {
 		for x := b.Min.X; x < b.Max.X; x++ {
@@ -193,7 +194,7 @@ func TestAnEmbeddedColumnKeepsItsContentHeight(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse([]byte(longDoc(4)))
 	measure := func(end unit.Dp) layout.Dimensions {
-		style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+		style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 		style.EndSpace = end
 		var ops op.Ops
 		return markdown.NewDocument(blocks).LayoutColumn(layout.Context{

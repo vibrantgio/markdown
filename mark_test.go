@@ -20,10 +20,10 @@ Short.
 A third paragraph, also wide, so the marked one is not the widest.
 `
 
-// markFill is the colour the marking is probed by: the reserved highlighter
-// resolved for the light scheme, which is the colour the arrival marking is
-// drawn in and is not any of this style's own.
-var markFill = tokens.DefaultLight.Highlight
+// markFill is the colour the marking is probed by: the platform's find
+// highlight for the light scheme, which is what the arrival marking is drawn
+// in and is not any other fill this style paints.
+var markFill = tokens.PlatformLight.FindHighlight
 
 // `fillBounds` returns the bounding box of the pixels painted exactly in
 // `markFill`, and how many there are. Glyphs drawn over the fill are
@@ -76,8 +76,8 @@ func drawnBounds(img *image.RGBA, bg color.NRGBA) image.Rectangle {
 func TestHighlightMarksOneBlockAndNothingElse(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse([]byte(markSource))
-	colors := tokens.DefaultLight
-	style := markdown.FromTokens(colors, tokens.DefaultTypography)
+	colors := tokens.PlatformLight
+	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
 	size := image.Pt(560, 200)
 
 	shot := func(mark func(*markdown.Document)) *image.RGBA {
@@ -104,7 +104,7 @@ func TestHighlightMarksOneBlockAndNothingElse(t *testing.T) {
 		t.Errorf("ClearHighlight left %d pixels changed; the marking is frame state", diff)
 	}
 
-	drawn := drawnBounds(plain, colors.Background)
+	drawn := drawnBounds(plain, colors.TextBackground)
 	if box.Max.X >= drawn.Max.X {
 		t.Errorf("the fill reaches x=%d, the document's widest line reaches x=%d; "+
 			"the marking is sized to the column, not to the block", box.Max.X, drawn.Max.X)
@@ -134,8 +134,8 @@ func TestHighlightMarksOneBlockAndNothingElse(t *testing.T) {
 func TestHighlightOutsideTheDocumentMarksNothing(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse([]byte(markSource))
-	colors := tokens.DefaultLight
-	style := markdown.FromTokens(colors, tokens.DefaultTypography)
+	colors := tokens.PlatformLight
+	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
 	size := image.Pt(560, 200)
 
 	shot := func(mark func(*markdown.Document)) *image.RGBA {

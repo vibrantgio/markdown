@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"image"
+	stdcolor "image/color"
 	"strings"
 	"testing"
 
@@ -34,7 +35,7 @@ func newReader(t *testing.T, src string, size image.Point) *reader {
 		doc:    markdown.NewDocument(blocks),
 		blocks: blocks,
 		shaper: defaultShaper(t),
-		style:  markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography),
+		style:  markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{}),
 		size:   size,
 	}
 }

@@ -3,6 +3,7 @@ package markdown_test
 import (
 	"fmt"
 	"image"
+	stdcolor "image/color"
 	"testing"
 
 	"gioui.org/layout"
@@ -73,7 +74,7 @@ func heading(level int) string {
 // and the space below it is narrower — and above is at least twice below.
 func TestAHeadingKeepsMoreSpaceAboveThanBelow(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 
 	ordinary := gapBetween(t, shaper, style, spacingProse, spacingProse)
 	for level := 1; level <= 6; level++ {
@@ -95,7 +96,7 @@ func TestAHeadingKeepsMoreSpaceAboveThanBelow(t *testing.T) {
 // strictly smaller at level six than at level one on both sides.
 func TestDeeperHeadingsEarnLessSpace(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 
 	var above, below [7]int
 	for level := 1; level <= 6; level++ {
@@ -121,7 +122,7 @@ func TestDeeperHeadingsEarnLessSpace(t *testing.T) {
 // heading's own trailing space and nothing else.
 func TestTheFirstBlockTakesNoSpaceAbove(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 
 	title := heading(1)
 	below := gapBetween(t, shaper, style, title, spacingProse)
@@ -144,7 +145,7 @@ func TestTheFirstBlockTakesNoSpaceAbove(t *testing.T) {
 // paragraph.
 func TestStackedHeadingsCloseUp(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 
 	pair := gapBetween(t, shaper, style, heading(2), heading(3))
 	overProse := gapBetween(t, shaper, style, heading(2), spacingProse)
@@ -168,7 +169,7 @@ func TestStackedHeadingsCloseUp(t *testing.T) {
 // laid out before headings had space of their own.
 func TestAStyleWithoutHeadingSpaceKeepsTheOldRhythm(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	style.HeadingSpaceAbove = [6]unit.Dp{}
 	style.HeadingSpaceBelow = [6]unit.Dp{}
 
@@ -195,7 +196,7 @@ const (
 // other transition into a list keep the ordinary gap.
 func TestAParagraphClosesUpTowardsTheListItAnnounces(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 
 	ordinary := gapBetween(t, shaper, style, spacingProse, spacingProse)
 	seam := gapBetween(t, shaper, style, spacingAnnounce, spacingList)
@@ -224,7 +225,7 @@ func TestAParagraphClosesUpTowardsTheListItAnnounces(t *testing.T) {
 // colon need not announce anything.
 func TestTheAnnouncedSeamIgnoresPunctuation(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 
 	colon := gapBetween(t, shaper, style, "There are two open questions:", spacingList)
 	plain := gapBetween(t, shaper, style, "There are two open questions.", spacingList)
@@ -239,7 +240,7 @@ func TestTheAnnouncedSeamIgnoresPunctuation(t *testing.T) {
 // before the seam existed.
 func TestAStyleWithoutListSpaceKeepsTheOldRhythm(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	style.ListSpaceAbove = 0
 
 	ordinary := gapBetween(t, shaper, style, spacingProse, spacingProse)
@@ -254,7 +255,7 @@ func TestAStyleWithoutListSpaceKeepsTheOldRhythm(t *testing.T) {
 // list does, or the same note reads differently depending on where it is put.
 func TestTheEmbeddedColumnSpacesHeadingsLikeTheScrollingList(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	src := heading(1) + "\n\n" + spacingProse + "\n\n" + heading(2) + "\n\n" + heading(3) + "\n\n" + spacingProse + "\n"
 
 	// The list closes the document with the last block's trailing space; the
@@ -300,10 +301,10 @@ const pitchProse = "Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg 
 // held exactly.
 func TestTheLinePitchInsideAParagraphMatchesTheReference(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformDark, tokens.DefaultTypography, stdcolor.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(pitchProse)))
 	img := golden.Capture(t, image.Pt(120, 220), func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, tokens.DefaultDark.Background,
+		paint.FillShape(gtx.Ops, tokens.PlatformDark.TextBackground,
 			clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return d.LayoutColumn(gtx, shaper, style)
 	})
@@ -393,10 +394,10 @@ func blankRuns(img *image.RGBA) []int {
 // last ordinary gap and the announcing seam.
 func TestTheRenderedRhythmMatchesTheReference(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformDark, tokens.DefaultTypography, stdcolor.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(rhythmProse)))
 	img := golden.Capture(t, image.Pt(560, 900), func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, tokens.DefaultDark.Background,
+		paint.FillShape(gtx.Ops, tokens.PlatformDark.TextBackground,
 			clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return d.LayoutColumn(gtx, shaper, style)
 	})

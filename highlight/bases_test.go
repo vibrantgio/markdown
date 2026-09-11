@@ -88,8 +88,8 @@ func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 	// The proof it is a base and not just a name: wearing it colours code,
 	// and colours it differently from the default.
 	const snippet = "// hello\nfunc greet() {}\n"
-	mine := worn(t, "lantern-day", tokens.DefaultLight).Highlight("go", snippet)
-	theirs := worn(t, DefaultBase, tokens.DefaultLight).Highlight("go", snippet)
+	mine := worn(t, "lantern-day", tokens.PlatformLight).Highlight("go", snippet)
+	theirs := worn(t, DefaultBase, tokens.PlatformLight).Highlight("go", snippet)
 	if len(mine) == 0 {
 		t.Fatal("wearing the loaded style coloured nothing")
 	}
@@ -118,11 +118,11 @@ func TestALoadedPairHasTwoSides(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name string
-		tok  tokens.ColorTokens
+		tok  tokens.PlatformColors
 		want stdcolor.NRGBA
 	}{
-		{"light", tokens.DefaultLight, stdcolor.NRGBA{R: 0xfd, G: 0xf6, B: 0xe3, A: 0xff}},
-		{"dark", tokens.DefaultDark, stdcolor.NRGBA{R: 0x00, G: 0x2b, B: 0x36, A: 0xff}},
+		{"light", tokens.PlatformLight, stdcolor.NRGBA{R: 0xfd, G: 0xf6, B: 0xe3, A: 0xff}},
+		{"dark", tokens.PlatformDark, stdcolor.NRGBA{R: 0x00, G: 0x2b, B: 0x36, A: 0xff}},
 	} {
 		if got := worn(t, "lantern-day", tc.tok).CodeBackground; got != tc.want {
 			t.Errorf("%s theme put %v under the fence, want the pair's %s member's own background %v",

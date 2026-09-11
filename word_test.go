@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"image"
+	stdcolor "image/color"
 	"testing"
 	"time"
 
@@ -96,8 +97,8 @@ func TestHeadingWordSkipsQuotedAndPartialWords(t *testing.T) {
 func TestHeadingWordNothingIsLookedUpAtRest(t *testing.T) {
 	shaper := defaultShaper(t)
 	d, _ := wordDoc(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
-	golden.Capture(t, wordSize, themed(d, shaper, style, tokens.DefaultLight))
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
+	golden.Capture(t, wordSize, themed(d, shaper, style, tokens.PlatformLight))
 	if n := markdown.HeadingWordPlaces(d); n != 0 {
 		t.Errorf("the document looked in %d places with the key up, want none", n)
 	}
@@ -108,13 +109,13 @@ func TestHeadingWordNothingIsLookedUpAtRest(t *testing.T) {
 // the same page. At rest a heading word is prose.
 func TestHeadingWordRestsAsProse(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 
 	plain, _ := wordDoc(t)
-	rest := golden.Capture(t, wordSize, themed(plain, shaper, style, tokens.DefaultLight))
+	rest := golden.Capture(t, wordSize, themed(plain, shaper, style, tokens.PlatformLight))
 
 	d, para := wordDoc(t)
-	w := themed(d, shaper, style, tokens.DefaultLight)
+	w := themed(d, shaper, style, tokens.PlatformLight)
 	held := headingWordFrames(t, d, para, w, 0)
 	if diff := golden.PixelDiff(rest, held); diff == 0 {
 		t.Error("the held key moved no pixels; the word under the pointer must draw as a link")
@@ -151,15 +152,15 @@ func TestHeadingWordGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	cases := []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"heading-word-light", tokens.DefaultLight},
-		{"heading-word-dark", tokens.DefaultDark},
+		{"heading-word-light", tokens.PlatformLight},
+		{"heading-word-dark", tokens.PlatformDark},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			d, para := wordDoc(t)
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, stdcolor.NRGBA{})
 			w := themed(d, shaper, style, tc.colors)
 			headingWordFrames(t, d, para, w, 0)
 			golden.Render(t, tc.name, wordSize, w)
@@ -177,7 +178,7 @@ const followSource = wordSource + "\nFiller.\n\nFiller.\n\nFiller.\n\nFiller.\n\
 // and marks it, the way a followed link arrives.
 func TestHeadingWordFollowGoesToTheHeading(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	blocks := markdown.Parse([]byte(followSource))
 	d := markdown.NewDocument(blocks)
 
@@ -192,7 +193,7 @@ func TestHeadingWordFollowGoesToTheHeading(t *testing.T) {
 			Ops:         ops,
 			Source:      r.Source(),
 		}
-		paint.FillShape(gtx.Ops, tokens.DefaultLight.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		d.Layout(gtx, shaper, style)
 		r.Frame(ops)
 	}
@@ -245,7 +246,7 @@ func TestHeadingWordFollowGoesToTheHeading(t *testing.T) {
 // off, and never left behind.
 func TestHeadingWordArrivalFades(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	if style.ArrivalFill.A == 0 {
 		t.Fatal("FromTokens left the arrival fill with no alpha in it")
 	}

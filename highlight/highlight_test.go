@@ -120,17 +120,17 @@ func TestHighlightUnknownLanguage(t *testing.T) {
 
 // themedSnippetWidget renders the fenced Go snippet document on the given
 // theme's background, applying restyle to the token-derived style first.
-func themedSnippetWidget(t *testing.T, colors tokens.ColorTokens, restyle func(*markdown.Style)) layout.Widget {
+func themedSnippetWidget(t *testing.T, colors tokens.PlatformColors, restyle func(*markdown.Style)) layout.Widget {
 	t.Helper()
 	shaper := tokens.DefaultTypography.DeterministicShaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
-	style := markdown.FromTokens(colors, tokens.DefaultTypography)
+	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
 	if restyle != nil {
 		restyle(&style)
 	}
 	d := markdown.NewDocument(blocks)
 	return func(gtx layout.Context) layout.Dimensions {
-		paint.FillShape(gtx.Ops, colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		paint.FillShape(gtx.Ops, colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.Layout(gtx, shaper, style)
 		})
@@ -141,7 +141,7 @@ func themedSnippetWidget(t *testing.T, colors tokens.ColorTokens, restyle func(*
 // background, with or without the chroma hook.
 func snippetWidget(t *testing.T, highlighted bool) layout.Widget {
 	t.Helper()
-	return themedSnippetWidget(t, tokens.DefaultLight, func(s *markdown.Style) {
+	return themedSnippetWidget(t, tokens.PlatformLight, func(s *markdown.Style) {
 		if highlighted {
 			s.Highlight = highlight.New("github")
 		}
@@ -156,11 +156,11 @@ func snippetWidget(t *testing.T, highlighted bool) layout.Widget {
 func TestGoSnippetGolden(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 		style  string
 	}{
-		{"go-snippet-light", tokens.DefaultLight, "github"},
-		{"go-snippet-dark", tokens.DefaultDark, "github-dark"},
+		{"go-snippet-light", tokens.PlatformLight, "github"},
+		{"go-snippet-dark", tokens.PlatformDark, "github-dark"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			golden.Render(t, tc.name, image.Pt(560, 120), themedSnippetWidget(t, tc.colors, func(s *markdown.Style) {
@@ -181,19 +181,19 @@ func TestWornSnippetGolden(t *testing.T) {
 	code := "// greet returns a greeting\n" + goSnippet
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"go-snippet-worn-light", tokens.DefaultLight},
-		{"go-snippet-worn-dark", tokens.DefaultDark},
+		{"go-snippet-worn-light", tokens.PlatformLight},
+		{"go-snippet-worn-dark", tokens.PlatformDark},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			shaper := tokens.DefaultTypography.DeterministicShaper()
 			blocks := markdown.Parse([]byte("```go\n" + code + "\n```\n"))
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
 			highlight.Wear(&style, highlight.DefaultBase, tc.colors)
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, image.Pt(560, 140), func(gtx layout.Context) layout.Dimensions {
-				paint.FillShape(gtx.Ops, tc.colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+				paint.FillShape(gtx.Ops, tc.colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 				return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return d.Layout(gtx, shaper, style)
 				})
@@ -215,15 +215,15 @@ func TestInlineChipsStayOnTheThemesFill(t *testing.T) {
 	size := image.Pt(560, 160)
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"light", tokens.DefaultLight},
-		{"dark", tokens.DefaultDark},
+		{"light", tokens.PlatformLight},
+		{"dark", tokens.PlatformDark},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			shaper := tokens.DefaultTypography.DeterministicShaper()
 			blocks := markdown.Parse([]byte(source))
-			plain := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			plain := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
 			style := plain
 			highlight.Wear(&style, highlight.DefaultBase, tc.colors)
 			if style.CodeChip != plain.CodeChip {
@@ -234,7 +234,7 @@ func TestInlineChipsStayOnTheThemesFill(t *testing.T) {
 			}
 			d := markdown.NewDocument(blocks)
 			img := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
-				paint.FillShape(gtx.Ops, tc.colors.Background, clip.Rect{Max: gtx.Constraints.Max}.Op())
+				paint.FillShape(gtx.Ops, tc.colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 				return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return d.Layout(gtx, shaper, style)
 				})
@@ -261,15 +261,15 @@ func TestCodeColorReachesHighlightedBlock(t *testing.T) {
 	size := image.Pt(560, 120)
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 		style  string
 	}{
-		{"light", tokens.DefaultLight, "github"},
-		{"dark", tokens.DefaultDark, "github-dark"},
+		{"light", tokens.PlatformLight, "github"},
+		{"dark", tokens.PlatformDark, "github-dark"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			token := markdown.FromTokens(tc.colors, tokens.DefaultTypography).CodeColor
-			override := tc.colors.Primary
+			token := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{}).CodeColor
+			override := tc.colors.ControlAccent
 			themed := golden.Capture(t, size, themedSnippetWidget(t, tc.colors, func(s *markdown.Style) {
 				s.Highlight = highlight.New(tc.style)
 			}))
@@ -361,7 +361,7 @@ func TestHighlightRunsShapeInMono(t *testing.T) {
 	if spans == nil {
 		t.Fatal("highlighter returned nil for Go code")
 	}
-	style := markdown.FromTokens(tokens.DefaultDark, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformDark, tokens.DefaultTypography, color.NRGBA{})
 
 	combos := map[string]font.Font{}
 	var bold, italic int
@@ -427,7 +427,7 @@ func TestHighlightKeepsLayout(t *testing.T) {
 	shaper := tokens.DefaultTypography.DeterministicShaper()
 	blocks := markdown.Parse([]byte("```go\n" + goSnippet + "\n```\n"))
 	measure := func(hl markdown.Highlighter) int {
-		style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+		style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 		style.Highlight = hl
 		var ops op.Ops
 		gtx := layout.Context{

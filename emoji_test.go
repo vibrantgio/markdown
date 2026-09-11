@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"image"
+	stdcolor "image/color"
 	"strings"
 	"testing"
 	"unicode"
@@ -50,7 +51,7 @@ func resolvedGrin(t *testing.T, shaper *text.Shaper, f font.Font) (gid uint32, f
 func TestEmojiResolvesInEachConstruct(t *testing.T) {
 	typ := tokens.DefaultTypography.WithEmoji()
 	shaper := typ.DeterministicShaper()
-	style := markdown.FromTokens(tokens.DefaultLight, typ)
+	style := markdown.FromTokens(tokens.PlatformLight, typ, stdcolor.NRGBA{})
 	appended := len(typ.Faces) - 1
 
 	cases := []struct {
@@ -184,14 +185,14 @@ func TestEmojiHelloGolden(t *testing.T) {
 	size := emojiHelloSize
 	cases := []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"emoji-hello-light", tokens.DefaultLight},
-		{"emoji-hello-dark", tokens.DefaultDark},
+		{"emoji-hello-light", tokens.PlatformLight},
+		{"emoji-hello-dark", tokens.PlatformDark},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, stdcolor.NRGBA{})
 			painted := golden.Capture(t, size, themed(markdown.NewDocument(blocks), with, style, tc.colors))
 			golden.Compare(t, tc.name, painted)
 

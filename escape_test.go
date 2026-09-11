@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"image"
+	stdcolor "image/color"
 	"reflect"
 	"testing"
 
@@ -150,13 +151,13 @@ func TestEscapesInTableCells(t *testing.T) {
 // glyph, and the widths it shifts would move every glyph after it.
 func TestEscapedTableCellsRenderAsLiterals(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	size := image.Pt(400, 160)
 
 	shot := func(row string) *image.RGBA {
 		src := "| Quant | Note |\n|---|---|\n" + row
 		d := markdown.NewDocument(markdown.Parse([]byte(src)))
-		return golden.Capture(t, size, themed(d, shaper, style, tokens.DefaultLight))
+		return golden.Capture(t, size, themed(d, shaper, style, tokens.PlatformLight))
 	}
 
 	escaped := shot(`| q5\_0 | q8\_0 |` + "\n")

@@ -53,10 +53,10 @@ func countExactly(img *image.RGBA, c color.NRGBA) int {
 // findShot lays the find source out at the given query and current index and
 // returns the document and its capture. A nil query leaves the document
 // unmarked.
-func findShot(t *testing.T, colors tokens.ColorTokens, set func(*markdown.Document)) (*markdown.Document, *image.RGBA) {
+func findShot(t *testing.T, colors tokens.PlatformColors, set func(*markdown.Document)) (*markdown.Document, *image.RGBA) {
 	t.Helper()
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(colors, tokens.DefaultTypography)
+	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(findSource)))
 	if set != nil {
 		set(d)
@@ -104,8 +104,8 @@ func TestFindIgnoresCase(t *testing.T) {
 func TestFindWithAnEmptyQueryMarksNothing(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
-	}{{"light", tokens.DefaultLight}, {"dark", tokens.DefaultDark}} {
+		colors tokens.PlatformColors
+	}{{"light", tokens.PlatformLight}, {"dark", tokens.PlatformDark}} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, plain := findShot(t, tc.colors, nil)
 			d, empty := findShot(t, tc.colors, func(d *markdown.Document) { d.Find("", 0) })
@@ -132,10 +132,10 @@ func TestFindWithAnEmptyQueryMarksNothing(t *testing.T) {
 func TestFindMarksItsMatchesAndTheCurrentOneMoreStrongly(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
-	}{{"light", tokens.DefaultLight}, {"dark", tokens.DefaultDark}} {
+		colors tokens.PlatformColors
+	}{{"light", tokens.PlatformLight}, {"dark", tokens.PlatformDark}} {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
 			if style.MatchFill == style.CurrentMatchFill {
 				t.Fatalf("both fills are %v; the current match cannot be told from the others", style.MatchFill)
 			}
@@ -150,7 +150,7 @@ func TestFindMarksItsMatchesAndTheCurrentOneMoreStrongly(t *testing.T) {
 			if n := countExactly(marked, style.CurrentMatchFill); n == 0 {
 				t.Errorf("no pixel wears %v; the current match is marked like the rest", style.CurrentMatchFill)
 			}
-			page := countExactly(marked, tc.colors.Background)
+			page := countExactly(marked, tc.colors.TextBackground)
 			if page == 0 {
 				t.Error("nothing is left of the page; the marking covered the document")
 			}
@@ -162,8 +162,8 @@ func TestFindMarksItsMatchesAndTheCurrentOneMoreStrongly(t *testing.T) {
 // owns: the same query at a different index marks the same matches and moves
 // only which of them is the current one.
 func TestFindMovesTheStrongerFillWithTheCurrentIndex(t *testing.T) {
-	colors := tokens.DefaultLight
-	style := markdown.FromTokens(colors, tokens.DefaultTypography)
+	colors := tokens.PlatformLight
+	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
 	_, first := findShot(t, colors, func(d *markdown.Document) { d.Find("needle", 0) })
 	_, third := findShot(t, colors, func(d *markdown.Document) { d.Find("needle", 2) })
 	if golden.PixelDiff(first, third) == 0 {
@@ -188,8 +188,8 @@ func TestFindReportsWhereTheMatchesLanded(t *testing.T) {
 		}
 	}
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
-	golden.Capture(t, image.Pt(560, 420), themed(d, shaper, style, tokens.DefaultLight))
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
+	golden.Capture(t, image.Pt(560, 420), themed(d, shaper, style, tokens.PlatformLight))
 
 	matches := d.Matches()
 	prev := -1
@@ -214,9 +214,9 @@ func TestFindReportsWhereTheMatchesLanded(t *testing.T) {
 // paragraph, in a list item, in a quote, in a table cell and in a fence
 // alike.
 func TestFindRectanglesLandOnTheMarks(t *testing.T) {
-	colors := tokens.DefaultLight
+	colors := tokens.PlatformLight
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(colors, tokens.DefaultTypography)
+	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(findSource)))
 	d.Find("needle", 1)
 	// themed mounts the document at a uniform 8 dp inset, which is what
@@ -263,9 +263,9 @@ func inside(img *image.RGBA, r image.Rectangle, c color.NRGBA) bool {
 // into, so seating a later block at the top of the viewport moves them with
 // it, and a match above the viewport is reported above it.
 func TestFindRectanglesFollowTheScroll(t *testing.T) {
-	colors := tokens.DefaultLight
+	colors := tokens.PlatformLight
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(colors, tokens.DefaultTypography)
+	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
 	blocks := markdown.Parse([]byte(findSource))
 	d := markdown.NewDocumentAt(blocks, 3)
 	d.Find("needle", 0)
@@ -321,10 +321,10 @@ var findViewport = image.Pt(560, 240)
 // over.
 func TestScrollToMatchBringsTheMatchIntoView(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(longFindSource())))
 	d.Find("needle", 0)
-	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.DefaultLight)) }
+	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.PlatformLight)) }
 	shot()
 	if r := d.Matches()[2].Rect; !r.Empty() {
 		t.Fatalf("the last match reports %v from the top of the document; it is not laid out there", r)
@@ -351,10 +351,10 @@ func TestScrollToMatchBringsTheMatchIntoView(t *testing.T) {
 // document, because a match at either end is bounded by the document itself.
 func TestScrollToMatchSeatsTheMatchNearTheMiddle(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(longFindSource())))
 	d.Find("needle", 0)
-	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.DefaultLight)) }
+	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.PlatformLight)) }
 	shot()
 
 	d.ScrollToMatch(1)
@@ -375,10 +375,10 @@ func TestScrollToMatchSeatsTheMatchNearTheMiddle(t *testing.T) {
 // step: the reader is not moved for a match they are already looking at.
 func TestScrollToMatchLeavesAMatchOnScreenWhereItIs(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(longFindSource())))
 	d.Find("needle", 0)
-	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.DefaultLight)) }
+	shot := func() { golden.Capture(t, findViewport, themed(d, shaper, style, tokens.PlatformLight)) }
 	shot()
 	shot()
 	before := d.Position()
@@ -445,7 +445,7 @@ func TestMatchPlacesCountTheHeightsTheLayoutMeasured(t *testing.T) {
 	before := d.MatchPlaces()
 
 	golden.Capture(t, findViewport, themed(d, defaultShaper(t),
-		markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography), tokens.DefaultLight))
+		markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{}), tokens.PlatformLight))
 	after := d.MatchPlaces()
 	if after[0] <= before[0] {
 		t.Errorf("the first match lies at %v once the fence over it has been measured and at %v before; a measured height counts", after[0], before[0])

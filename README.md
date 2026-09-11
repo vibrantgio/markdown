@@ -82,9 +82,9 @@ var (
     highlightDark  = highlight.New("github-dark")
 )
 
-func docsStyle(c tokens.ColorTokens, typo tokens.Typography) markdown.Style {
-    st := markdown.FromTokens(c, typo)
-    if isDarkColor(c.Background) {
+func docsStyle(p tokens.PlatformColors, typo tokens.Typography) markdown.Style {
+    st := markdown.FromTokens(p, typo, color.NRGBA{})
+    if isDarkAppearance(p) {
         st.Highlight = highlightDark
     } else {
         st.Highlight = highlightLight
@@ -99,8 +99,8 @@ colours were fitted to that author's background rather than to the fill your
 theme puts under a fence. `Wear` puts that background there too:
 
 ```go
-st := markdown.FromTokens(c, typo)
-highlight.Wear(&st, highlight.DefaultBase, c)
+st := markdown.FromTokens(p, typo, color.NRGBA{})
+highlight.Wear(&st, highlight.DefaultBase, p)
 ```
 
 A syntax base is a background, a body colour and a couple of dozen accents
@@ -261,26 +261,22 @@ the layout code reads the theme for spacing and for radii and for no colour at
 all, so a document looks like what its `Style` says and nothing reaches around
 it.
 
-The roles are the content's own even where the values are chrome's today.
-`FromTokens` takes the surface from the theme's background, the prose
-foreground from its body-text pin, the chip from the same neutral step a fence
-is filled with — the numbers a card or a toolbar would reach for, held here in
-the content's name.
-Naming them apart costs nothing now and is what lets the reading surface move
-later without the chrome moving with it.
+The fields are the content's own even where the values are the chrome's
+today. `FromTokens` takes the surface from the platform's text background, the
+prose foreground from its text colour, the chip from the same step a fence is
+filled with — the names a card or a toolbar would reach for, held here in the
+content's own. Naming them apart costs nothing now and is what lets the
+reading surface move later without the chrome moving with it.
 
 `Style.ContentSurface` is a record rather than a draw. Nothing here fills the
 page: a document is laid into a space its holder owns and the holder paints the
-surface. But the library measures against it — a fence wearing a syntax base
-takes its edge from whether that base's background can be told from the surface
-under it, and "too near to be seen against it" is unanswerable without knowing
-which surface. A document mounted on something other than the theme's
-background says so:
+surface. But every name the constructor flattens lands on it — the fence's
+fill, the quote bar, the find marks — so a document mounted on something other
+than the platform's text background says so, and the third argument is where:
 
 ```go
-st := markdown.FromTokens(c, typo)
-st.ContentSurface = panelFill // inset into a panel rather than laid on the page
-highlight.Wear(&st, highlight.DefaultBase, c)
+st := markdown.FromTokens(p, typo, panelFill) // inset into a panel rather than laid on the page
+highlight.Wear(&st, highlight.DefaultBase, p)
 ```
 
 A `Style` built by hand names no surface, and the measure falls back to the
@@ -365,7 +361,7 @@ since every segment on a line shares one baseline, the taller ascent pushes
 the whole line's baseline down and out from under everything hung beside it —
 a list's markers first of all, which is how the defect showed itself.
 
-The span then sits on `Style.CodeChip`: a rounded fill one ramp step off the
+The span then sits on `Style.CodeChip`: a rounded fill one step off the
 page, padded horizontally, taking the code's own shaped height so it can
 never stretch the line it is quoted into. `FromTokens` sets it; a `Style`
 built by hand leaves it zero and inline code sits on the page, as it did
@@ -444,7 +440,7 @@ organization. What renders, renders well; these are the honest gaps.
   `tokens.Typography` where it took a `tokens.TypeScale`:
   `markdown.FromTokens(c, tokens.DefaultTypography)`. `TypeScale` is gone
   from spectrum as of v0.3.0, and it never had a code stop — the Code role
-  lives on `Typography`, outside the MD3 grid — so the old constructor had
+  lives on `Typography`, outside the type grid — so the old constructor had
   to read `Mono` and `CodeSize` off `tokens.DefaultTypography` no matter
   what typography the theme carried, and a caller passing a scaled
   `TypeScale` scaled headings and body but not code. Code now follows the

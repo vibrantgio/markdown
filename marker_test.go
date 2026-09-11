@@ -2,6 +2,7 @@ package markdown_test
 
 import (
 	"image"
+	stdcolor "image/color"
 	"testing"
 
 	"gioui.org/layout"
@@ -87,16 +88,16 @@ func TestAListMarkerCentresOnItsFirstTextLine(t *testing.T) {
 	shaper := defaultShaper(t)
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"light", tokens.DefaultLight},
-		{"dark", tokens.DefaultDark},
+		{"light", tokens.PlatformLight},
+		{"dark", tokens.PlatformDark},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, stdcolor.NRGBA{})
 			d := markdown.NewDocument(markdown.Parse([]byte(markerProbe)))
 			img := golden.Capture(t, image.Pt(320, 120), func(gtx layout.Context) layout.Dimensions {
-				paint.FillShape(gtx.Ops, tc.colors.Background,
+				paint.FillShape(gtx.Ops, tc.colors.TextBackground,
 					clip.Rect{Max: gtx.Constraints.Max}.Op())
 				return d.LayoutColumn(gtx, shaper, style)
 			})
@@ -134,7 +135,7 @@ func TestAListMarkerCentresOnItsFirstTextLine(t *testing.T) {
 // wrong.
 func TestInlineCodeLeavesTheLineTheBodysHeight(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.DefaultLight, tokens.DefaultTypography)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	oneWord := columnHeight(t, shaper, style, "moves\n")
 	plain := columnHeight(t, shaper, style, "moves the file contents over\n")
 	code := columnHeight(t, shaper, style, "`git mv` the file contents over\n")
@@ -169,16 +170,16 @@ func TestAMarkerHangsLevelBesideACodeOpeningRow(t *testing.T) {
 	shaper := defaultShaper(t)
 	for _, tc := range []struct {
 		name   string
-		colors tokens.ColorTokens
+		colors tokens.PlatformColors
 	}{
-		{"light", tokens.DefaultLight},
-		{"dark", tokens.DefaultDark},
+		{"light", tokens.PlatformLight},
+		{"dark", tokens.PlatformDark},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography)
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, stdcolor.NRGBA{})
 			d := markdown.NewDocument(markdown.Parse([]byte(codeMarkerProbe)))
 			img := golden.Capture(t, image.Pt(360, 80), func(gtx layout.Context) layout.Dimensions {
-				paint.FillShape(gtx.Ops, tc.colors.Background,
+				paint.FillShape(gtx.Ops, tc.colors.TextBackground,
 					clip.Rect{Max: gtx.Constraints.Max}.Op())
 				return d.LayoutColumn(gtx, shaper, style)
 			})

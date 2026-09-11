@@ -64,10 +64,9 @@ type WidgetImageProvider interface {
 //
 // # The content
 //
-// The surface a Style describes is the content, level 0: the plain surface
-// running text is read on, distinct from chrome — the rails, bars, cards and
-// controls that answer to the theme directly. The content answers to the
-// theme through roles of its own, and the four that make it the content are:
+// A Style describes a document standing on the content: the plain surface
+// running text is read on, distinct from the chrome — the rails, bars and
+// controls the window is framed with. Four fields make it that:
 //
 //   - [Style.ContentSurface], the surface the document is read on;
 //   - [Style.Text]'s colours, the prose foregrounds — the body, its links
@@ -82,9 +81,7 @@ type WidgetImageProvider interface {
 // The invariant: every colour this package draws comes from a field of this
 // struct and from nowhere else. The layout code reads the theme for spacing
 // and for radii and for no colour at all, so a document looks like what its
-// Style says and nothing reaches around it. Deriving a content role from a
-// theme token is fine; drawing a document with a token instead of with a role is
-// not, and nothing here does.
+// Style says and nothing reaches around it.
 type Style struct {
 	// ContentSurface is the surface the document is read on: what lies behind
 	// the prose, under every block, out to the edges of whatever holds it.
@@ -125,9 +122,9 @@ type Style struct {
 	// the runs its author left plain are the ones they drew plain.
 	CodeColor color.NRGBA
 	// CodeBackground is the fenced block's fill. [FromTokens] gives it the
-	// raise walked off the content — a fence is a raised chip, lighter
-	// than the page it lies on, in a light scheme and a dark one alike: a
-	// near-black in a dark scheme and a near-white in a light one.
+	// platform's alternating content fill over the page — the one small step
+	// the platform gives content off its own plane, darker than a light page
+	// and lighter than a dark one.
 	//
 	// It is a field rather than a constant because a fence may be dressed in a
 	// syntax palette instead, and a palette is a background and a set of
@@ -142,12 +139,13 @@ type Style struct {
 	// off the page on its own needs.
 	//
 	// It is for the fill that does not, which is every fill a fence
-	// takes. A raise says a fence is raised; it does not say where the fence
-	// ENDS, and a white block laid unbounded on an off-white page stops being
-	// a block — the code reads as a paragraph in a monospace face. A syntax
-	// palette fitted to a light page puts its own near-white in that position.
-	// The line is what says where the fence is, and [FromTokens] derives it
-	// against whatever fill it is edging (see codeRim).
+	// takes. A step of fill says a fence stands apart; it does not say where
+	// the fence ENDS, and a block laid unbounded on a page a whisper away
+	// from it stops being a block — the code reads as a paragraph in a
+	// monospace face. A syntax palette fitted to a light page puts its own
+	// near-white in that position. The line is what says where the fence is,
+	// and [FromTokens] lays the platform's seam over whatever fill it is
+	// edging (see codeRim).
 	CodeBorder color.NRGBA
 	// CodeChip fills the rounded chip an inline code span sits on. A zero
 	// alpha — a Style built by hand rather than by [FromTokens] — sets inline
@@ -169,14 +167,13 @@ type Style struct {
 	// as [Style.CodeBorder] does for the fence. A zero alpha draws none.
 	//
 	// The chip and the fence are one construct at two sizes, so they take one
-	// fill, and in a light scheme that fill is a whisper above the content —
-	// which a fence survives, having a rim and a radius and a screenful of
-	// area to be recognised by, and a word of code does not. A tint is not
-	// available as an answer: a hue in this system belongs to a role, and code
-	// is not a role — a chip tinted Primary would hand the brand colour to the
-	// one span quoted for not carrying it, and a chip tinted from a status role
-	// would say something went wrong. So the chip takes the fence's answer at
-	// the chip's own size: the same fill and the same derived rim.
+	// fill, and that fill is a whisper off the content — which a fence
+	// survives, having a rim and a radius and a screenful of area to be
+	// recognised by, and a word of code does not. A hue is not available as
+	// an answer: the platform's coloured names all say something — the accent
+	// says this is the action, the system colours say what the state is — and
+	// code says none of them. So the chip takes the fence's answer at the
+	// chip's own size: the same fill and the same seam.
 	//
 	// It is separate from CodeBorder for the same reason CodeChip is separate
 	// from CodeBackground: a fence dressed in a syntax palette takes that
@@ -400,36 +397,37 @@ type Style struct {
 	OnTaskClick func(gtx layout.Context, item *ListItem)
 }
 
-// FromTokens derives the default document style from colour tokens and a
-// typography: the content surface is the theme's own background, headings take the six
-// stops of the typography's document heading scale, body text follows
-// paragraph.FromTokens on the BodyLarge role, code sits on the elevation raise
-// walked off the content (see codeFill) with the colour codeForeground
-// derives, inline code on the same fill while keeping the body's own colour
-// so a quoted word reads as the sentence's, the quote bar is Primary with
-// Neutral 700 text, rules and table grid lines are separators and use
-// Seam, and the table header row sits on the Neutral 300 tinted fill.
+// FromTokens derives the default document style from the platform's colour
+// set and a typography.
+//
+// standsOn is the opaque fill the document is read on — the caller's surface.
+// Unstated (a zero alpha), it is the platform's text background, which is what
+// a document lies on. Every coverage-carrying name below is flattened onto that
+// fill in encoded sRGB, the space the platform composites an alpha name in, so
+// what this constructor hands the rasterizer is opaque.
+//
+// The mapping, name by name:
+//
+//   - the prose paragraph.FromTokens on the BodyLarge role, so body text is
+//     Text and a link is Link with the pointing hand;
+//   - code, block and chip alike, on AlternatingContentBackground — the
+//     platform's second content fill, a small step off the page, darker in
+//     light and lighter in dark — inside a Separator hairline, set in Text;
+//   - the quote bar and an open task's box TertiaryLabel, quoted prose
+//     SecondaryLabel;
+//   - a thematic break Separator, a table's grid lines Grid, its header band
+//     the same step a fence takes;
+//   - a completed task's box ControlAccent under
+//     AlternateSelectedControlText, which is what the platform fills a set
+//     checkbox with and what it draws the mark on it in;
+//   - the find marks and the arrival flash the platform's find highlight, at
+//     the two coverages [matchCoverage] and [currentMatchCoverage] name.
+//
 // Highlight and Images stay nil — both are opt-in. Pass
 // tokens.DefaultTypography for the default look.
 //
-// The surface is the theme's background because that is where a document lies,
-// and a holder that mounts one somewhere else says so by setting ContentSurface
-// afterwards: this constructor answers for the theme and not for the
-// composition. The three marking fills are laid over that same surface, so a
-// holder that moves ContentSurface moves them with it.
-//
-// The code surface is one step off the page and not three. A fence covers a
-// good deal of the column, and area amplifies a fill: the tinted-fill step
-// that reads as a tint behind a table's header row reads, spread under a
-// screenful of code, as a slab of grey with the page showing white around it —
-// worst in a light scheme, where it also leaves the code's own text barely over
-// its floor. The measured reference is gentler still, a code surface 3.4 L*
-// off its page against the 4.9 and 5.0 this step gives in the light and dark
-// schemes, and it puts one surface under a fence and an inline chip alike, so
-// they are one here.
-//
 // Mono and CodeSize come from typo's own Code role — the sixteenth style,
-// which sits outside the MD3 grid.
+// which sits outside the type grid.
 //
 // The heading sizes come from tokens.DocumentHeadingScale and not from the
 // Headline and Title roles, which size the one big line at the top of a
@@ -452,7 +450,7 @@ type Style struct {
 // parts of a role reach the shaper through the document's spans rather than
 // through this constructor. Mono is the one typeface a Style names outright,
 // because code spans are built from it.
-func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
+func FromTokens(p tokens.PlatformColors, typo tokens.Typography, standsOn color.NRGBA) Style {
 	var sizes [6]unit.Sp
 	var boxes [6]unit.Sp
 	for i, style := range typo.DocumentHeadings {
@@ -461,226 +459,127 @@ func FromTokens(c tokens.ColorTokens, typo tokens.Typography) Style {
 	}
 	gap := blockRhythm - lineLeading
 	above, below := headingSpacing(gap, sizes)
-	surface := c.Background // the surface a document lies on
+	surface := standsOnOr(standsOn, p.TextBackground)
+	fence := codeFill(p, surface)
 	return Style{
 		ContentSurface:        surface,
-		Text:                  paragraph.FromTokens(c, typo.BodyLarge),
+		Text:                  paragraph.FromTokens(p, typo.BodyLarge, surface),
 		HeadingSizes:          sizes,
 		HeadingLineHeights:    boxes,
 		HeadingSpaceAbove:     above,
 		HeadingSpaceBelow:     below,
 		Mono:                  font.Typeface(typo.Code.Typeface),
 		CodeSize:              unit.Sp(typo.Code.Size),
-		CodeColor:             codeForeground(c), // see codeForeground
-		CodeBackground:        codeFill(c),       // the raise off the content, see codeFill
-		CodeBorder:            codeRim(c),        // the edge that says where it is
-		CodeChip:              codeFill(c),       // one code surface, not two
-		CodeChipBorder:        codeRim(c),        // one code edge, not two
-		CodeScrollbar:         codeScrollbar(c),
-		QuoteBar:              quoteBar(c),               // see quoteBar
-		QuoteColor:            c.Ramps.Neutral.Step(700), // low-contrast text
-		RuleColor:             c.Seam,
-		TableBorder:           c.Seam,
-		TableHeaderBackground: c.Ramps.Neutral.Step(300), // tinted fill
-		CheckboxBorder:        checkboxBorder(c),         // a stroke on the page
-		CheckboxFill:          checkboxFill(c),           // a fill keeps its brand
-		CheckmarkColor:        checkmarkForeground(c),    // measured on that fill
-		MatchFill:             c.HighlightOn(surface),    // the highlight over the surface it marks
-		ArrivalFill:           c.HighlightOn(surface),    // one highlight, whatever brought the reader
-		CurrentMatchFill:      c.CurrentMatchOn(surface), // the same yellow, laid on more strongly
+		CodeColor:             p.Text, // code is text, in a monospace face
+		CodeBackground:        fence,
+		CodeBorder:            codeRim(p, fence),
+		CodeChip:              fence,             // one code surface, not two
+		CodeChipBorder:        codeRim(p, fence), // one code edge, not two
+		CodeScrollbar:         scrollbar.FromTokens(p, fence),
+		QuoteBar:              themecolor.Flatten(p.TertiaryLabel, surface),  // see quoteBar
+		QuoteColor:            themecolor.Flatten(p.SecondaryLabel, surface), // quoted prose reads as an aside
+		RuleColor:             themecolor.Flatten(p.Separator, surface),
+		TableBorder:           p.Grid,
+		TableHeaderBackground: fence,                                        // the one step a document takes off its page
+		CheckboxBorder:        themecolor.Flatten(p.TertiaryLabel, surface), // see checkboxBorder
+		CheckboxFill:          p.ControlAccent,
+		CheckmarkColor:        p.AlternateSelectedControlText,
+		MatchFill:             matchFill(p, surface, matchCoverage),
+		ArrivalFill:           matchFill(p, surface, currentMatchCoverage),
+		CurrentMatchFill:      matchFill(p, surface, currentMatchCoverage),
 		BlockGap:              gap,
 		ListSpaceAbove:        listSeam(gap),
 		Indent:                unit.Dp(tokens.Spacing.S6),
 	}
 }
 
-// codeFill is the surface quoted code sits on, block and chip alike: the
-// raise walked from the content the document is set on
-// ([tokens.ColorTokens.RaisedOn]).
-//
-// A fence is a raised inset — lighter than the page it lies on, in both
-// schemes — which is what the measured reference shows and what walking the
-// neutral ramp one step off the pin cannot give, that step darkening in a
-// light scheme and lightening in a dark one.
-//
-// On the default palettes the dark fence lands on #222222 over #181818 and
-// the light one on #FFFFFF over #F1F1F1, a whole band step in either scheme.
-// codeRim is the hairline drawn around it in both; the fill says the fence is
-// raised, the line says where it ends.
-func codeFill(c tokens.ColorTokens) color.NRGBA {
-	return c.RaisedOn(c.SurfaceAt(tokens.Level0)).Fill
-}
-
-// codeRim is the hairline drawn around a code surface: the step of the
-// neutral ramp nearest its mid-value that reaches [codeFloor] against the
-// fill it edges.
-//
-// It is the same derivation every other surface's edge in this design system
-// takes against its own fill. The fill carries 1.02:1 against a light page,
-// so the line is the whole of what says a block of code is a block rather than
-// a paragraph in a monospace face. A graphic that carries meaning without
-// being text owes WCAG 1.4.11's 3:1, so the line takes it.
-//
-// Both schemes take the line. The dark fence's fill measures 1.12:1 off its
-// page and the light one 1.13:1 — one band step in either — so edging one and
-// not the other would be a per-scheme rule.
-func codeRim(c tokens.ColorTokens) color.NRGBA {
-	return c.MarkOn(tokens.RoleNeutral, codeFill(c), codeFloor)
-}
-
-// codeFloor is WCAG 1.4.11's contrast floor for a graphic that carries
-// meaning without being text — 3:1. A code surface's rim is exactly such a
-// graphic once its fill has stopped separating: it is the whole of what says
-// where the code begins and ends. It is the palette's own graphic floor
-// under a local name, not a second number.
-const codeFloor = tokens.GraphicFloor
-
-// quoteBar is the bar that leads a blockquote: the brand's own colour where
-// that colour reads on the page, and the step of the brand's ramp that does
-// where it does not.
-//
-// The bar is a graphic carrying meaning without being text — it is the whole
-// of what says these lines are quoted, the quoted prose itself being set in a
-// neutral — so it owes the page WCAG 1.4.11's 3:1, the same floor the code
-// rim takes.
-//
-// The Primary pin will not serve: a pin is the brand colour at the brand's own
-// depth, chosen so that text laid on TOP of it reads, and it is not measured
-// against the page. On the canonical seed it measures 5.94:1 against the light
-// content, but on an accent stated at a dark scheme's tone — the shape a palette
-// published for dark mode hands out — it measures 1.95:1, a bar nobody can
-// see. Asking the palette for a foreground measures it instead, and the canonical
-// seed's bar is unchanged.
-func quoteBar(c tokens.ColorTokens) color.NRGBA {
-	return c.ForegroundOnAtFloor(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
-}
-
-// checkboxBorder is the outline of an open task's box: the brand's own colour
-// where that colour reads on the page, and the step of the brand's ramp that
-// does where it does not — the quote bar's derivation, on the same surface and
-// at the same floor, because it is the same kind of thing. An empty box is
-// nothing but its outline, so the outline carries the whole of "there is a
-// task here" without being text: WCAG 1.4.11's 3:1 against the page, which is
-// [Style.ContentSurface], which is the theme's own background.
-//
-// The derivation matters where the brand does NOT read on the content: an accent
-// stated at a dark scheme's tone derives a light palette whose primary pin sits
-// a whisper off its own page, and an open task box drawn in it is a box nobody
-// can find. Over the seed sweep 208 of 414 light schemes put that pin under
-// this floor.
-func checkboxBorder(c tokens.ColorTokens) color.NRGBA {
-	return c.ForegroundOnAtFloor(tokens.RolePrimary, c.SurfaceAt(tokens.Level0), tokens.GraphicFloor)
-}
-
-// checkboxFill is the body of a completed task's box, and it is the pin,
-// deliberately.
-//
-// It is not gated against the page, because that would be measuring the wrong
-// pair. A fill is not a foreground: it covers the surface rather
-// than sitting on it, and a solid mark that reads as brand-coloured is what a
-// finished task is meant to look like. What it owes contrast to is the tick
-// laid ON it, and the pin's whole guarantee — the one the derivation solves
-// for every seed — is precisely that something reads on top of it. Walking
-// this to suit the page would move a filled box out from under its own tick
-// to fix a comparison nothing makes. It is the same claim the palette's own
-// on-colour derivation states about text over a base, and the same one every
-// other solid brand body in this design system is drawn under.
-func checkboxFill(c tokens.ColorTokens) color.NRGBA {
-	return c.Primary
-}
-
-// checkmarkForeground is the tick drawn on [checkboxFill].
-//
-// It is a mark and not text — a stroked glyph-shaped path carrying "done"
-// with no words in it — so the floor it owes the surface under it is WCAG
-// 1.4.11's 3:1, the graphic floor, not the 4.5:1 a run of words would owe.
-// What it actually gets is more than that, and by construction rather than by
-// luck: while the fill is the Primary pin, the colour derived to read over
-// that pin is
-// OnPrimary, which the derivation holds to the 4.5:1 text floor for every
-// seed. Naming the fill's own on-colour is therefore both the right answer
-// and a comfortable one.
-//
-// The pairing is asserted per seed rather than assumed: a hand that moves
-// checkboxFill and leaves this alone orphans the tick on a fill it was never
-// measured against.
-func checkmarkForeground(c tokens.ColorTokens) color.NRGBA {
-	return c.OnPrimary
-}
-
-// codeForeground is what plain code is set in: the runs a highlighter leaves
-// colourless, and the whole of a block nothing highlights.
-//
-// It is the one colour in this constructor the two appearances take a different
-// ramp step for, and the reason is measured. A ramp's steps are paired scales —
-// the same step does the same job in both appearances — but contrast is not
-// linear in them, and at the text end of the ramp the pairing stops holding.
-// The dark ramp's low-contrast text step sets code at 9.91:1 on the fence's
-// fill, 80% of the way from that fill to the weight the same document's prose
-// is set at; the light ramp's same step sets it at 5.46:1 and 58%. Code set
-// against a light page was therefore a third less pronounced, relative to its own
-// page, than the identical document's code set against slate — which is what a
-// screenful of light-scheme code reads as: faint.
-//
-// One step further along the light ramp lands at 8.20:1 and 70%, which is as
-// near the dark scheme's relationship as the ramp goes: the step after it is
-// the prose colour itself, and code is not prose. So the light appearance takes
-// the step below the body text and the dark one keeps the low-contrast text
-// step, and the two schemes set code at 70% and 80% of their own prose weight
-// where they set it at 58% and 80%.
-func codeForeground(c tokens.ColorTokens) color.NRGBA {
-	if darkScheme(c) {
-		return c.Ramps.Neutral.Step(700) // low-contrast text
+// standsOnOr answers what the document is read on: the fill the caller stated,
+// or plane when it stated none. A surface is opaque, so a zero alpha — the
+// zero value of the parameter — is no answer rather than a transparent one.
+func standsOnOr(stated, plane color.NRGBA) color.NRGBA {
+	if stated.A == 0 {
+		return plane
 	}
-	return c.Ramps.Neutral.Step(800) // the step below body text
+	return stated
 }
 
-// darkScheme reports which appearance these tokens describe. A ColorTokens
-// value carries no flag saying which of the two it is, so the page itself is
-// the fact — read on the perceptual lightness axis rather than a luma sum,
-// because mid-grey is perceptually mid and a luma threshold calls it dark.
-func darkScheme(c tokens.ColorTokens) bool {
-	l, _, _ := themecolor.OKLChFromNRGBA(c.Background)
-	return l < 0.5
+// The coverages the platform's find highlight is laid on at: one match among
+// many, and the mark the reader is standing on. The two are one measured
+// colour at two strengths rather than two colours, so a reader tells the
+// current match from the rest without learning a second mark.
+//
+// Mail paints every match in one fill and marks no current one — all three
+// runs in mail-find-light.png and mail-find-dark.png carry the identical
+// pixel — so the platform measures the mark and not the pair, and the second
+// strength is this library's. It is placed this way round rather than the
+// other because the coverage is the only currency there is: the measured
+// value IS the fill at full coverage, so the only mark that can differ from
+// it is a weaker one, and the strong end belongs to the mark the reader is on
+// so that mark is the platform's own pixel with the platform's own text
+// pairing on it. Laying the fill's step off the page on twice instead was
+// measured and rejected: it puts the dark scheme's current match on #bebe7c,
+// where the text the highlight is required to leave alone falls from Lc 81 to
+// Lc 41.
+const (
+	matchCoverage        = 0x80
+	currentMatchCoverage = 0xff
+)
+
+// matchFill is the platform's find highlight over the surface the marked
+// content stands on, at coverage. The text the fill covers keeps its colour,
+// which is why the coverage is not tuned against a text floor: what the
+// composite costs the marked words is measured rather than corrected for.
+func matchFill(p tokens.PlatformColors, surface color.NRGBA, coverage uint8) color.NRGBA {
+	fill := p.FindHighlight
+	fill.A = coverage
+	return themecolor.Flatten(fill, surface)
 }
 
-// codeScrollbar is the design system's bar weighted for the fill a fence
-// puts it on. Everything else about it — the width, the radius, the minimum
-// thumb, the fade a second after the content stops — is the shared style's.
+// codeFill is the surface quoted code sits on, block and chip alike: the
+// platform's alternating content fill over the page the document is read on.
 //
-// Only the two colours change, and what they answer is a question the shared
-// bar does not have. scrollbar.FromTokens derives a translucent thumb: the
-// most transparent one that still clears its contrast floor over the two
-// surfaces an overlay bar rides, the window's page and the chrome level its
-// panes are filled at. A fence's fill is neither of those — it is a raised
-// level, which is lighter than both in either scheme — so the shared
-// bar clears its floor here by more than it was asked to, and this override
-// is not buying legibility.
-//
-// What it buys is the thing translucency was protecting, spent where there
-// is nothing to protect. Coverage is how much of what lies under the bar
-// stops showing through, and a column's bar lies over the column's own text,
-// where showing through is the whole point; a fence's lies over the fence's
-// bottom padding, where nothing shows through it either way. So the fence
-// spends the coverage it cannot use and takes an opaque thumb, at the ramp's
-// low-contrast text step — as present against the fence's fill as text on it
-// would be, 6.30:1 in the light appearance and 9.91:1 in the dark, against
-// the 3:1 the shared bar stops at — darkening to the ramp's far end while
-// hovered or dragged. A pairing already that far past the floor is not one a
-// derivation aimed at the floor should be allowed to walk back.
-//
-// That is a weight against a fill and not a match to the code's own colour,
-// which is why it stays on this step in both appearances while the light
-// appearance's code sits one step past it (see codeForeground) — the bar lies
-// on the code surface, it is not a run of code, and a fence's one draggable
-// affordance does not get heavier because the reading got heavier.
-func codeScrollbar(c tokens.ColorTokens) scrollbar.Style {
-	s := scrollbar.FromTokens(c)
-	s.ThumbColor = c.Ramps.Neutral.Step(700)      // the code's own step
-	s.ThumbHoverColor = c.Ramps.Neutral.Step(900) // the ramp's far end
-	return s
+// It is the one step the platform gives content off its own plane — #f4f5f5
+// on white, white at a twentieth on the dark page — which is a fence darker
+// than a light page and lighter than a dark one, and gentle either way. No
+// stored capture shows a code block in a platform application, so the fence's
+// plane is this name rather than a measured code fill; the grouped box is not
+// it, being measured over the chrome plane rather than over the content.
+func codeFill(p tokens.PlatformColors, surface color.NRGBA) color.NRGBA {
+	return themecolor.Flatten(p.AlternatingContentBackground, surface)
 }
 
+// codeRim is the hairline drawn around a code surface: the platform's
+// separator over the fill it edges.
+//
+// The fence's own fill is a small step off the page, so the line is the whole
+// of what says where a block of code begins and ends rather than a decoration
+// on an already-visible block. A seam over whatever is beneath it is what the
+// platform draws in that position, and the fill it lands on is the fence's
+// because that is what the line is inset into.
+func codeRim(p tokens.PlatformColors, fence color.NRGBA) color.NRGBA {
+	return themecolor.Flatten(p.Separator, fence)
+}
+
+// quoteBar is the bar that leads a blockquote, and checkboxBorder the outline
+// of an open task's box: both are TertiaryLabel over the page.
+//
+// Neither is a seam. A seam parts two regions and the platform draws it at a
+// tenth of a coverage — #e6e6e6 on a white page — which is right for a
+// hairline nobody is meant to look at and wrong for the whole of what says
+// these lines are quoted, or that there is a task here and it is open. The
+// platform's weakest label strength is the subordinate mark it does have: a
+// third of a coverage, #bdbdbd on the light page and #5b5b5b on the dark one,
+// plainly present and plainly not prose.
+//
+// No stored capture in the organization's macOS reference shows a blockquote
+// or a task list in a platform application — the Notes and TextEdit windows
+// carry running prose — so this is the Language's answer rather than a
+// measured one.
+//
+// It is deliberately not the field hairline the checkbox in components/input
+// draws its box with: that value was measured around a text field on a sheet,
+// where the field's interior is the sheet's own fill, and on a white page it
+// is #f3f3f3 — a box a reader cannot find.
 // The reading rhythm is measured in what the reader sees — the blank run
 // between one block's glyphs and the next's — while a [Style] is written in
 // authored space. The difference is the leading the shaped lines carry

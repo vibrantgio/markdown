@@ -64,8 +64,8 @@ const (
 // Dress the Style again when the theme changes: the base is resolved once and
 // the highlighter closes over it, so nothing here can follow a theme
 // observable.
-func Wear(st *markdown.Style, base string, c tokens.ColorTokens) {
-	WearPair(st, BasePair{Light: base, Dark: base}, c)
+func Wear(st *markdown.Style, base string, p tokens.PlatformColors) {
+	WearPair(st, BasePair{Light: base, Dark: base}, p)
 }
 
 // WearPair is [Wear] for a caller holding a base per appearance: c's own
@@ -76,11 +76,11 @@ func Wear(st *markdown.Style, base string, c tokens.ColorTokens) {
 // drawn as its own author wrote it, italics and bold included. A member naming
 // nothing this package can resolve panics exactly as [Wear] does, if it is the
 // member the appearance calls for.
-func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
-	surface := codeSurface(c)
-	mode, name := chroma.Light, p.Light
+func WearPair(st *markdown.Style, pair BasePair, p tokens.PlatformColors) {
+	surface := codeSurface(p)
+	mode, name := chroma.Light, pair.Light
 	if isDarkSurface(surface) {
-		mode, name = chroma.Dark, p.Dark
+		mode, name = chroma.Dark, pair.Dark
 	}
 	member, ok := forMode(name, mode)
 	if !ok {
@@ -103,7 +103,7 @@ func WearPair(st *markdown.Style, p BasePair, c tokens.ColorTokens) {
 		fallback = surface
 	}
 	st.CodeBackground = fenceBackground(member, fallback)
-	st.CodeBorder = fenceEdge(st.CodeBackground, c)
+	st.CodeBorder = fenceEdge(st.CodeBackground, p)
 }
 
 // fenceBackground is the fence's fill under one member: the background its
@@ -116,33 +116,41 @@ func fenceBackground(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRG
 	return fallback
 }
 
-// fenceEdge is the hairline a dressed fence draws to read as a block: the step
-// of the neutral ramp nearest its mid-value that reaches [edgeFloor] against
-// the background the author fitted their colours to.
+// fenceEdge is the hairline a dressed fence draws to read as a block: the
+// platform's separator laid over the background the author fitted their
+// colours to.
 //
-// The rim is derived against the fence's own fill rather than against the
-// content, which is what makes it work for a background this package has never
-// seen: a dressed fence lies on the page and its rim is read against the block
-// it encloses, so a palette fitted to a light page and one fitted to a dark
-// one are
-// answered by the same call without either being named.
-func fenceEdge(fence stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
-	return c.MarkOn(tokens.RoleNeutral, fence, edgeFloor)
+// The seam lands on the fence's own fill rather than on the content, which is
+// what makes it work for a background this package has never seen: a dressed
+// fence lies on the page and its edge is inset into the block it encloses, so
+// a palette fitted to a light page and one fitted to a dark one are answered
+// by the same call without either being named.
+//
+// Which separator is a question about that fill and not about the appearance
+// the document is read in. The platform draws its separator dark on a light
+// fill and light on a dark one, and a base fitted to a dark page worn on a
+// light theme is an ordinary thing to ask for — so the fill is asked which
+// appearance's text reads on it, and it takes that appearance's separator, at
+// the live set's own coverage. [markdown.FromTokens] needs none of this: its
+// fence is the platform's own step off the page, so the set's own separator is
+// already the right way round.
+func fenceEdge(fence stdcolor.NRGBA, p tokens.PlatformColors) stdcolor.NRGBA {
+	seam := tokens.PlatformLight.Separator
+	if color.BestOn(fence, tokens.PlatformLight.Text, tokens.PlatformDark.Text) == tokens.PlatformDark.Text {
+		seam = tokens.PlatformDark.Separator
+	}
+	seam.A = p.Separator.A
+	return color.Flatten(seam, fence)
 }
 
-// edgeFloor is the contrast floor for a graphic that carries meaning without
-// being text, the theme's own. A fence's rim is exactly such a graphic: it is
-// the whole of what says where the code begins once the fill is a whisper off
-// the page.
-const edgeFloor = tokens.GraphicFloor
-
-// codeSurface is the fill a code block is drawn on under these tokens before
-// any base is worn. It is read back off the markdown style rather than from
-// the neutral ramp directly, so the answer stays in one place: whatever the
+// codeSurface is the fill a code block is drawn on under this colour set
+// before any base is worn. It is read back off the markdown style rather than
+// being spelled again here, so the answer stays in one place: whatever the
 // style constructor decided. The typography is irrelevant to it and the
-// default stands in.
-func codeSurface(c tokens.ColorTokens) stdcolor.NRGBA {
-	return markdown.FromTokens(c, tokens.DefaultTypography).CodeBackground
+// default stands in, and so does the page — the fence's own fill is what is
+// wanted, not the surface under it.
+func codeSurface(p tokens.PlatformColors) stdcolor.NRGBA {
+	return markdown.FromTokens(p, tokens.DefaultTypography, stdcolor.NRGBA{}).CodeBackground
 }
 
 // isDarkSurface reports whether a fill reads as dark, on the perceptual
