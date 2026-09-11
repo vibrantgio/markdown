@@ -39,14 +39,14 @@ func TestQuoteBarClearsTheGraphicFloor(t *testing.T) {
 			tok  tokens.ColorTokens
 		}{{"light", light}, {"dark", dark}} {
 			style := markdown.FromTokens(sc.tok, tokens.DefaultTypography)
-			got := color.ContrastRatio(style.QuoteBar, style.ContentSurface)
-			if got < 3.0 {
-				t.Errorf("%s, %s: quote bar %s on the content %s measures %.2f:1, under the 3:1 graphic floor",
-					s.name, sc.name, barHex(style.QuoteBar), barHex(style.ContentSurface), got)
+			got := color.Magnitude(style.QuoteBar, style.ContentSurface)
+			if got < tokens.GraphicFloor {
+				t.Errorf("%s, %s: quote bar %s on the content %s measures |Lc| %.2f, under the |Lc| %.1f graphic floor",
+					s.name, sc.name, barHex(style.QuoteBar), barHex(style.ContentSurface), got, tokens.GraphicFloor)
 			}
-			t.Logf("%s, %s: quote bar %s on the content %s %.2f:1 (pin %s %.2f:1)",
+			t.Logf("%s, %s: quote bar %s on the content %s |Lc| %.2f (pin %s |Lc| %.2f)",
 				s.name, sc.name, barHex(style.QuoteBar), barHex(style.ContentSurface), got,
-				barHex(sc.tok.Primary), color.ContrastRatio(sc.tok.Primary, style.ContentSurface))
+				barHex(sc.tok.Primary), color.Magnitude(sc.tok.Primary, style.ContentSurface))
 		}
 	}
 }
@@ -75,8 +75,8 @@ func TestTheCanonicalSeedsQuoteBarIsThePrimaryPin(t *testing.T) {
 func TestAPastelSeedsQuoteBarLeavesThePin(t *testing.T) {
 	light, _ := tokens.FromSeed(stdcolor.NRGBA{0x89, 0xb4, 0xfa, 0xff})
 	style := markdown.FromTokens(light, tokens.DefaultTypography)
-	if bare := color.ContrastRatio(light.Primary, style.ContentSurface); bare >= 3.0 {
-		t.Fatalf("this seed's bare light pin now measures %.2f:1 — the test no longer reads the shape it was written for", bare)
+	if bare := color.Magnitude(light.Primary, style.ContentSurface); bare >= tokens.GraphicFloor {
+		t.Fatalf("this seed's bare light pin now measures |Lc| %.2f — the test no longer reads the shape it was written for", bare)
 	}
 	if style.QuoteBar == light.Primary {
 		t.Errorf("light quote bar is still the bare pin %s", barHex(light.Primary))

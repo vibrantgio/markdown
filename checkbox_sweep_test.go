@@ -86,9 +86,9 @@ func TestCheckboxBorderClearsTheGraphicFloorForEverySeed(t *testing.T) {
 		for _, s := range checkboxSweepSchemes(seed) {
 			page := s.tok.SurfaceAt(tokens.Level0)
 			border := checkboxBorder(s.tok)
-			got := color.ContrastRatio(border, page)
+			got := color.Magnitude(border, page)
 			if got < tokens.GraphicFloor {
-				t.Errorf("seed %s: %s: checkbox border %s on page %s measures %.2f:1, under the %.1f:1 graphic floor",
+				t.Errorf("seed %s: %s: checkbox border %s on page %s measures |Lc| %.2f, under the |Lc| %.1f graphic floor",
 					checkboxHex(seed), s.name, checkboxHex(border), checkboxHex(page), got, tokens.GraphicFloor)
 			}
 			if s.light && got < worstLight {
@@ -99,7 +99,7 @@ func TestCheckboxBorderClearsTheGraphicFloorForEverySeed(t *testing.T) {
 			}
 		}
 	}
-	t.Logf("over %d seeds: worst light border %.2f:1 (%s), worst dark border %.2f:1 (%s)",
+	t.Logf("over %d seeds: worst light border |Lc| %.2f (%s), worst dark border |Lc| %.2f (%s)",
 		len(seeds), worstLight, worstLightAt, worstDark, worstDarkAt)
 }
 
@@ -125,9 +125,9 @@ func TestCheckmarkClearsItsFloorOnTheFillForEverySeed(t *testing.T) {
 		for _, s := range checkboxSweepSchemes(seed) {
 			fill := checkboxFill(s.tok)
 			tick := checkmarkForeground(s.tok)
-			got := color.ContrastRatio(tick, fill)
+			got := color.Magnitude(tick, fill)
 			if got < tokens.GraphicFloor {
-				t.Errorf("seed %s: %s: check mark %s on fill %s measures %.2f:1, under the %.1f:1 graphic floor",
+				t.Errorf("seed %s: %s: check mark %s on fill %s measures |Lc| %.2f, under the |Lc| %.1f graphic floor",
 					checkboxHex(seed), s.name, checkboxHex(tick), checkboxHex(fill), got, tokens.GraphicFloor)
 			}
 			if got < worst {
@@ -135,7 +135,7 @@ func TestCheckmarkClearsItsFloorOnTheFillForEverySeed(t *testing.T) {
 			}
 		}
 	}
-	t.Logf("over %d seeds: worst tick-on-fill %.2f:1 (%s), floor %.1f:1",
+	t.Logf("over %d seeds: worst tick-on-fill |Lc| %.2f (%s), floor |Lc| %.1f",
 		len(seeds), worst, worstAt, tokens.GraphicFloor)
 }
 
@@ -178,8 +178,8 @@ func TestAPastelSeedLeavesTheBorderPinAndKeepsTheFill(t *testing.T) {
 	light, dark := tokens.FromSeed(seed)
 
 	lightPage := light.SurfaceAt(tokens.Level0)
-	if bare := color.ContrastRatio(light.Primary, lightPage); bare >= tokens.GraphicFloor {
-		t.Fatalf("this seed's bare light pin now measures %.2f:1 on the page — the test no longer reads the shape it was written for", bare)
+	if bare := color.Magnitude(light.Primary, lightPage); bare >= tokens.GraphicFloor {
+		t.Fatalf("this seed's bare light pin now measures |Lc| %.2f on the page — the test no longer reads the shape it was written for", bare)
 	}
 	if border := checkboxBorder(light); border == light.Primary {
 		t.Errorf("light checkbox border is still the bare pin %s", checkboxHex(light.Primary))

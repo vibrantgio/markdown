@@ -20,15 +20,19 @@ import (
 	"github.com/alecthomas/chroma/v2"
 
 	"github.com/vibrantgio/theme/color"
+	"github.com/vibrantgio/theme/tokens"
 )
 
-// ContrastFloor is WCAG 2's AA ratio for normal text, which is the size code
-// is set at. Nothing in this package enforces it — no colour is moved and no
-// style is refused for falling under it. It is the yardstick [BaseContrast]
-// reports against, so that "this base is drawn faint" comes out as a
-// measurement somebody can act on rather than as an opinion about somebody's
-// palette.
-const ContrastFloor = 4.5
+// ContrastFloor is the body-text floor, which is what code set at reading
+// size owes its background. Nothing in this package enforces it — no colour is
+// moved and no style is refused for falling under it. It is the yardstick
+// [BaseContrast] reports against, so that "this base is drawn faint" comes out
+// as a measurement somebody can act on rather than as an opinion about
+// somebody's palette.
+//
+// It is the theme's own [tokens.TextFloor] and so is stated in |Lc|: the
+// measure is [color.APCA] here as everywhere.
+const ContrastFloor = tokens.TextFloor
 
 // readingClasses are the runs measured: the kinds of thing a person reading
 // code is actually looking at. They are the classes the palette comparison
@@ -101,7 +105,7 @@ func BaseContrast(name string) (AuthoredContrast, bool) {
 	var a AuthoredContrast
 	read := func(foreground stdcolor.NRGBA) {
 		a.Colors++
-		if color.ContrastRatio(foreground, background) < ContrastFloor {
+		if color.Magnitude(foreground, background) < ContrastFloor {
 			a.Below++
 		}
 	}

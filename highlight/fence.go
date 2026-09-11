@@ -117,8 +117,8 @@ func fenceBackground(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRG
 }
 
 // fenceEdge is the hairline a dressed fence draws to read as a block: the step
-// of the neutral ramp nearest its mid-value that reaches WCAG 1.4.11's 3:1
-// against the background the author fitted their colours to.
+// of the neutral ramp nearest its mid-value that reaches [edgeFloor] against
+// the background the author fitted their colours to.
 //
 // The rim is derived against the fence's own fill rather than against the
 // content, which is what makes it work for a background this package has never
@@ -130,11 +130,11 @@ func fenceEdge(fence stdcolor.NRGBA, c tokens.ColorTokens) stdcolor.NRGBA {
 	return c.MarkOn(tokens.RoleNeutral, fence, edgeFloor)
 }
 
-// edgeFloor is WCAG 1.4.11's contrast floor for a graphic that carries
-// meaning without being text — 3:1. A fence's rim is exactly such a graphic:
-// it is the whole of what says where the code begins once the fill is a
-// whisper off the page.
-const edgeFloor = 3.0
+// edgeFloor is the contrast floor for a graphic that carries meaning without
+// being text, the theme's own. A fence's rim is exactly such a graphic: it is
+// the whole of what says where the code begins once the fill is a whisper off
+// the page.
+const edgeFloor = tokens.GraphicFloor
 
 // codeSurface is the fill a code block is drawn on under these tokens before
 // any base is worn. It is read back off the markdown style rather than from

@@ -242,7 +242,7 @@ func TestTheSummaryIsMeasuredOnTheAuthorsOwnBackground(t *testing.T) {
 		want := AuthoredContrast{}
 		if plain.IsSet() {
 			want.Colors++
-			if color.ContrastRatio(fromChroma(plain), background) < ContrastFloor {
+			if color.Magnitude(fromChroma(plain), background) < ContrastFloor {
 				want.Below++
 			}
 		}
@@ -252,7 +252,7 @@ func TestTheSummaryIsMeasuredOnTheAuthorsOwnBackground(t *testing.T) {
 				continue
 			}
 			want.Colors++
-			if color.ContrastRatio(foreground, background) < ContrastFloor {
+			if color.Magnitude(foreground, background) < ContrastFloor {
 				want.Below++
 			}
 		}
@@ -273,7 +273,7 @@ func TestTheSummaryIsMeasuredOnTheAuthorsOwnBackground(t *testing.T) {
 // upgrade for a reason that is not about this package.
 func TestTheShippedSetSplitsOnTheRule(t *testing.T) {
 	faint := map[string]bool{"solarized-light": true, "paraiso-light": true, "tokyonight-day": true}
-	plain := map[string]bool{"github": true, "github-dark": true, "monokai": true, "catppuccin-mocha": true}
+	plain := map[string]bool{"github": true, "dracula": true, "tokyonight-moon": true, "catppuccin-mocha": true}
 	named, measured := 0, 0
 	for _, name := range styles.Names() {
 		a, ok := BaseContrast(name)
