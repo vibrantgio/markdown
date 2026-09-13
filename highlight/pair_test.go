@@ -9,7 +9,7 @@ import (
 
 	"github.com/alecthomas/chroma/v2/styles"
 
-	"github.com/vibrantgio/theme/imageseed"
+	"github.com/vibrantgio/theme/imagecolor"
 )
 
 // twinXML is a style whose keyword colour is worn by two token types and
@@ -391,7 +391,7 @@ func TestRediscoveryMatchesTheSearch(t *testing.T) {
 // seventy-odd of those would be pinning the metric's output rather than
 // testing it — the declared pairs above are where the metric is held to an
 // answer key. What is asserted here is that the answer exists, resolves, sits
-// on the side it was asked for, and that the seed candidate is a colour the
+// on the side it was asked for, and that the candidate is a colour the
 // style genuinely draws with.
 func TestSweepEveryBase(t *testing.T) {
 	var colourless []string
@@ -417,9 +417,9 @@ func TestSweepEveryBase(t *testing.T) {
 		}
 
 		colors := BasePalette(name)
-		candidates := imageseed.ExtractPalette(colors)
+		candidates := imagecolor.ExtractPalette(colors)
 		if len(colors) == 0 {
-			// A style that colours nothing has no seed in it. It is not a
+			// A style that colours nothing has no candidate in it. It is not a
 			// failure, it is a style drawn in one colour, and the sweep says
 			// which ones they are rather than pretending they extracted.
 			colourless = append(colourless, name)
@@ -436,12 +436,12 @@ func TestSweepEveryBase(t *testing.T) {
 			t.Errorf("%s: the leading candidate %v is not a colour the style draws with",
 				name, candidates[0].Color)
 		}
-		t.Logf("%-22s -> light %-22s dark %-22s  seed #%02x%02x%02x (chroma %.3f, share %.2f of %d colours)",
+		t.Logf("%-22s -> light %-22s dark %-22s  candidate #%02x%02x%02x (chroma %.3f, share %.2f of %d colours)",
 			name, pair.Light, pair.Dark,
 			candidates[0].Color.R, candidates[0].Color.G, candidates[0].Color.B,
 			candidates[0].Chroma, candidates[0].Share, len(colors))
 	}
-	t.Logf("bases that colour nothing, and so have no seed: %v", colourless)
+	t.Logf("bases that colour nothing, and so have no candidate: %v", colourless)
 }
 
 func appearance(dark bool) string {

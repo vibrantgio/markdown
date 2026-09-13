@@ -57,7 +57,7 @@ var hueClasses = []chroma.TokenType{
 }
 
 // classFloor is the weight a class carries before its chroma is counted. It is
-// the same floor the seed ranking lifts its chroma emphasis off, and it is
+// the same floor the candidate ranking lifts its chroma emphasis off, and it is
 // here for the same reason: a comment grey has a hue, and that hue is an
 // artifact of rounding rather than a decision, so it must count for little.
 // Little, though, and not nothing — a palette whose every colour is
@@ -245,7 +245,7 @@ func nearest(s *chroma.Style, dark bool) (string, bool) {
 // as a mismatch. A style that takes no position on numbers has not disagreed
 // about numbers with anybody.
 //
-// The space is the one seed extraction reads a palette in, and the chroma
+// The space is the one a palette is read in, and the chroma
 // floor is the one it lifts its own emphasis off, so "how much colour has this
 // one got" is one question across the two and not two.
 func BaseDistance(a, b string) (float64, bool) {

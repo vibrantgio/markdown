@@ -197,7 +197,7 @@ is held honest by a test that runs it over the declared pairs with the
 declarations hidden and requires it to find them anyway.
 
 `BasePalette` is a base as plain colours, for painting swatches or for
-pulling a brand seed out of a scheme somebody already curated — a style is
+pulling a theme colour out of a scheme somebody already curated — a style is
 a better source for one than a photograph, being a couple of dozen
 deliberate colours rather than a cloud of pixels. Colours repeat once per
 token type wearing them, so a reader ranking the list sees how much of the
@@ -455,7 +455,7 @@ organization. What renders, renders well; these are the honest gaps.
   `Style.CodeColor`; keyword, string, and comment colours are the style's own,
   byte for byte. With `New` those colours land on whatever fill your `Style`
   puts under a fence, which is not the fill their author drew them on, and a
-  palette fitted to a near-white page can measure short of AA on a tinted one.
+  palette fitted to a near-white page can measure short of AA on a coloured one.
   `highlight.Wear` answers that by moving the background rather than the
   colours — the author's own background under the author's own colours — and
   it takes one base name for both appearances where `New` needs one style per
