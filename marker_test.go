@@ -33,10 +33,17 @@ const markerProbe = "- [ ] FLAT TEXT AT THE LINE\n" +
 // text right of it.
 const markerColumn = 24
 
+// drawnDeparture is the luminance departure from the background at which a
+// pixel counts as drawn. It sits between two measured steps: the code chip's
+// own fill is 10.3 below the page it is laid on (#f4f5f5 on white), which is
+// a surface and not a mark, and the faintest mark a row carries is the
+// chip's antialiased corner at 24.0. A threshold above that corner splits one
+// chip into three bands and the scan loses the row.
+const drawnDeparture = 16
+
 // `drawnBands` returns the vertical extent of every run of rows carrying drawn
 // pixels within the column [x0, x1), in order, as half-open [top, bottom)
-// intervals. A row carries pixels at the same luminance departure from the
-// background that the rhythm scan uses.
+// intervals.
 func drawnBands(img *image.RGBA, x0, x1 int) [][2]int {
 	b := img.Bounds()
 	lum := func(x, y int) float64 {
@@ -49,7 +56,7 @@ func drawnBands(img *image.RGBA, x0, x1 int) [][2]int {
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		drawn := false
 		for x := x0; x < x1 && x < b.Max.X && !drawn; x++ {
-			if d := lum(x, y) - bg; d > 24 || d < -24 {
+			if d := lum(x, y) - bg; d > drawnDeparture || d < -drawnDeparture {
 				drawn = true
 			}
 		}
