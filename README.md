@@ -215,7 +215,9 @@ if ok && a.BelowFloor() { /* say so beside the name */ }
 It measures the colour a style sets plain code in, and the colour it gives
 each reading class it takes a position on, against the background its own
 author fitted them to — reporting how many of those fall under `ContrastFloor`,
-WCAG 2's AA ratio for normal text. `BelowFloor` is true when most of them do.
+the theme's `tokens.TextFloor`: APCA lightness contrast, Lc 75, the floor a run
+of words owes the surface it is set on. `BelowFloor` is true when most of them
+do.
 A majority and not the worst colour: one receding class is ordinary and
 usually deliberate, and the faintest entries in the set are markers for things
 that are not code, several of them drawn in the background colour on purpose.
@@ -456,7 +458,8 @@ organization. What renders, renders well; these are the honest gaps.
   `Style.CodeColor`; keyword, string, and comment colours are the style's own,
   byte for byte. With `New` those colours land on whatever fill your `Style`
   puts under a fence, which is not the fill their author drew them on, and a
-  style fitted to a near-white page can measure short of AA on a coloured one.
+  style fitted to a near-white page can measure short of the text floor on a
+  coloured one.
   `highlight.Wear` answers that by moving the background rather than the
   colours — the author's own background under the author's own colours — and
   it takes one style name for both appearances where `New` needs one style

@@ -204,7 +204,8 @@ type Style struct {
 	// CheckboxBorder strokes the box of an unchecked task item. Nothing is
 	// painted inside it, so the stroke lies straight on [Style.ContentSurface] and is
 	// the whole of what says there is a task here and it is open — a graphic
-	// carrying meaning without being text, owing its page WCAG 1.4.11's 3:1.
+	// carrying meaning without being text, owing its page [tokens.GraphicFloor],
+	// Lc 45.
 	//
 	// CheckboxFill is the same box in the other state and is a separate
 	// field because the two are drawn on opposite surfaces: this one on the

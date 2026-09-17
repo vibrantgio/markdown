@@ -6,7 +6,7 @@
 //
 // The measurement is deliberately not the whole entry table. Several non-code
 // markers — deleted lines, error spans, trailing whitespace — are drawn in the
-// background colour on purpose, at a ratio of one to one, so a count over
+// background colour on purpose, at |Lc| 0, so a count over
 // everything would call a careful palette faint on the strength of one marker
 // its author meant nobody to see. The reading is over the runs a person's eye
 // is on while reading code, and the verdict is a majority of them rather than
@@ -73,11 +73,11 @@ func (a AuthoredContrast) BelowFloor() bool { return a.Colors > 0 && 2*a.Below >
 
 // StyleContrast measures the style named against the background its author
 // fitted it to: the colour it sets plain code in, and the colour it gives each
-// of the reading classes it takes a position on, each read as a contrast ratio
-// against that background.
+// of the reading classes it takes a position on, each read as [color.APCA]
+// lightness contrast against that background, in |Lc|.
 //
 // The background is the author's own and there is no substitute for it. A
-// palette's ratios are a fact about the pairing its author made, so a style
+// palette's readings are a fact about the pairing its author made, so a style
 // fitted to no background at all — four of the embedded styles are like this —
 // has no authored contrast to report, and comes back false rather than
 // measured against a surface somebody else chose. So does a name that resolves

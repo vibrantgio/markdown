@@ -19,9 +19,9 @@ import (
 // sit near the boundary in this version of chroma's set.
 //
 // Every fixture is drawn on white, and its colours come off one axis: near-blacks
-// around 15:1 and near-whites around 1.2:1. Nothing here turns on a hue, and the
-// only thing separating one fixture from another is how many of its reading
-// classes got which end.
+// around |Lc| 100 and near-whites around |Lc| 12, either side of the Lc 75 text
+// floor. Nothing here turns on a hue, and the only thing separating one fixture
+// from another is how many of its reading classes got which end.
 //
 // The colours inside each end differ from one another by a rounding, and they
 // have to. An entry drawn in the style's own body colour is a class the style
@@ -192,11 +192,11 @@ func TestAClassResolvingToTheBodyColourIsNotCountedTwice(t *testing.T) {
 	}
 }
 
-// TestABaseFittedToNoBackgroundHasNoAuthoredContrast: the ratios are a fact about
-// the pairing an author made, and an author who named no background made no
-// pairing. Measuring such a style against a surface somebody else chose would
+// TestAStyleFittedToNoBackgroundHasNoAuthoredContrast: the readings are a fact
+// about the pairing an author made, and an author who named no background made
+// no pairing. Measuring such a style against a surface somebody else chose would
 // report a number about that surface.
-func TestABaseFittedToNoBackgroundHasNoAuthoredContrast(t *testing.T) {
+func TestAStyleFittedToNoBackgroundHasNoAuthoredContrast(t *testing.T) {
 	entries := []string{writtenIn(fBody, faintColors[0]), writtenIn(fComment, faintColors[1])}
 	noBackground := fixtureOn(t, "fixture-without-background", "", entries...)
 	control := fixture(t, "fixture-with-background", entries...)
@@ -209,9 +209,9 @@ func TestABaseFittedToNoBackgroundHasNoAuthoredContrast(t *testing.T) {
 	}
 }
 
-// TestABaseColouringNothingHasNothingToMeasure: one embedded style takes no
+// TestAStyleColouringNothingHasNothingToMeasure: one embedded style takes no
 // position on any run at all. It has not drawn code faint; it has not drawn it.
-func TestABaseColouringNothingHasNothingToMeasure(t *testing.T) {
+func TestAStyleColouringNothingHasNothingToMeasure(t *testing.T) {
 	if _, ok := StyleContrast("bw"); ok {
 		t.Error("a style that colours nothing reports an authored contrast")
 	}
@@ -225,7 +225,7 @@ func TestABaseColouringNothingHasNothingToMeasure(t *testing.T) {
 }
 
 // TestTheSummaryIsMeasuredOnTheAuthorsOwnBackground checks the arithmetic against
-// the ratios themselves on a style whose background is nothing like the page:
+// the readings themselves on a style whose background is nothing like the page:
 // every colour it counted below the floor is one that measures below the floor
 // there, and the count is the whole of what it walked.
 func TestTheSummaryIsMeasuredOnTheAuthorsOwnBackground(t *testing.T) {

@@ -82,13 +82,13 @@ func authored(s *chroma.Style) (stdcolor.NRGBA, bool) {
 	return fromChroma(bg), true
 }
 
-// TestTheFenceWearsTheBasesOwnBackgroundAndColors is what the whole file is
+// TestTheFenceWearsTheStylesOwnBackgroundAndColors is what the whole file is
 // about: the plate on screen is the artifact its author made. The background
 // under the code is the background they fitted their colours against, byte
 // for byte; the runs they left plain are set in their own body colour; and
 // every coloured run carries a colour that is in their own palette and was
 // not derived from it.
-func TestTheFenceWearsTheBasesOwnBackgroundAndColors(t *testing.T) {
+func TestTheFenceWearsTheStylesOwnBackgroundAndColors(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
 			st := worn(t, DefaultStyle, sc.tok)
@@ -132,9 +132,9 @@ func TestTheFenceWearsTheBasesOwnBackgroundAndColors(t *testing.T) {
 
 // TestNoColorIsAltered is the same claim made across the whole registry rather
 // than on the default: whatever style is chosen, in whichever appearance, the
-// colours reaching the renderer are colours its author wrote down. A ratio is
-// never consulted, so a palette drawn faint stays faint and a palette drawn
-// boldly stays bold.
+// colours reaching the renderer are colours its author wrote down. A contrast
+// reading is never consulted, so a palette drawn faint stays faint and a
+// palette drawn boldly stays bold.
 func TestNoColorIsAltered(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
@@ -526,18 +526,20 @@ func TestWearTouchesOnlyTheCodeFields(t *testing.T) {
 // content is surfaced rather than enforced — a style shows as its author drew
 // it, and a reader who finds one unreadable picks another — so what a gate can
 // honestly do here is keep the number where somebody looking for it will find
-// it. A third of all authored colours across the embedded set sit under the
-// normal-text floor, most of them on token types real code rarely reaches
-// (diff markers, error highlights, whitespace), and the faintest of them are
-// drawn deliberately: a marker for deleted text drawn in the background colour
-// itself measures 1.00:1 and is meant to.
+// it. Four fifths of all authored colours across the embedded set sit under the
+// body-text floor — 79% of 2401 in light, 82% of 2461 in dark — most of them on
+// token types real code rarely reaches (diff markers, error highlights,
+// whitespace), and the faintest of them are drawn deliberately: a marker for
+// deleted text drawn in the background colour itself measures |Lc| 0 and is
+// meant to. The worst reading is a tie at |Lc| 0 for that reason, so the
+// faintest styles are logged as a list rather than as one name.
 //
 // What it would take to fail here is structural: a style that resolves to
 // nothing, or an appearance that reaches no style at all.
 func TestAuthoredContrastSweep(t *testing.T) {
 	type reading struct {
 		style, tt string
-		r         float64
+		lc        float64
 	}
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
@@ -554,22 +556,22 @@ func TestAuthoredContrastSweep(t *testing.T) {
 				plain := plainForeground(m)
 				types := slices.Clone(m.Types())
 				slices.Sort(types)
-				w := reading{style: name, r: math.Inf(1)}
+				w := reading{style: name, lc: math.Inf(1)}
 				for _, tt := range types {
 					e := m.Get(tt)
 					if !e.Colour.IsSet() || e.Colour == plain {
 						continue
 					}
 					entries++
-					r := color.Magnitude(fromChroma(e.Colour), background)
-					if r < contrastFloor {
+					lc := color.Magnitude(fromChroma(e.Colour), background)
+					if lc < contrastFloor {
 						below++
 					}
-					if r < w.r {
-						w.r, w.tt = r, tt.String()
+					if lc < w.lc {
+						w.lc, w.tt = lc, tt.String()
 					}
 				}
-				if math.IsInf(w.r, 1) {
+				if math.IsInf(w.lc, 1) {
 					colourless = append(colourless, name)
 					continue
 				}
@@ -578,14 +580,14 @@ func TestAuthoredContrastSweep(t *testing.T) {
 			if entries == 0 {
 				t.Fatal("the sweep measured nothing")
 			}
-			sort.Slice(worst, func(i, j int) bool { return worst[i].r < worst[j].r })
+			sort.Slice(worst, func(i, j int) bool { return worst[i].lc < worst[j].lc })
 			t.Logf("%d styles, %d authored colours, %d under |Lc| %.1f (%.0f%%), on the background each was drawn on",
 				len(worst), entries, below, contrastFloor, 100*float64(below)/float64(entries))
 			for _, w := range worst[:8] {
-				t.Logf("  faintest colour: %-24s %-28s |Lc| %.2f", w.style, w.tt, w.r)
+				t.Logf("  faintest colour: %-24s %-28s |Lc| %.2f", w.style, w.tt, w.lc)
 			}
 			for _, w := range worst[len(worst)-3:] {
-				t.Logf("  faintest colour: %-24s %-28s |Lc| %.2f  (the most pronounced of the faint)", w.style, w.tt, w.r)
+				t.Logf("  faintest colour: %-24s %-28s |Lc| %.2f  (the most pronounced of the faint)", w.style, w.tt, w.lc)
 			}
 			if len(colourless) > 0 {
 				t.Logf("styles colouring nothing at all: %v", colourless)
