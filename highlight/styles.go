@@ -1,8 +1,8 @@
-// bases.go — which names a style can be derived from, including the ones a
+// styles.go — which names a style can be derived from, including the ones a
 // person adds themselves.
 //
 // Chroma's embedded styles and styles read from a folder are offered under one
-// vocabulary — a base is a name — so a name that was kept resolves the same way
+// vocabulary — a style is a name — so a name that was kept resolves the same way
 // whichever kind it turned out to be.
 //
 // Loaded styles are held HERE and never put into chroma's registry, which this
@@ -31,7 +31,7 @@ import (
 // styles would make a README beside them an error.
 const styleExt = ".xml"
 
-// Skipped is a file the folder held that did not become a base, and why. It
+// Skipped is a file the folder held that did not become a style, and why. It
 // is returned rather than logged because the answer belongs on screen where
 // the styles were expected: a file silently ignored is indistinguishable from
 // one that was never noticed.
@@ -132,10 +132,10 @@ func readStyle(path string) (*chroma.Style, error) {
 	return style, nil
 }
 
-// Bases returns every name a base can be chosen by — the embedded styles and
+// Styles returns every name a style can be chosen by — the embedded styles and
 // everything [LoadDir] has loaded — sorted, so a chooser built from it stands
 // still between runs.
-func Bases() []string {
+func Styles() []string {
 	out := styles.Names()
 	loadedMu.RLock()
 	for _, s := range loaded {
@@ -146,7 +146,7 @@ func Bases() []string {
 	return out
 }
 
-// Known reports whether name resolves to a base. It is what a caller holding
+// Known reports whether name resolves to a style. It is what a caller holding
 // a name from somewhere else — a settings file written by an older build, a
 // folder that has since lost a file — asks before deriving from it.
 func Known(name string) bool {
@@ -164,7 +164,7 @@ func Loaded(name string) bool {
 	return ok
 }
 
-// BaseSuits reports whether the base named is one to offer for a dark
+// StyleSuits reports whether the style named is one to offer for a dark
 // appearance, or for a light one — the question a chooser that shows one half
 // of the list at a time has to ask of every name in it.
 //
@@ -181,7 +181,7 @@ func Loaded(name string) bool {
 //
 // A name that resolves to nothing suits neither: there is no style to measure,
 // and none to offer.
-func BaseSuits(name string, dark bool) bool {
+func StyleSuits(name string, dark bool) bool {
 	s, ok := lookup(name)
 	if !ok {
 		return false
@@ -193,63 +193,63 @@ func BaseSuits(name string, dark bool) bool {
 	return isDarkSurface(fromChroma(bg)) == dark
 }
 
-// BaseOrDefault returns name when it resolves and [DefaultBase] when it does
+// StyleOrDefault returns name when it resolves and [DefaultStyle] when it does
 // not, which is the whole of what a kept preference needs: a name nobody
 // chose, or one whose file is no longer in the folder, leaves the code
 // coloured the way it is coloured for somebody who never chose at all.
-func BaseOrDefault(name string) string {
+func StyleOrDefault(name string) string {
 	if Known(name) {
 		return name
 	}
-	return DefaultBase
+	return DefaultStyle
 }
 
-// BasePair is a base per appearance: the palette code is coloured from under a
-// light one, and the palette it is coloured from under a dark one. It is what
+// StylePair is a style per appearance: the style code is coloured from under a
+// light appearance, and the style it is coloured from under a dark one. It is what
 // a person has chosen when they have chosen twice, and what [WearPair]
 // draws through.
-type BasePair struct {
+type StylePair struct {
 	Light string
 	Dark  string
 }
 
-// DefaultBases is the pair to derive through when nothing was chosen:
-// [DefaultBase] under a light appearance and [DefaultDarkBase] under a dark
+// DefaultStyles is the pair to derive through when nothing was chosen:
+// [DefaultStyle] under a light appearance and [DefaultDarkStyle] under a dark
 // one.
-func DefaultBases() BasePair { return BasePair{Light: DefaultBase, Dark: DefaultDarkBase} }
+func DefaultStyles() StylePair { return StylePair{Light: DefaultStyle, Dark: DefaultDarkStyle} }
 
-// Base returns the member for one appearance.
-func (p BasePair) Base(dark bool) string {
+// Style returns the member for one appearance.
+func (p StylePair) Style(dark bool) string {
 	if dark {
 		return p.Dark
 	}
 	return p.Light
 }
 
-// BasesOrDefault resolves a pair that was kept into a pair that can be drawn:
+// StylesOrDefault resolves a pair that was kept into a pair that can be drawn:
 // each member stands when it names a style this build has AND that style was
 // fitted to the appearance it is being kept for, and falls back to the default
 // for that appearance otherwise.
 //
 // Both halves are the same rule: a member has to be usable where it is going.
 // A name nobody chose, or one whose file has left the folder, falls back the
-// way [BaseOrDefault] does. Fitness is measured off the style's own background
-// by [BaseSuits] rather than guessed from the name, so one kept name passed as
+// way [StyleOrDefault] does. Fitness is measured off the style's own background
+// by [StyleSuits] rather than guessed from the name, so one kept name passed as
 // both members keeps the appearance it was fitted to and the other takes the
 // default. A style fitted to no background at all suits both and keeps both.
-func BasesOrDefault(light, dark string) BasePair {
-	return BasePair{Light: baseFor(light, false), Dark: baseFor(dark, true)}
+func StylesOrDefault(light, dark string) StylePair {
+	return StylePair{Light: styleFor(light, false), Dark: styleFor(dark, true)}
 }
 
-// baseFor is one member of [BasesOrDefault].
-func baseFor(name string, dark bool) string {
-	if Known(name) && BaseSuits(name, dark) {
+// styleFor is one member of [StylesOrDefault].
+func styleFor(name string, dark bool) string {
+	if Known(name) && StyleSuits(name, dark) {
 		return name
 	}
 	if dark {
-		return DefaultDarkBase
+		return DefaultDarkStyle
 	}
-	return DefaultBase
+	return DefaultStyle
 }
 
 // lookup resolves a name to the style it names, loaded styles first and
@@ -272,7 +272,7 @@ func lookup(name string) (*chroma.Style, bool) {
 // chroma's own registry uses: the style itself when it already draws that way,
 // its counterpart when it names one that does, and the style itself when
 // there is no better answer. A style with no counterpart is therefore derived
-// from for both appearances, which is what an unpaired base means.
+// from for both appearances, which is what an unpaired style means.
 func forMode(name string, mode chroma.Mode) (*chroma.Style, bool) {
 	s, ok := lookup(name)
 	if !ok {

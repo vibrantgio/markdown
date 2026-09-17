@@ -171,11 +171,11 @@ func TestGoSnippetGolden(t *testing.T) {
 }
 
 // TestWornSnippetGolden records or diffs the same fenced snippet with the
-// default base on it: the palette's own background under the block, its own
+// default style on it: the palette's own background under the block, its own
 // colours in the runs it colours, its own body colour in the runs it leaves
 // plain, and the edge that keeps a background this near the page a block.
 // Beside the two images above — a stock style's colours on the theme's own
-// fill — it is what wearing a base buys: a plate, rather than a set of hues
+// fill — it is what wearing a style buys: a plate, rather than a set of hues
 // borrowed from one.
 func TestWornSnippetGolden(t *testing.T) {
 	code := "// greet returns a greeting\n" + goSnippet
@@ -190,7 +190,7 @@ func TestWornSnippetGolden(t *testing.T) {
 			shaper := tokens.DefaultTypography.DeterministicShaper()
 			blocks := markdown.Parse([]byte("```go\n" + code + "\n```\n"))
 			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
-			highlight.Wear(&style, highlight.DefaultBase, tc.colors)
+			highlight.Wear(&style, highlight.DefaultStyle, tc.colors)
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, image.Pt(560, 140), func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
@@ -207,7 +207,7 @@ func TestWornSnippetGolden(t *testing.T) {
 // sentence, and giving it a foreign background would spot a page of prose with
 // backgrounds that belong to a palette rather than to this theme — so the chip
 // keeps the theme's fill and the body's own colour while the block down the page
-// shows the base whole. Measured on a document holding both, by counting the
+// shows the style whole. Measured on a document holding both, by counting the
 // pixels of each fill.
 func TestInlineChipsStayOnTheThemesFill(t *testing.T) {
 	const source = "A sentence with an `inline chip` in it.\n\n" +
@@ -225,7 +225,7 @@ func TestInlineChipsStayOnTheThemesFill(t *testing.T) {
 			blocks := markdown.Parse([]byte(source))
 			plain := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
 			style := plain
-			highlight.Wear(&style, highlight.DefaultBase, tc.colors)
+			highlight.Wear(&style, highlight.DefaultStyle, tc.colors)
 			if style.CodeChip != plain.CodeChip {
 				t.Errorf("the chip's fill moved to %v; the theme fills it with %v", style.CodeChip, plain.CodeChip)
 			}
@@ -243,7 +243,7 @@ func TestInlineChipsStayOnTheThemesFill(t *testing.T) {
 				t.Errorf("nothing on the page is filled with the chip's %v", plain.CodeChip)
 			}
 			if n := countPixels(img, style.CodeBackground); n == 0 {
-				t.Errorf("nothing on the page is filled with the base's background %v", style.CodeBackground)
+				t.Errorf("nothing on the page is filled with the style's background %v", style.CodeBackground)
 			}
 		})
 	}

@@ -1,6 +1,6 @@
-// pair.go — the other half of a base, found rather than asked for.
+// pair.go — the other half of a style, found rather than asked for.
 //
-// A style is fitted to one background, so a single chosen base has to be
+// A style is fitted to one background, so a single chosen style has to be
 // completed into a pair before anything can be derived from it.
 //
 // Chroma records a counterpart on twenty-two of the seventy-four styles it
@@ -27,8 +27,8 @@ import (
 	"github.com/vibrantgio/theme/color"
 )
 
-// hueClasses are the token classes two bases are compared across: the kinds of
-// run a syntax palette makes a decision about, in the order they are weighed
+// hueClasses are the token classes two styles are compared across: the kinds of
+// run a syntax highlighter style makes a decision about, in the order they are weighed
 // (which is no order at all — the comparison is a sum).
 //
 // Comparing class against class is what makes the comparison mean anything. A
@@ -74,7 +74,7 @@ const classFloor = 0.020
 //
 // The cap it puts on a class's contribution is what makes the comparison a
 // question about hue families rather than an average of angles, and the
-// difference is not cosmetic. Without it, a base agreeing with another on
+// difference is not cosmetic. Without it, a style agreeing with another on
 // eight classes and contradicting it outright on two loses to one that is
 // vaguely off everywhere — two contradictions at 130 degrees drag a mean
 // further than eight agreements at 5 pull it back. github and github-dark are
@@ -95,48 +95,48 @@ const classFloor = 0.020
 // colour sampled at two depths, where two authors' choices are not involved.
 const hueFamily = 60
 
-// CompletePair returns the pair one chosen base stands for: the base itself on
+// CompletePair returns the pair one chosen style stands for: the style itself on
 // the side its author fitted it to, and on the other side the best answer
 // available for what should be drawn there instead.
 //
 // That answer is looked for in two places, in order. A counterpart the style's
 // own author declared wins outright, when the style declares one and it is
 // resolvable and it really is fitted to the other side. Otherwise the pair is
-// completed by measurement: of every base this build can resolve that suits
+// completed by measurement: of every style this build can resolve that suits
 // the other side, the one whose colours fall nearest this one's, class by
-// class, on the hue circle — see [BaseDistance].
+// class, on the hue circle — see [StyleDistance].
 //
-// A base fitted to no background at all is a pair by itself. It was drawn
+// A style fitted to no background at all is a pair by itself. It was drawn
 // against nothing, so it is not the wrong choice under either appearance, and
 // returning it for both sides is the honest reading of what its author left.
 // Four of the embedded styles are like this.
 //
-// A name that resolves to nothing yields [DefaultBases], which is what a
+// A name that resolves to nothing yields [DefaultStyles], which is what a
 // caller holding a name from a settings file written by an older build needs:
-// the same fallback [BaseOrDefault] makes, for both members at once.
+// the same fallback [StyleOrDefault] makes, for both members at once.
 //
 // The result is deterministic. Nothing here reads a map in map order, the
-// candidates are weighed in the order [Bases] lists them, and a tie — two
+// candidates are weighed in the order [Styles] lists them, and a tie — two
 // candidates equally near — goes to whichever of them that list holds first,
 // which is alphabetical.
-func CompletePair(name string) BasePair {
+func CompletePair(name string) StylePair {
 	s, ok := lookup(name)
 	if !ok {
-		return DefaultBases()
+		return DefaultStyles()
 	}
 	self, _ := listed(name)
 	dark, withBackground := polarity(s)
 	if !withBackground {
-		return BasePair{Light: self, Dark: self}
+		return StylePair{Light: self, Dark: self}
 	}
 	other := counterpart(s, !dark)
 	if dark {
-		return BasePair{Light: other, Dark: self}
+		return StylePair{Light: other, Dark: self}
 	}
-	return BasePair{Light: self, Dark: other}
+	return StylePair{Light: self, Dark: other}
 }
 
-// listed is the spelling [Bases] uses for a name that resolves, which is the
+// listed is the spelling [Styles] uses for a name that resolves, which is the
 // spelling every member of a completed pair comes back in: a chooser marking
 // the row it is on compares strings, and a style whose author capitalised its
 // name is registered under a lower-cased key that the list shows and the style
@@ -156,7 +156,7 @@ func listed(name string) (string, bool) {
 }
 
 // polarity measures which appearance a style was fitted to, and reports
-// whether it was fitted to one at all. It is [BaseSuits]'s own measurement,
+// whether it was fitted to one at all. It is [StyleSuits]'s own measurement,
 // reachable from a style rather than from a name.
 func polarity(s *chroma.Style) (dark, withBackground bool) {
 	bg := s.Get(chroma.Background).Background
@@ -181,27 +181,27 @@ func counterpart(s *chroma.Style, dark bool) string {
 		return near
 	}
 	if dark {
-		return DefaultDarkBase
+		return DefaultDarkStyle
 	}
-	return DefaultBase
+	return DefaultStyle
 }
 
-// nearest is the base suiting the given appearance whose palette falls closest
+// nearest is the style suiting the given appearance whose palette falls closest
 // to s's, or false when nothing this build holds can be compared to s.
 //
-// The candidates are the bases of the wanted appearance that name a background
+// The candidates are the styles of the wanted appearance that name a background
 // of their own. One that names none is not among them: it suits both sides
 // because it was fitted to neither, and a style fitted to nothing is nobody's
 // opposite — offering it as the counterpart of a style that does have a
 // background would answer "what was this scheme's other half" with a style
 // that has no halves.
 //
-// The walk is over [Bases], which is sorted, and takes a strictly smaller
+// The walk is over [Styles], which is sorted, and takes a strictly smaller
 // distance to displace the leader, so the first-listed of two equally near
 // candidates wins and the answer does not depend on anything but the styles.
 func nearest(s *chroma.Style, dark bool) (string, bool) {
 	best, bestAt := "", math.Inf(1)
-	for _, name := range Bases() {
+	for _, name := range Styles() {
 		c, ok := lookup(name)
 		if !ok || c == s {
 			continue
@@ -218,7 +218,7 @@ func nearest(s *chroma.Style, dark bool) (string, bool) {
 	return best, best != ""
 }
 
-// BaseDistance is how much of two bases' palettes falls into different hue
+// StyleDistance is how much of two styles' palettes falls into different hue
 // families: 0 when every class they both colour is the same colour in both,
 // and 1 when none of them is. The second result is false for a pair that
 // cannot be compared — a name that resolves to nothing, or two styles with no
@@ -248,7 +248,7 @@ func nearest(s *chroma.Style, dark bool) (string, bool) {
 // The space is the one a palette is read in, and the chroma
 // floor is the one it lifts its own emphasis off, so "how much colour has this
 // one got" is one question across the two and not two.
-func BaseDistance(a, b string) (float64, bool) {
+func StyleDistance(a, b string) (float64, bool) {
 	sa, ok := lookup(a)
 	if !ok {
 		return 0, false
@@ -260,7 +260,7 @@ func BaseDistance(a, b string) (float64, bool) {
 	return distance(sa, sb)
 }
 
-// distance is [BaseDistance] on two styles already resolved.
+// distance is [StyleDistance] on two styles already resolved.
 func distance(a, b *chroma.Style) (float64, bool) {
 	return distanceWith(a, b, hueFamily)
 }

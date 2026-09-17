@@ -20,31 +20,31 @@
 // runs with a stock style's colours on whatever fill the caller's own Style
 // puts under a fence: pass the name that matches the theme, github against a
 // light one and github-dark against a dark one. [Wear] dresses the whole block
-// instead — the base's own background under it, its own colours in the runs it
+// instead — the style's own background under it, its own colours in the runs it
 // colours, its own body colour in the runs it leaves plain, and an edge where
 // a background that close to the page needs one to still read as a block.
 // Neither alters a colour or a registry entry.
 //
-// Wear takes any name chroma's registry holds; the default is [DefaultBase].
-// [WearPair] takes two names, one per appearance, since a base is fitted to a
+// Wear takes any name chroma's registry holds; the default is [DefaultStyle].
+// [WearPair] takes two names, one per appearance, since a style is fitted to a
 // background and most names have no registered counterpart to reach.
-// [BasesOrDefault] turns a pair that was kept somewhere into a pair that can
-// be drawn, and [DefaultBases] is what stands in when nothing was chosen.
+// [StylesOrDefault] turns a pair that was kept somewhere into a pair that can
+// be drawn, and [DefaultStyles] is what stands in when nothing was chosen.
 //
-// A base name may also come from a folder: a chroma style is a small XML
+// A style name may also come from a folder: a chroma style is a small XML
 // document, [LoadDir] reads a folder of them and makes each choosable by its
-// own name, [Bases] is the whole list, and [Known] answers for one name.
-// [BaseSuits] measures which appearance a base was fitted to. Loaded styles
-// are held beside chroma's registry and never inside it — see bases.go.
+// own name, [Styles] is the whole list, and [Known] answers for one name.
+// [StyleSuits] measures which appearance a style was fitted to. Loaded styles
+// are held beside chroma's registry and never inside it — see styles.go.
 //
-// Contrast is surfaced and never enforced. [BaseContrast] reports how much of
-// what a base draws code in falls under [ContrastFloor] on the background its
+// Contrast is surfaced and never enforced. [StyleContrast] reports how much of
+// what a style draws code in falls under [ContrastFloor] on the background its
 // own author fitted it to; nothing here acts on the answer.
 //
-// [CompletePair] finds the other member for a caller holding one base: the
-// counterpart the style's author declared, or the opposite-appearance base
-// whose palette measures nearest by [BaseDistance]. [BasePalette] exposes a
-// base as plain colours.
+// [CompletePair] finds the other member for a caller holding one style: the
+// counterpart the style's author declared, or the opposite-appearance style
+// whose colours measure nearest by [StyleDistance]. [StyleColors] exposes a
+// style as plain colours.
 //
 // Dress the Style again when the theme changes. Both constructors resolve
 // their style once and the highlighter closes over it, so neither can follow a
@@ -83,7 +83,7 @@ import (
 func New(styleName string) markdown.Highlighter {
 	style, ok := lookup(styleName)
 	if !ok {
-		panic(fmt.Sprintf("highlight: unknown style %q (Bases lists every name that resolves)", styleName))
+		panic(fmt.Sprintf("highlight: unknown style %q (Styles lists every name that resolves)", styleName))
 	}
 	return spanner(style, plainForeground(style))
 }

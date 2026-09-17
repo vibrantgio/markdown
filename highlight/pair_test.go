@@ -32,7 +32,7 @@ func TestBasePaletteReadsColors(t *testing.T) {
 	}
 	forget(t, "twin-day")
 
-	got := BasePalette("twin-day")
+	got := StyleColors("twin-day")
 	counts := map[stdcolor.NRGBA]int{}
 	for _, c := range got {
 		counts[c]++
@@ -57,14 +57,14 @@ func TestBasePaletteReadsColors(t *testing.T) {
 }
 
 func TestBasePaletteUnknown(t *testing.T) {
-	if got := BasePalette("no such style"); got != nil {
-		t.Errorf("BasePalette of an unknown name = %v, want nil", got)
+	if got := StyleColors("no such style"); got != nil {
+		t.Errorf("StyleColors of an unknown name = %v, want nil", got)
 	}
 }
 
 func TestBasePaletteStable(t *testing.T) {
-	for _, name := range Bases() {
-		first, second := BasePalette(name), BasePalette(name)
+	for _, name := range Styles() {
+		first, second := StyleColors(name), StyleColors(name)
 		if !slices.Equal(first, second) {
 			t.Fatalf("%s: two reads disagree:\n %v\n %v", name, first, second)
 		}
@@ -74,14 +74,14 @@ func TestBasePaletteStable(t *testing.T) {
 func TestCompletePairDeclared(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		want BasePair
+		want StylePair
 	}{
-		{"github", BasePair{Light: "github", Dark: "github-dark"}},
-		{"github-dark", BasePair{Light: "github", Dark: "github-dark"}},
-		{"catppuccin-latte", BasePair{Light: "catppuccin-latte", Dark: "catppuccin-mocha"}},
-		{"catppuccin-mocha", BasePair{Light: "catppuccin-latte", Dark: "catppuccin-mocha"}},
-		{"solarized-light", BasePair{Light: "solarized-light", Dark: "solarized-dark"}},
-		{"xcode-dark", BasePair{Light: "xcode", Dark: "xcode-dark"}},
+		{"github", StylePair{Light: "github", Dark: "github-dark"}},
+		{"github-dark", StylePair{Light: "github", Dark: "github-dark"}},
+		{"catppuccin-latte", StylePair{Light: "catppuccin-latte", Dark: "catppuccin-mocha"}},
+		{"catppuccin-mocha", StylePair{Light: "catppuccin-latte", Dark: "catppuccin-mocha"}},
+		{"solarized-light", StylePair{Light: "solarized-light", Dark: "solarized-dark"}},
+		{"xcode-dark", StylePair{Light: "xcode", Dark: "xcode-dark"}},
 	} {
 		if got := CompletePair(tc.name); got != tc.want {
 			t.Errorf("CompletePair(%q) = %+v, want %+v", tc.name, got, tc.want)
@@ -89,30 +89,30 @@ func TestCompletePairDeclared(t *testing.T) {
 	}
 }
 
-// TestCompletePairOfABaseFittedToNoBackground holds the rule for a base
+// TestCompletePairOfABaseFittedToNoBackground holds the rule for a style
 // fitted to no background: it is its own pair, because there is no appearance
 // it is the wrong choice for and none it is the right one for either.
 func TestCompletePairOfABaseFittedToNoBackground(t *testing.T) {
 	var found []string
-	for _, name := range Bases() {
-		if !BaseSuits(name, true) || !BaseSuits(name, false) {
+	for _, name := range Styles() {
+		if !StyleSuits(name, true) || !StyleSuits(name, false) {
 			continue
 		}
 		found = append(found, name)
-		want := BasePair{Light: name, Dark: name}
+		want := StylePair{Light: name, Dark: name}
 		if got := CompletePair(name); got != want {
 			t.Errorf("CompletePair(%q) = %+v, want %+v", name, got, want)
 		}
 	}
 	if len(found) == 0 {
-		t.Fatal("every base in the embedded set names a background; the rule is untested")
+		t.Fatal("every style in the embedded set names a background; the rule is untested")
 	}
-	t.Logf("bases fitted to no background: %v", found)
+	t.Logf("styles fitted to no background: %v", found)
 }
 
 func TestCompletePairUnknown(t *testing.T) {
-	if got := CompletePair("no such style"); got != DefaultBases() {
-		t.Errorf("CompletePair of an unknown name = %+v, want %+v", got, DefaultBases())
+	if got := CompletePair("no such style"); got != DefaultStyles() {
+		t.Errorf("CompletePair of an unknown name = %+v, want %+v", got, DefaultStyles())
 	}
 }
 
@@ -130,7 +130,7 @@ func TestCompletePairLoaded(t *testing.T) {
 	}
 	forget(t, "lantern-day", "lantern-night", "twin-day")
 
-	want := BasePair{Light: "lantern-day", Dark: "lantern-night"}
+	want := StylePair{Light: "lantern-day", Dark: "lantern-night"}
 	if got := CompletePair("lantern-day"); got != want {
 		t.Errorf("CompletePair(lantern-day) = %+v, want %+v", got, want)
 	}
@@ -139,14 +139,14 @@ func TestCompletePairLoaded(t *testing.T) {
 	}
 
 	// twin-day declares nothing, so its dark member is measured. What it
-	// measures to is the metric's business; that it is a resolvable dark base
+	// measures to is the metric's business; that it is a resolvable dark style
 	// is the contract.
 	got := CompletePair("twin-day")
 	if got.Light != "twin-day" {
 		t.Errorf("CompletePair(twin-day).Light = %q, want the style itself", got.Light)
 	}
-	if !Known(got.Dark) || !BaseSuits(got.Dark, true) {
-		t.Errorf("CompletePair(twin-day).Dark = %q, which is not a dark base this build has", got.Dark)
+	if !Known(got.Dark) || !StyleSuits(got.Dark, true) {
+		t.Errorf("CompletePair(twin-day).Dark = %q, which is not a dark style this build has", got.Dark)
 	}
 	t.Logf("twin-day completed to %+v", got)
 }
@@ -156,7 +156,7 @@ func TestCompletePairLoaded(t *testing.T) {
 // breaks ties by it, and the palettes it reads come out of sorted token type
 // lists, so nothing here can be perturbed by a map.
 func TestCompletePairDeterministic(t *testing.T) {
-	for _, name := range Bases() {
+	for _, name := range Styles() {
 		first := CompletePair(name)
 		for i := 0; i < 4; i++ {
 			if got := CompletePair(name); got != first {
@@ -167,27 +167,27 @@ func TestCompletePairDeterministic(t *testing.T) {
 }
 
 func TestBaseDistance(t *testing.T) {
-	if d, ok := BaseDistance("github", "github"); !ok || d != 0 {
+	if d, ok := StyleDistance("github", "github"); !ok || d != 0 {
 		t.Errorf("a style against itself = %v (ok=%v), want 0", d, ok)
 	}
-	if _, ok := BaseDistance("github", "no such style"); ok {
+	if _, ok := StyleDistance("github", "no such style"); ok {
 		t.Error("an unknown name compared as if it resolved")
 	}
-	forward, ok := BaseDistance("github", "monokai")
-	back, ok2 := BaseDistance("monokai", "github")
+	forward, ok := StyleDistance("github", "monokai")
+	back, ok2 := StyleDistance("monokai", "github")
 	if !ok || !ok2 || forward != back {
 		t.Errorf("the measure is not symmetric: %v vs %v", forward, back)
 	}
 	// bw colours nothing at all — every entry it has is the body colour, in
 	// bold or italic — so there is no class to compare it on and it is
 	// honestly incomparable rather than distance zero from everything.
-	if _, ok := BaseDistance("bw", "github"); ok {
+	if _, ok := StyleDistance("bw", "github"); ok {
 		t.Error("a style that colours nothing was compared anyway")
 	}
 }
 
 // declaredPairs is every author-declared counterpart in the embedded set, as
-// (style, its counterpart) with both names spelled the way [Bases] lists them.
+// (style, its counterpart) with both names spelled the way [Styles] lists them.
 func declaredPairs(t *testing.T) [][2]string {
 	t.Helper()
 	names := styles.Names()
@@ -207,7 +207,7 @@ func declaredPairs(t *testing.T) [][2]string {
 	return out
 }
 
-// ranked is the measured ordering of every base suiting the given appearance,
+// ranked is the measured ordering of every style suiting the given appearance,
 // nearest first — the search [nearest] makes, opened up so a test can read
 // where an answer came in rather than only whether it won. Nothing here reads
 // a declaration, which is the point: this is the metric with the answers
@@ -230,7 +230,7 @@ func rankedWith(t *testing.T, name string, dark bool, family float64) []string {
 		at   float64
 	}
 	var rows []row
-	for _, candidate := range Bases() {
+	for _, candidate := range Styles() {
 		c, ok := lookup(candidate)
 		if !ok || c == s {
 			continue
@@ -242,7 +242,7 @@ func rankedWith(t *testing.T, name string, dark bool, family float64) []string {
 			rows = append(rows, row{candidate, d})
 		}
 	}
-	// Stable, so equally near candidates keep the order Bases listed them in
+	// Stable, so equally near candidates keep the order Styles listed them in
 	// — the same tie-break the search itself makes.
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].at < rows[j].at })
 	out := make([]string, len(rows))
@@ -252,7 +252,7 @@ func rankedWith(t *testing.T, name string, dark bool, family float64) []string {
 	return out
 }
 
-// family is the scheme a base belongs to: the part of its name before the
+// family is the scheme a style belongs to: the part of its name before the
 // first dash. Flavours of one scheme ship under one family name — the four
 // catppuccins, the four tokyonights, the three rose-pines — and the
 // rediscovery rule below needs to be able to say so.
@@ -362,7 +362,7 @@ func TestHueFamilySitsInThePlateau(t *testing.T) {
 // code below it: the ordering the test builds has to start where the search
 // the package actually makes ends up.
 func TestRediscoveryMatchesTheSearch(t *testing.T) {
-	for _, name := range Bases() {
+	for _, name := range Styles() {
 		s, _ := lookup(name)
 		dark, withBackground := polarity(s)
 		if !withBackground {
@@ -382,11 +382,11 @@ func TestRediscoveryMatchesTheSearch(t *testing.T) {
 	}
 }
 
-// TestSweepEveryBase is the exit criterion: every base this build ships gets a
+// TestSweepEveryBase is the exit criterion: every style this build ships gets a
 // completed pair and a leading seed candidate, and nothing about either is
 // left to chance.
 //
-// It asserts the contract rather than the answers. Which light base a dark one
+// It asserts the contract rather than the answers. Which light style a dark one
 // without a declaration ends up beside is a measurement, and pinning
 // seventy-odd of those would be pinning the metric's output rather than
 // testing it — the declared pairs above are where the metric is held to an
@@ -405,18 +405,18 @@ func TestSweepEveryBase(t *testing.T) {
 				t.Errorf("%s: completed to %q, which resolves to nothing", name, member.name)
 				continue
 			}
-			if !BaseSuits(member.name, member.dark) {
+			if !StyleSuits(member.name, member.dark) {
 				t.Errorf("%s: completed to %q on the %s side, which it was not fitted to",
 					name, member.name, appearance(member.dark))
 			}
 		}
 		if dark, withBackground := func() (bool, bool) { s, _ := lookup(name); return polarity(s) }(); withBackground {
-			if own := pair.Base(dark); own != name {
+			if own := pair.Style(dark); own != name {
 				t.Errorf("%s: its own side of the pair is %q", name, own)
 			}
 		}
 
-		colors := BasePalette(name)
+		colors := StyleColors(name)
 		candidates := imagecolor.ExtractPalette(colors)
 		if len(colors) == 0 {
 			// A style that colours nothing has no candidate in it. It is not a
@@ -441,7 +441,7 @@ func TestSweepEveryBase(t *testing.T) {
 			candidates[0].Color.R, candidates[0].Color.G, candidates[0].Color.B,
 			candidates[0].Chroma, candidates[0].Share, len(colors))
 	}
-	t.Logf("bases that colour nothing, and so have no candidate: %v", colourless)
+	t.Logf("styles that colour nothing, and so have no candidate: %v", colourless)
 }
 
 func appearance(dark bool) string {

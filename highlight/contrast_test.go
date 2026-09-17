@@ -88,7 +88,7 @@ func TestAFaintPaletteIsNamedFaint(t *testing.T) {
 		writtenIn(fFunc, faintColors[3]),
 		writtenIn(fNumber, strongColors[0]),
 	)
-	a, ok := BaseContrast(name)
+	a, ok := StyleContrast(name)
 	if !ok {
 		t.Fatal("a style with a background and colours measured nothing")
 	}
@@ -112,7 +112,7 @@ func TestOneFaintColorIsNotAFaintPalette(t *testing.T) {
 		writtenIn(fNumber, strongColors[3]),
 		writtenIn(fComment, faintColors[0]),
 	)
-	a, ok := BaseContrast(name)
+	a, ok := StyleContrast(name)
 	if !ok {
 		t.Fatal("a style with a background and colours measured nothing")
 	}
@@ -144,8 +144,8 @@ func TestAMarkerDrawnInTheBackgroundIsNotMeasured(t *testing.T) {
 	}
 	plain := fixture(t, "fixture-no-markers", body...)
 	marked := fixture(t, "fixture-with-markers", append(append([]string{}, body...), markers...)...)
-	a, _ := BaseContrast(plain)
-	b, ok := BaseContrast(marked)
+	a, _ := StyleContrast(plain)
+	b, ok := StyleContrast(marked)
 	if !ok {
 		t.Fatal("a style with a background and colours measured nothing")
 	}
@@ -166,7 +166,7 @@ func TestTheBodyColorIsOneOfTheReadings(t *testing.T) {
 		writtenIn(fBody, faintColors[0]),
 		writtenIn(fString, strongColors[0]),
 	)
-	a, ok := BaseContrast(name)
+	a, ok := StyleContrast(name)
 	if !ok {
 		t.Fatal("a style with a background and colours measured nothing")
 	}
@@ -186,7 +186,7 @@ func TestAClassResolvingToTheBodyColourIsNotCountedTwice(t *testing.T) {
 		writtenIn(fFunc, strongColors[0]),
 		writtenIn(fComment, faintColors[0]),
 	)
-	a, _ := BaseContrast(name)
+	a, _ := StyleContrast(name)
 	if a.Colors != 2 {
 		t.Errorf("measured %d colours, want the body colour once and the one class that differs from it", a.Colors)
 	}
@@ -200,10 +200,10 @@ func TestABaseFittedToNoBackgroundHasNoAuthoredContrast(t *testing.T) {
 	entries := []string{writtenIn(fBody, faintColors[0]), writtenIn(fComment, faintColors[1])}
 	noBackground := fixtureOn(t, "fixture-without-background", "", entries...)
 	control := fixture(t, "fixture-with-background", entries...)
-	if _, ok := BaseContrast(noBackground); ok {
+	if _, ok := StyleContrast(noBackground); ok {
 		t.Error("a style fitted to no background reports an authored contrast anyway")
 	}
-	a, ok := BaseContrast(control)
+	a, ok := StyleContrast(control)
 	if !ok || !a.BelowFloor() {
 		t.Errorf("the control measured %+v ok=%v, so the case above proves nothing", a, ok)
 	}
@@ -212,10 +212,10 @@ func TestABaseFittedToNoBackgroundHasNoAuthoredContrast(t *testing.T) {
 // TestABaseColouringNothingHasNothingToMeasure: one embedded style takes no
 // position on any run at all. It has not drawn code faint; it has not drawn it.
 func TestABaseColouringNothingHasNothingToMeasure(t *testing.T) {
-	if _, ok := BaseContrast("bw"); ok {
+	if _, ok := StyleContrast("bw"); ok {
 		t.Error("a style that colours nothing reports an authored contrast")
 	}
-	if _, ok := BaseContrast("no-such-base"); ok {
+	if _, ok := StyleContrast("no-such-style"); ok {
 		t.Error("a name that resolves to nothing reports an authored contrast")
 	}
 	var zero AuthoredContrast
@@ -256,7 +256,7 @@ func TestTheSummaryIsMeasuredOnTheAuthorsOwnBackground(t *testing.T) {
 				want.Below++
 			}
 		}
-		got, _ := BaseContrast(name)
+		got, _ := StyleContrast(name)
 		if got != want {
 			t.Errorf("%s summarised %+v, want %+v", name, got, want)
 		}
@@ -276,7 +276,7 @@ func TestTheShippedSetSplitsOnTheRule(t *testing.T) {
 	plain := map[string]bool{"github": true, "dracula": true, "tokyonight-moon": true, "catppuccin-mocha": true}
 	named, measured := 0, 0
 	for _, name := range styles.Names() {
-		a, ok := BaseContrast(name)
+		a, ok := StyleContrast(name)
 		if !ok {
 			continue
 		}
@@ -292,7 +292,7 @@ func TestTheShippedSetSplitsOnTheRule(t *testing.T) {
 		}
 	}
 	if named == 0 || named == measured {
-		t.Errorf("%d of %d measurable bases read faint, which is a rule that says nothing", named, measured)
+		t.Errorf("%d of %d measurable styles read faint, which is a rule that says nothing", named, measured)
 	}
-	t.Logf("%d of %d measurable bases read faint on their own backgrounds", named, measured)
+	t.Logf("%d of %d measurable styles read faint on their own backgrounds", named, measured)
 }

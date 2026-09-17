@@ -48,7 +48,7 @@ func folder(t *testing.T, files map[string]string) string {
 
 // forget drops names from the loaded set when the test ends. The set is
 // process-wide, like chroma's own registry, so a test that leaves a style in
-// it changes what every later test sees Bases return.
+// it changes what every later test sees Styles return.
 func forget(t *testing.T, names ...string) {
 	t.Helper()
 	t.Cleanup(func() {
@@ -61,7 +61,7 @@ func forget(t *testing.T, names ...string) {
 }
 
 // TestALoadedStyleIsABaseLikeAnyOther: a file dropped in the folder is
-// choosable by name, derives like an embedded base, and says where it came
+// choosable by name, derives like an embedded style, and says where it came
 // from — which is the whole of what loading is for.
 func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 	forget(t, "lantern-day")
@@ -74,22 +74,22 @@ func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 		t.Fatalf("loaded %v, want the one style in the folder", names)
 	}
 	if !Known("lantern-day") {
-		t.Error("the loaded style does not resolve as a base")
+		t.Error("the loaded style does not resolve as a style")
 	}
 	if !Loaded("lantern-day") {
 		t.Error("the loaded style does not report itself as loaded")
 	}
-	if Loaded(DefaultBase) {
+	if Loaded(DefaultStyle) {
 		t.Error("an embedded style reports itself as loaded from a folder")
 	}
-	if !slices.Contains(Bases(), "lantern-day") {
-		t.Error("the loaded style is not among the names a base can be chosen by")
+	if !slices.Contains(Styles(), "lantern-day") {
+		t.Error("the loaded style is not among the names a style can be chosen by")
 	}
-	// The proof it is a base and not just a name: wearing it colours code,
+	// The proof it is a style and not just a name: wearing it colours code,
 	// and colours it differently from the default.
 	const snippet = "// hello\nfunc greet() {}\n"
 	mine := worn(t, "lantern-day", tokens.PlatformLight).Highlight("go", snippet)
-	theirs := worn(t, DefaultBase, tokens.PlatformLight).Highlight("go", snippet)
+	theirs := worn(t, DefaultStyle, tokens.PlatformLight).Highlight("go", snippet)
 	if len(mine) == 0 {
 		t.Fatal("wearing the loaded style coloured nothing")
 	}
@@ -101,7 +101,7 @@ func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 		}
 	}
 	if same {
-		t.Error("the loaded style coloured the snippet exactly as the default base did")
+		t.Error("the loaded style coloured the snippet exactly as the default style did")
 	}
 }
 
@@ -178,16 +178,16 @@ func TestAStyleWithNoNameIsSkipped(t *testing.T) {
 // skipped and says so, rather than quietly replacing a style somebody else
 // chose by name.
 func TestAFileMayNotShadowAnEmbeddedStyle(t *testing.T) {
-	shadow := strings.Replace(lanternXML, `name="lantern-day"`, `name="`+DefaultBase+`"`, 1)
+	shadow := strings.Replace(lanternXML, `name="lantern-day"`, `name="`+DefaultStyle+`"`, 1)
 	dir := folder(t, map[string]string{"shadow.xml": shadow})
 	names, skipped := LoadDir(dir)
 	if len(names) != 0 {
 		t.Errorf("loaded %v, want nothing — the name is an embedded style's", names)
 	}
-	if len(skipped) != 1 || !strings.Contains(skipped[0].Reason, DefaultBase) {
+	if len(skipped) != 1 || !strings.Contains(skipped[0].Reason, DefaultStyle) {
 		t.Fatalf("skipped %v, want the shadowing file named with its reason", skipped)
 	}
-	if Loaded(DefaultBase) {
+	if Loaded(DefaultStyle) {
 		t.Fatal("the embedded default was replaced by a file")
 	}
 }
@@ -238,22 +238,22 @@ func TestLoadingLeavesChromasRegistryAlone(t *testing.T) {
 // it is for somebody who never chose at all.
 func TestAnUnknownBaseFallsBackToTheDefault(t *testing.T) {
 	for _, name := range []string{"", "  ", "a-style-nobody-wrote"} {
-		if got := BaseOrDefault(name); got != DefaultBase {
-			t.Errorf("BaseOrDefault(%q) = %q, want the default %q", name, got, DefaultBase)
+		if got := StyleOrDefault(name); got != DefaultStyle {
+			t.Errorf("StyleOrDefault(%q) = %q, want the default %q", name, got, DefaultStyle)
 		}
 		if Known(name) {
-			t.Errorf("%q was reported as a base that resolves", name)
+			t.Errorf("%q was reported as a style that resolves", name)
 		}
 	}
-	if got := BaseOrDefault("github"); got != "github" {
-		t.Errorf("BaseOrDefault(github) = %q, want it kept", got)
+	if got := StyleOrDefault("github"); got != "github" {
+		t.Errorf("StyleOrDefault(github) = %q, want it kept", got)
 	}
 }
 
 // TestEveryEmbeddedStyleIsChoosable: the list a chooser is built from covers
-// the whole embedded set, so a base browsed elsewhere can be found here.
+// the whole embedded set, so a style browsed elsewhere can be found here.
 func TestEveryEmbeddedStyleIsChoosable(t *testing.T) {
-	names := Bases()
+	names := Styles()
 	for _, n := range styles.Names() {
 		if !slices.Contains(names, n) {
 			t.Errorf("the embedded style %q is not choosable", n)
@@ -265,14 +265,14 @@ func TestEveryEmbeddedStyleIsChoosable(t *testing.T) {
 }
 
 // TestEveryBaseIsOfferedUnderOneAppearanceOrBoth: the split is a partition of
-// the whole set — a base offered under neither is a style that has become
+// the whole set — a style offered under neither is a style that has become
 // unreachable, which is the one outcome a filter must not produce. The counts
 // are logged rather than pinned: chroma's set grows, and a test that failed
 // when it did would be reporting on chroma rather than on this.
 func TestEveryBaseIsOfferedUnderOneAppearanceOrBoth(t *testing.T) {
 	var light, dark, both int
-	for _, n := range Bases() {
-		l, d := BaseSuits(n, false), BaseSuits(n, true)
+	for _, n := range Styles() {
+		l, d := StyleSuits(n, false), StyleSuits(n, true)
 		switch {
 		case l && d:
 			both++
@@ -281,11 +281,11 @@ func TestEveryBaseIsOfferedUnderOneAppearanceOrBoth(t *testing.T) {
 		case d:
 			dark++
 		default:
-			t.Errorf("the base %q is offered under neither appearance — no chooser can show it", n)
+			t.Errorf("the style %q is offered under neither appearance — no chooser can show it", n)
 		}
 	}
-	t.Logf("%d bases: %d light, %d dark, %d fitted to no background and offered under both",
-		len(Bases()), light, dark, both)
+	t.Logf("%d styles: %d light, %d dark, %d fitted to no background and offered under both",
+		len(Styles()), light, dark, both)
 	if light == 0 || dark == 0 {
 		t.Errorf("the split came out %d light and %d dark — one half of the chooser would be empty", light, dark)
 	}
@@ -323,39 +323,39 @@ func TestTheBackgroundDecidesTheAppearance(t *testing.T) {
 		{"lantern-night-in-name-only", true, false},
 		{"lantern-nowhere", true, true},
 	} {
-		if got := BaseSuits(tc.name, false); got != tc.light {
-			t.Errorf("BaseSuits(%q, light) = %v, want %v", tc.name, got, tc.light)
+		if got := StyleSuits(tc.name, false); got != tc.light {
+			t.Errorf("StyleSuits(%q, light) = %v, want %v", tc.name, got, tc.light)
 		}
-		if got := BaseSuits(tc.name, true); got != tc.dark {
-			t.Errorf("BaseSuits(%q, dark) = %v, want %v", tc.name, got, tc.dark)
+		if got := StyleSuits(tc.name, true); got != tc.dark {
+			t.Errorf("StyleSuits(%q, dark) = %v, want %v", tc.name, got, tc.dark)
 		}
 	}
-	// A name nothing resolves is offered nowhere: a chooser asking about a base
+	// A name nothing resolves is offered nowhere: a chooser asking about a style
 	// that has left the folder must not be handed a row for it.
-	if BaseSuits("a-style-nobody-wrote", false) || BaseSuits("a-style-nobody-wrote", true) {
+	if StyleSuits("a-style-nobody-wrote", false) || StyleSuits("a-style-nobody-wrote", true) {
 		t.Error("a name that resolves to nothing was offered under an appearance")
 	}
 }
 
-// TestTheDefaultPairSitsOnOppositeSides: the base the window opens on is light
+// TestTheDefaultPairSitsOnOppositeSides: the style the window opens on is light
 // and the one it reaches in the dark is dark, so the two halves of the chooser
 // each hold one member of the pair rather than both or neither.
 func TestTheDefaultPairSitsOnOppositeSides(t *testing.T) {
-	if !BaseSuits(DefaultBase, false) || BaseSuits(DefaultBase, true) {
-		t.Errorf("the default base %q is not offered as a light base and only as one", DefaultBase)
+	if !StyleSuits(DefaultStyle, false) || StyleSuits(DefaultStyle, true) {
+		t.Errorf("the default style %q is not offered as a light style and only as one", DefaultStyle)
 	}
-	if BaseSuits(DefaultDarkBase, false) || !BaseSuits(DefaultDarkBase, true) {
-		t.Errorf("the default dark base %q is not offered as a dark base and only as one", DefaultDarkBase)
+	if StyleSuits(DefaultDarkStyle, false) || !StyleSuits(DefaultDarkStyle, true) {
+		t.Errorf("the default dark style %q is not offered as a dark style and only as one", DefaultDarkStyle)
 	}
-	if got := DefaultBases(); got.Base(false) != DefaultBase || got.Base(true) != DefaultDarkBase {
-		t.Errorf("the default pair reads %+v, want %q under the sun and %q under the moon", got, DefaultBase, DefaultDarkBase)
+	if got := DefaultStyles(); got.Style(false) != DefaultStyle || got.Style(true) != DefaultDarkStyle {
+		t.Errorf("the default pair reads %+v, want %q under the sun and %q under the moon", got, DefaultStyle, DefaultDarkStyle)
 	}
 }
 
 // TestAKeptPairResolvesByMeasurement is the whole of what a reader does with a
 // pair somebody kept: a member stands where it was fitted to stand, and falls
 // back to that appearance's default everywhere else. The last two cases are the
-// migration — a file naming one base with no appearance attached arrives with
+// migration — a file naming one style with no appearance attached arrives with
 // that name in both members, and comes out with the name on the half it was
 // measured to belong on and the default on the other.
 func TestAKeptPairResolvesByMeasurement(t *testing.T) {
@@ -365,23 +365,23 @@ func TestAKeptPairResolvesByMeasurement(t *testing.T) {
 		wantL, wantD string
 	}{
 		{"a pair chosen for each appearance", "github", "dracula", "github", "dracula"},
-		{"nothing kept", "", "", DefaultBase, DefaultDarkBase},
-		{"names this build cannot resolve", "a-style-nobody-wrote", "another", DefaultBase, DefaultDarkBase},
-		{"members on the wrong halves", "dracula", "github", DefaultBase, DefaultDarkBase},
-		{"one light base, no appearance attached", "github", "github", "github", DefaultDarkBase},
-		{"one dark base, no appearance attached", "dracula", "dracula", DefaultBase, "dracula"},
-		{"one base fitted to no background at all", "pygments", "pygments", "pygments", "pygments"},
+		{"nothing kept", "", "", DefaultStyle, DefaultDarkStyle},
+		{"names this build cannot resolve", "a-style-nobody-wrote", "another", DefaultStyle, DefaultDarkStyle},
+		{"members on the wrong halves", "dracula", "github", DefaultStyle, DefaultDarkStyle},
+		{"one light style, no appearance attached", "github", "github", "github", DefaultDarkStyle},
+		{"one dark style, no appearance attached", "dracula", "dracula", DefaultStyle, "dracula"},
+		{"one style fitted to no background at all", "pygments", "pygments", "pygments", "pygments"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := BasesOrDefault(tc.light, tc.dark)
+			got := StylesOrDefault(tc.light, tc.dark)
 			if got.Light != tc.wantL || got.Dark != tc.wantD {
-				t.Errorf("BasesOrDefault(%q, %q) = %+v, want light %q and dark %q",
+				t.Errorf("StylesOrDefault(%q, %q) = %+v, want light %q and dark %q",
 					tc.light, tc.dark, got, tc.wantL, tc.wantD)
 			}
 			// Whatever comes out is drawable under the appearance it came out
-			// for, which is the property a chooser leans on: the applied base
+			// for, which is the property a chooser leans on: the applied style
 			// is always on the list the scheme is showing.
-			if !BaseSuits(got.Light, false) || !BaseSuits(got.Dark, true) {
+			if !StyleSuits(got.Light, false) || !StyleSuits(got.Dark, true) {
 				t.Errorf("%+v holds a member fitted to the other background", got)
 			}
 		})

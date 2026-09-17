@@ -118,8 +118,8 @@ type Style struct {
 	CodeSize unit.Sp
 	// CodeColor is the code block text colour: what plain code is set in, and
 	// what a highlighted run with no colour of its own falls back to. A fence
-	// dressed in a syntax palette takes that palette's own body colour here, so
-	// the runs its author left plain are the ones they drew plain.
+	// dressed in a syntax highlighter style takes that style's own body colour
+	// here, so the runs its author left plain are the ones they drew plain.
 	CodeColor color.NRGBA
 	// CodeBackground is the fenced block's fill. [FromTokens] gives it the
 	// platform's alternating content fill over the page — the one small step
@@ -127,10 +127,10 @@ type Style struct {
 	// and lighter than a dark one.
 	//
 	// It is a field rather than a constant because a fence may be dressed in a
-	// syntax palette instead, and a palette is a background and a set of
-	// colours together: put the colours on a background their author never drew
-	// them against and the relations between them stop being the ones that were
-	// chosen.
+	// syntax highlighter style instead, and a style is a background and a set
+	// of colours together: put the colours on a background their author never
+	// drew them against and the relations between them stop being the ones
+	// that were chosen.
 	// Then this holds that author's own background, CodeColor their own body
 	// colour, and CodeBorder whatever it takes to keep the result an island.
 	CodeBackground color.NRGBA
@@ -142,7 +142,7 @@ type Style struct {
 	// takes. A step of fill says a fence stands apart; it does not say where
 	// the fence ENDS, and a block laid unbounded on a page a whisper away
 	// from it stops being a block — the code reads as a paragraph in a
-	// monospace face. A syntax palette fitted to a light page puts its own
+	// monospace face. A highlighter style fitted to a light page puts its own
 	// near-white in that position. The line is what says where the fence is,
 	// and [FromTokens] lays the platform's seam over whatever fill it is
 	// edging (see codeRim).
@@ -157,11 +157,11 @@ type Style struct {
 	// it is set apart, which is how the reading surface this library is judged
 	// against draws it.
 	//
-	// The two part company as soon as a fence is dressed in a syntax palette,
-	// and deliberately: a page of prose spotted with somebody else's
-	// backgrounds would be a page arguing with itself, so a chip stays on the
-	// theme's own fill and in the body's own colour while the block down the
-	// page shows the palette whole.
+	// The two part company as soon as a fence is dressed in a syntax
+	// highlighter style, and deliberately: a page of prose spotted with
+	// somebody else's backgrounds would be a page arguing with itself, so a
+	// chip stays on the theme's own fill and in the body's own colour while
+	// the block down the page shows the style whole.
 	CodeChip color.NRGBA
 	// CodeChipBorder strokes a hairline just inside the chip's rounded edge,
 	// as [Style.CodeBorder] does for the fence. A zero alpha draws none.
@@ -176,8 +176,8 @@ type Style struct {
 	// chip's own size: the same fill and the same seam.
 	//
 	// It is separate from CodeBorder for the same reason CodeChip is separate
-	// from CodeBackground: a fence dressed in a syntax palette takes that
-	// palette's background and the edge that background calls for, while the
+	// from CodeBackground: a fence dressed in a syntax highlighter style takes
+	// that style's background and the edge that background calls for, while the
 	// chip stays on the theme's own fill and keeps the theme's own rim.
 	CodeChipBorder color.NRGBA
 	// CodeScrollbar styles the slim horizontal bar a code block whose widest

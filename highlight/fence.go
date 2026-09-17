@@ -1,8 +1,8 @@
-// fence.go dresses a fenced code block in a syntax base, as its author drew
-// it.
+// fence.go dresses a fenced code block in a syntax highlighter style, as
+// its author drew it.
 //
-// A syntax style's background, body colour and accents were curated together,
-// so the block shows the base whole: the author's own background under the
+// A style's background, body colour and accents were curated together, so
+// the block shows the style whole: the author's own background under the
 // author's own colours, neither of them touched. The content around it — the
 // page, the prose, the chip an inline span sits on — stays the theme's. What
 // the theme decides is which member of the pair is on screen, and that a block
@@ -11,7 +11,7 @@
 //
 // Contrast is surfaced, not enforced: no colour is moved and no style is
 // failed for its author's taste. The sweep in the tests records what every
-// base measures on its own background and names the worst of them.
+// style measures on its own background and names the worst of them.
 
 package highlight
 
@@ -26,49 +26,49 @@ import (
 	"github.com/vibrantgio/theme/tokens"
 )
 
-// DefaultBase and DefaultDarkBase name the syntax palettes to draw code in
-// when nothing else is chosen: chroma's catppuccin-latte under a light
-// appearance and catppuccin-mocha under a dark one, which are each other's
-// registered counterparts. They are defaults and not a policy — [Wear] takes
+// DefaultStyle and DefaultDarkStyle name the syntax highlighter styles to
+// draw code in when nothing else is chosen: chroma's catppuccin-latte under
+// a light appearance and catppuccin-mocha under a dark one, which are each
+// other's registered counterparts. They are defaults and not a policy — [Wear] takes
 // any name in chroma's registry, and [WearPair] any two.
 const (
-	DefaultBase     = "catppuccin-latte"
-	DefaultDarkBase = "catppuccin-mocha"
+	DefaultStyle     = "catppuccin-latte"
+	DefaultDarkStyle = "catppuccin-mocha"
 )
 
-// Wear dresses st's fenced code blocks in the base named: its author's own
+// Wear dresses st's fenced code blocks in the style named: its author's own
 // background under the fence, their own colours in the runs they coloured, and
 // their own body colour in the runs they left plain. Nothing else on the page
 // moves — the prose, the chip an inline code span sits on, and the bar a wide
 // block scrolls under all stay the theme's.
 //
-// One base names a pair, not a side. Which member is worn follows the tokens:
+// One style names a pair, not a side. Which member is worn follows the tokens:
 // c's own appearance decides light or dark, and chroma's registered
-// counterpart supplies the other member, so Wear(&st, [DefaultBase], c) puts
+// counterpart supplies the other member, so Wear(&st, [DefaultStyle], c) puts
 // the catppuccin-latte plate on a light theme and the catppuccin-mocha one on
-// a dark theme from the one name. A base with no counterpart is worn under
+// a dark theme from the one name. A style with no counterpart is worn under
 // both — and only 22 of the 74 embedded styles name one, so most names are a
-// side however they are asked. A caller that has chosen a base for each
+// side however they are asked. A caller that has chosen a style for each
 // appearance hands both over instead: see [WearPair].
 //
 // It is st's four code fields that are written: Highlight, CodeColor,
 // CodeBackground and CodeBorder. Everything a Style says about anything else
 // is left exactly as the caller had it, so the ordinary shape of this is
 // [markdown.FromTokens] followed by one call. Nothing else is read: the
-// block's edge is decided against the background the base itself names, so a
+// block's edge is decided against the background the style itself names, so a
 // document mounted on some other surface takes the same fence it takes on the
 // theme's own page.
 //
 // A name missing from chroma's style registry panics, as in [New].
 //
-// Dress the Style again when the theme changes: the base is resolved once and
+// Dress the Style again when the theme changes: the style is resolved once and
 // the highlighter closes over it, so nothing here can follow a theme
 // observable.
-func Wear(st *markdown.Style, base string, p tokens.PlatformColors) {
-	WearPair(st, BasePair{Light: base, Dark: base}, p)
+func Wear(st *markdown.Style, style string, p tokens.PlatformColors) {
+	WearPair(st, StylePair{Light: style, Dark: style}, p)
 }
 
-// WearPair is [Wear] for a caller holding a base per appearance: c's own
+// WearPair is [Wear] for a caller holding a style per appearance: c's own
 // appearance says which member is drawn, and that member's background, colours
 // and body colour are what the fence takes.
 //
@@ -76,7 +76,7 @@ func Wear(st *markdown.Style, base string, p tokens.PlatformColors) {
 // drawn as its own author wrote it, italics and bold included. A member naming
 // nothing this package can resolve panics exactly as [Wear] does, if it is the
 // member the appearance calls for.
-func WearPair(st *markdown.Style, pair BasePair, p tokens.PlatformColors) {
+func WearPair(st *markdown.Style, pair StylePair, p tokens.PlatformColors) {
 	surface := codeSurface(p)
 	mode, name := chroma.Light, pair.Light
 	if isDarkSurface(surface) {
@@ -84,7 +84,7 @@ func WearPair(st *markdown.Style, pair BasePair, p tokens.PlatformColors) {
 	}
 	member, ok := forMode(name, mode)
 	if !ok {
-		panic(fmt.Sprintf("highlight: unknown style %q (Bases lists every name that resolves)", name))
+		panic(fmt.Sprintf("highlight: unknown style %q (Styles lists every name that resolves)", name))
 	}
 
 	// The registry's own style, straight through: the colours on screen are the
@@ -95,7 +95,7 @@ func WearPair(st *markdown.Style, pair BasePair, p tokens.PlatformColors) {
 		st.CodeColor = fromChroma(plain)
 	}
 
-	// The chip's fill is what a base naming no background of its own is drawn on.
+	// The chip's fill is what a style naming no background of its own is drawn on.
 	// A Style built by hand may carry no chip, and then the theme's own code fill
 	// stands in.
 	fallback := st.CodeChip
@@ -128,7 +128,7 @@ func fenceBackground(member *chroma.Style, fallback stdcolor.NRGBA) stdcolor.NRG
 //
 // Which separator is a question about that fill and not about the appearance
 // the document is read in. The platform draws its separator dark on a light
-// fill and light on a dark one, and a base fitted to a dark page worn on a
+// fill and light on a dark one, and a style fitted to a dark page worn on a
 // light theme is an ordinary thing to ask for — so the fill is asked which
 // appearance's text reads on it, and it takes that appearance's separator, at
 // the live set's own coverage. [markdown.FromTokens] needs none of this: its
@@ -144,7 +144,7 @@ func fenceEdge(fence stdcolor.NRGBA, p tokens.PlatformColors) stdcolor.NRGBA {
 }
 
 // codeSurface is the fill a code block is drawn on under this colour set
-// before any base is worn. It is read back off the markdown style rather than
+// before any style is worn. It is read back off the markdown style rather than
 // being spelled again here, so the answer stays in one place: whatever the
 // style constructor decided. The typography is irrelevant to it and the
 // default stands in, and so does the page — the fence's own fill is what is
