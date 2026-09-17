@@ -422,12 +422,8 @@ lives on in `components/paragraph`, and this module owns the block layer that
 
 ## For coding assistants
 
-`AGENTS.md` in this repository points at the organization's canonical guide,
-which is the one place the module inventory, the application skeleton, the MVU
-loop and rx semantics, typography and the non-guessable pitfalls are written
-down. Read it before writing code against this module:
-
-<https://raw.githubusercontent.com/vibrantgio/workbench/master/llms.txt>
+Read the org guide before you write code against this module: the plan
+root's [`AGENTS.md`](https://github.com/vibrantgio/.github/blob/master/AGENTS.md).
 
 ## Status
 
