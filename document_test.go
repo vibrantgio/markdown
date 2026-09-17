@@ -262,7 +262,7 @@ func driveDocument(w layout.Widget, size image.Point, evs ...event.Event) {
 //
 // The scroll arrives as a real pointer gesture through a router rather than
 // as a seeded offset, so these two images also witness that the remainder is
-// reachable by scrolling.
+// operable by scrolling.
 func TestCodeOverflowGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse([]byte(codeOverflowSource))

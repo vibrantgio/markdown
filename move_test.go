@@ -207,7 +207,7 @@ func TestTheEndsAreTheSamePlacePagingReaches(t *testing.T) {
 
 // TestTheEndsReachFromAnAnchorLanding starts the document seated part way down,
 // as a followed link's anchor leaves it, and checks both ends are still
-// reachable from there — the seating is a scroll position like any other, not
+// operable from there — the seating is a scroll position like any other, not
 // a mode the keys have to know about.
 func TestTheEndsReachFromAnAnchorLanding(t *testing.T) {
 	r := newReader(t, longDoc(30), image.Pt(480, 400))
