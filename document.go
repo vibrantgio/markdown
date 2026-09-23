@@ -28,6 +28,7 @@ import (
 
 	"github.com/vibrantgio/components/list"
 	"github.com/vibrantgio/components/paragraph"
+	"github.com/vibrantgio/components/pointershape"
 	"github.com/vibrantgio/components/scrollarea"
 	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/theme/tokens"
@@ -1146,9 +1147,9 @@ func (d *Document) taskInput(gtx layout.Context, style Style, item *ListItem, ce
 	defer op.Offset(image.Pt(0, top)).Push(gtx.Ops).Pop()
 	defer clip.Rect{Max: image.Pt(sz, sz)}.Push(gtx.Ops).Pop()
 	semantic.Button.Add(gtx.Ops)
-	pointer.CursorPointer.Add(gtx.Ops)
 	st.click.Add(gtx.Ops)
 	event.Op(gtx.Ops, st)
+	pointershape.OverSize(gtx.Ops, image.Pt(sz, sz), pointer.CursorPointer)
 	// Filters for a first-layout checkbox must register this frame or the
 	// router would drop events arriving before the next one.
 	d.taskEvents(gtx, style, item, st)
