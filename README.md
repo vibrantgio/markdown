@@ -277,7 +277,7 @@ fill, the quote bar, the find marks — so a document mounted on something other
 than the platform's text background says so, and the third argument is where:
 
 ```go
-st := markdown.FromTokens(p, typo, panelFill) // inset into a panel rather than laid on the page
+st := markdown.FromTokens(p, typo, paneFill) // inset into a pane rather than laid on the page
 highlight.Wear(&st, highlight.DefaultStyle, p)
 ```
 

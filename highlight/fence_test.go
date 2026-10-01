@@ -233,7 +233,7 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 // The extremes are found rather than named, so the registry can gain and lose
 // styles without this test going stale.
 //
-// The content surface is not read here at all, so a document inset into a panel
+// The content surface is not read here at all, so a document inset into a pane
 // takes the same edge it takes on the page.
 func TestTheEdgeFollowsTheBackground(t *testing.T) {
 	c := tokens.PlatformLight
@@ -267,7 +267,7 @@ func TestTheEdgeFollowsTheBackground(t *testing.T) {
 	inset.ContentSurface = tokens.PlatformDark.TextBackground
 	Wear(&inset, DefaultStyle, c)
 	if inset.CodeBorder != onPage.CodeBorder {
-		t.Errorf("the same style inset onto a dark panel takes the edge %v where on the page it takes %v — the content surface is being read again",
+		t.Errorf("the same style inset onto a dark pane takes the edge %v where on the page it takes %v — the content surface is being read again",
 			inset.CodeBorder, onPage.CodeBorder)
 	}
 }
