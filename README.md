@@ -164,7 +164,7 @@ one choosable by its own name:
 ```go
 loaded, skipped := highlight.LoadDir(dir) // names, and files with reasons
 names := highlight.Styles()               // embedded and loaded, sorted
-style := highlight.StyleOrDefault(chosen) // a name that no longer resolves
+style := highlight.StyleOrDefault(chosen) // the default for an unknown name
 ok := highlight.StyleSuits(style, dark)   // which appearance it was fitted to
 ```
 
@@ -430,24 +430,13 @@ root's [`AGENTS.md`](https://github.com/vibrantgio/.github/blob/master/AGENTS.md
 Current tag `v0.2.0` — a pre-release number, like every tag in the
 organization. What renders, renders well; these are the honest gaps.
 
-- **v0.2.0 is additive.** It adds the `markdown/obsidian` subpackage and
-  changes nothing that existed before it: the parser, the block model, the
-  `Document` and `Style` are untouched, and the stored golden images
-  are byte-identical across the release. A consumer that does not import the
-  new subpackage sees no difference.
-- **v0.1.0 was a breaking release.** `FromTokens` takes a
-  `tokens.Typography` where it took a `tokens.TypeScale`:
-  `markdown.FromTokens(c, tokens.DefaultTypography)`. `TypeScale` is gone
-  from spectrum as of v0.3.0, and it never had a code stop — the Code role
-  lives on `Typography`, outside the type grid — so the old constructor had
-  to read `Mono` and `CodeSize` off `tokens.DefaultTypography` no matter
-  what typography the theme carried, and a caller passing a scaled
-  `TypeScale` scaled headings and body but not code. Code now follows the
-  typography you hand it, and the "set `Style.CodeSize` afterwards"
-  workaround is retired.
-- **`doc.Layout`'s positional-shaper signature is unchanged.** The other
-  half of the surface v0.1.0 was expected to re-cut stayed as it is; it
-  costs nothing today and no consumer has asked.
+- **`FromTokens` takes the whole typography.**
+  `markdown.FromTokens(c, tokens.DefaultTypography)` — the Code role lives
+  on `Typography`, outside the type grid, so code follows the typography you
+  hand it rather than a size set afterwards.
+- **`doc.Layout` keeps its positional-shaper signature.** It takes a shaper
+  and a `Style`; that costs nothing today and no consumer has asked for
+  anything else.
 - **Highlight colours are the chroma style's, and are never re-fitted.** Runs
   a chroma style would render in its plain-text foreground — whitespace,
   punctuation, plain identifiers — are emitted colourless and take
