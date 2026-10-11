@@ -19,8 +19,8 @@ github.com/go-text/typesetting-utils v0.0.0-20260223113751-2d88ac90dae3 h1:drBZz
 github.com/go-text/typesetting-utils v0.0.0-20260223113751-2d88ac90dae3/go.mod h1:3/62I4La/HBRX9TcTpBj4eipLiwzf+vhI+7whTc9V7o=
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
-github.com/vibrantgio/components v1.5.0 h1:XIBp4cWThA88WtdHosd+XlI0dx6AJwZTJXY+CHE7B5k=
-github.com/vibrantgio/components v1.5.0/go.mod h1:8dCDB4dzeC5WFJjV3FaaSv0Tw5tJmdYgm5WpJAa8qCo=
+github.com/vibrantgio/components v1.5.1 h1:20bNHhX1j7ZdR6naD7DGcqf828KSvuJuFsd+atZZjkY=
+github.com/vibrantgio/components v1.5.1/go.mod h1:8dCDB4dzeC5WFJjV3FaaSv0Tw5tJmdYgm5WpJAa8qCo=
 github.com/vibrantgio/font v0.4.4 h1:tbRi3nhRpMCbch/LIcWEkTAx4t6XXHS2jTWmxT0pnGM=
 github.com/vibrantgio/font v0.4.4/go.mod h1:yN2a8768lukWgabD2a5pypVD+uvciEYkWkZfYDvJEoA=
 github.com/vibrantgio/svg v0.1.2 h1:0vx5iDpy69+kKy3wozKWO7xPJgGe/7hmMXSWTu+WuaM=
