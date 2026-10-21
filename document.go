@@ -72,6 +72,9 @@ type Document struct {
 	// word is the heading-word state: the command key, the word under the
 	// pointer, and the marking a followed heading word left; see word.go.
 	word wordState
+	// hover is the address under the pointer and what the caller was last
+	// told about it; see hover.go.
+	hover hoverState
 }
 
 // blockMark is a highlight over one top-level block: the block's index and
@@ -191,8 +194,11 @@ func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style St
 // end belongs to whoever is scrolling it.
 func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	d.wordFrame(gtx)
+	d.hoverFrame()
 	d.findFrame(false)
-	return d.column(gtx, shaper, style, d.blocks)
+	dims := d.column(gtx, shaper, style, d.blocks)
+	d.hoverReport(gtx, style)
+	return dims
 }
 
 // Layout lays out the document's visible blocks in a vertical scrolling list.
@@ -203,9 +209,12 @@ func (d *Document) LayoutColumn(gtx layout.Context, shaper *text.Shaper, style S
 func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) layout.Dimensions {
 	d.recordLine(gtx, style)
 	d.wordFrame(gtx)
+	d.hoverFrame()
 	d.seekMatch(gtx)
 	d.findFrame(true)
-	return list.Layout(gtx, d.list, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
+	dims := list.Layout(gtx, d.list, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
+	d.hoverReport(gtx, style)
+	return dims
 }
 
 // LayoutScrollbar lays out the document exactly like [Layout] and additionally
@@ -226,9 +235,12 @@ func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) 
 func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, style Style, bar scrollbar.Style, anchor list.Anchor) layout.Dimensions {
 	d.recordLine(gtx, style)
 	d.wordFrame(gtx)
+	d.hoverFrame()
 	d.seekMatch(gtx)
 	d.findFrame(true)
-	return list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
+	dims := list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
+	d.hoverReport(gtx, style)
+	return dims
 }
 
 // row returns the per-block row function both list entry points lay out. start
@@ -817,7 +829,7 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 			from := len(d.find.found)
 			spans, key := d.fills(style, cell, cellSpans(style, cell, ri == 0))
 			m := op.Record(gtx.Ops)
-			dims := paragraph.Layout(cgtx, d.textState(cell), shaper, d.filled(style.Text, key), spans)
+			dims := paragraph.Layout(cgtx, d.textState(cell), shaper, d.hovered(d.filled(style.Text, key)), spans)
 			calls[ci] = m.Stop()
 			marks[ci] = [2]int{from, len(d.find.found)}
 			sizes[ci] = dims.Size

@@ -186,7 +186,7 @@ func (d *Document) prose(gtx layout.Context, shaper *text.Shaper, style Style, p
 	spans = d.wordLink(owner, spans)
 	spans, key := d.fills(style, owner, spans)
 	spans, key = d.wordPlaces(owner, model, spans, key)
-	ps = d.wordClick(d.filled(ps, key), owner)
+	ps = d.hovered(d.wordClick(d.filled(ps, key), owner))
 	if d.looking(owner) {
 		d.word.placed = d.word.placed[:0]
 	}
