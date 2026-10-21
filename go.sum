@@ -21,6 +21,8 @@ github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUq
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 github.com/vibrantgio/components v1.5.1 h1:20bNHhX1j7ZdR6naD7DGcqf828KSvuJuFsd+atZZjkY=
 github.com/vibrantgio/components v1.5.1/go.mod h1:8dCDB4dzeC5WFJjV3FaaSv0Tw5tJmdYgm5WpJAa8qCo=
+github.com/vibrantgio/components v1.6.0 h1:pCLLmukO/1OcwJQSn5ZtCzfxqo2oFWxVGEuZdeTTd+A=
+github.com/vibrantgio/components v1.6.0/go.mod h1:8dCDB4dzeC5WFJjV3FaaSv0Tw5tJmdYgm5WpJAa8qCo=
 github.com/vibrantgio/font v0.4.4 h1:tbRi3nhRpMCbch/LIcWEkTAx4t6XXHS2jTWmxT0pnGM=
 github.com/vibrantgio/font v0.4.4/go.mod h1:yN2a8768lukWgabD2a5pypVD+uvciEYkWkZfYDvJEoA=
 github.com/vibrantgio/svg v0.1.2 h1:0vx5iDpy69+kKy3wozKWO7xPJgGe/7hmMXSWTu+WuaM=

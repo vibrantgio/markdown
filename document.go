@@ -52,6 +52,11 @@ type Document struct {
 	// tables holds per-table horizontal scroll state, used when even the
 	// min-content column widths overflow the constraint.
 	tables map[*Table]*layout.List
+	// columns holds each table's measured column widths, and cells each
+	// table cell's drawn call, so a table is shaped once per width, styling
+	// and marking rather than three times a frame; see table.go.
+	columns map[*Table]*tableMeasure
+	cells   map[*TableCell]*cellRecord
 	// images holds per-image-block provider results, so the provider and
 	// texture upload run once per block, not per frame.
 	images map[*Image]imageState
@@ -97,15 +102,17 @@ type imageState struct {
 // NewDocument returns a Document over blocks, scrolled to the top.
 func NewDocument(blocks []Block) *Document {
 	return &Document{
-		blocks: blocks,
-		list:   list.NewState(),
-		text:   make(map[any]*paragraph.State),
-		code:   make(map[*CodeBlock]*scrollarea.State),
-		tables: make(map[*Table]*layout.List),
-		images: make(map[*Image]imageState),
-		tasks:  make(map[*ListItem]*taskState),
-		place:  placements(blocks),
-		mark:   blockMark{block: -1},
+		blocks:  blocks,
+		list:    list.NewState(),
+		text:    make(map[any]*paragraph.State),
+		code:    make(map[*CodeBlock]*scrollarea.State),
+		tables:  make(map[*Table]*layout.List),
+		columns: make(map[*Table]*tableMeasure),
+		cells:   make(map[*TableCell]*cellRecord),
+		images:  make(map[*Image]imageState),
+		tasks:   make(map[*ListItem]*taskState),
+		place:   placements(blocks),
+		mark:    blockMark{block: -1},
 		find: findState{
 			current: -1,
 			seek:    -1,
@@ -659,6 +666,9 @@ func cellSpans(style Style, cell *TableCell, header bool) []paragraph.SpanStyle 
 // wrap while narrow columns keep their longest word intact. When even the
 // min-content widths overflow, the grid scrolls horizontally like a code
 // block. Cell content honours the column alignment.
+//
+// The column widths and the cells' drawing are kept between frames rather
+// than measured again on each; see table.go.
 func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t *Table) layout.Dimensions {
 	cols := len(t.Header)
 	if cols == 0 || cols != len(t.Alignments) {
@@ -672,8 +682,62 @@ func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t
 	pad := gtx.Dp(unit.Dp(tokens.Spacing.S2))
 	avail := max(gtx.Constraints.Max.X-(cols+1)*border-cols*2*pad, 0)
 
-	// Measure pass: record each cell at the full content width, discard the
-	// ops, and keep the widest natural width per column.
+	skey := cellStyleOf(gtx, shaper, style)
+	widths := d.columnWidths(gtx, shaper, style, skey, t, rows, cols, avail)
+	total := 0
+	for _, w := range widths {
+		total += w
+	}
+	tableW := total + (cols+1)*border + cols*2*pad
+
+	if tableW <= gtx.Constraints.Max.X {
+		return d.tableGrid(gtx, shaper, style, skey, t, rows, widths)
+	}
+	// Even the min-content widths overflow: scroll the grid horizontally,
+	// clipped to the viewport, like an over-wide code block.
+	return d.tableState(t).Layout(gtx, 1, func(gtx layout.Context, _ int) layout.Dimensions {
+		return d.tableGrid(gtx, shaper, style, skey, t, rows, widths)
+	})
+}
+
+// columnWidths returns the widths the table's columns are laid out at,
+// measuring them only when the styling or the available content width has
+// changed since the last frame that measured. The two measuring passes are
+// the table's whole shaping spent twice over, and neither depends on
+// anything else about the frame.
+func (d *Document) columnWidths(gtx layout.Context, shaper *text.Shaper, style Style, skey cellStyle, t *Table, rows [][]*TableCell, cols, avail int) []int {
+	m := d.tableMeasured(t)
+	if m.style != skey || len(m.naturals) != cols {
+		*m = tableMeasure{style: skey}
+	}
+	if m.measured && m.avail == avail {
+		return m.widths
+	}
+	m.naturals = naturalColumnWidths(gtx, shaper, style, rows, cols, avail)
+	total := 0
+	for _, w := range m.naturals {
+		total += w
+	}
+	m.widths = m.naturals
+	if total > avail {
+		if m.mins == nil {
+			m.mins = minColumnWidths(gtx, shaper, style, rows, cols)
+		}
+		// A column never shrinks below its longest word, and never grows
+		// past its natural width on account of one.
+		mins := make([]int, cols)
+		for i := range mins {
+			mins[i] = min(m.mins[i], m.naturals[i])
+		}
+		m.widths = distributeWidths(m.naturals, mins, avail)
+	}
+	m.avail, m.measured = avail, true
+	return m.widths
+}
+
+// naturalColumnWidths measures each column at the full content width: record
+// each cell, discard the ops, and keep the widest natural width per column.
+func naturalColumnWidths(gtx layout.Context, shaper *text.Shaper, style Style, rows [][]*TableCell, cols, avail int) []int {
 	naturals := make([]int, cols)
 	mgtx := gtx
 	mgtx.Constraints.Min = image.Point{}
@@ -689,35 +753,16 @@ func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t
 			naturals[ci] = max(naturals[ci], dims.Size.X)
 		}
 	}
-	widths := naturals
-	total := 0
-	for _, w := range naturals {
-		total += w
-	}
-	if total > avail {
-		widths = distributeWidths(naturals, minColumnWidths(gtx, shaper, style, rows, cols, naturals), avail)
-		total = 0
-		for _, w := range widths {
-			total += w
-		}
-	}
-	tableW := total + (cols+1)*border + cols*2*pad
-
-	if tableW <= gtx.Constraints.Max.X {
-		return d.tableGrid(gtx, shaper, style, t, rows, widths)
-	}
-	// Even the min-content widths overflow: scroll the grid horizontally,
-	// clipped to the viewport, like an over-wide code block.
-	return d.tableState(t).Layout(gtx, 1, func(gtx layout.Context, _ int) layout.Dimensions {
-		return d.tableGrid(gtx, shaper, style, t, rows, widths)
-	})
+	return naturals
 }
 
 // minColumnWidths measures each column's min-content width: the widest
 // single whitespace-separated word across its cells, in the cell's span
 // styling. Only called when the natural widths overflow, so the fitting
-// fast path pays nothing for it.
-func minColumnWidths(gtx layout.Context, shaper *text.Shaper, style Style, rows [][]*TableCell, cols int, naturals []int) []int {
+// fast path pays nothing for it. The widths are unclamped — a column no
+// wider than its longest word is clamped by the caller, which holds the
+// natural widths the clamp is against.
+func minColumnWidths(gtx layout.Context, shaper *text.Shaper, style Style, rows [][]*TableCell, cols int) []int {
 	mgtx := gtx
 	mgtx.Constraints.Min = image.Point{}
 	mgtx.Constraints.Max = image.Pt(1e6, 1e6)
@@ -738,9 +783,6 @@ func minColumnWidths(gtx layout.Context, shaper *text.Shaper, style Style, rows 
 				}
 			}
 		}
-	}
-	for i := range mins {
-		mins[i] = min(mins[i], naturals[i])
 	}
 	return mins
 }
@@ -790,7 +832,7 @@ func distributeWidths(naturals, mins []int, avail int) []int {
 }
 
 // tableGrid lays out the grid at the given column widths.
-func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Style, t *Table, rows [][]*TableCell, widths []int) layout.Dimensions {
+func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Style, skey cellStyle, t *Table, rows [][]*TableCell, widths []int) layout.Dimensions {
 	cols := len(widths)
 	border := max(gtx.Dp(1), 1)
 	pad := gtx.Dp(unit.Dp(tokens.Spacing.S2))
@@ -827,13 +869,9 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 			}
 			cgtx.Constraints.Max.X = widths[ci]
 			from := len(d.find.found)
-			spans, key := d.fills(style, cell, cellSpans(style, cell, ri == 0))
-			m := op.Record(gtx.Ops)
-			dims := paragraph.Layout(cgtx, d.textState(cell), shaper, d.hovered(d.filled(style.Text, key)), spans)
-			calls[ci] = m.Stop()
+			calls[ci], sizes[ci] = d.cell(cgtx, shaper, style, skey, cell, ri == 0)
 			marks[ci] = [2]int{from, len(d.find.found)}
-			sizes[ci] = dims.Size
-			rowH = max(rowH, dims.Size.Y)
+			rowH = max(rowH, sizes[ci].Y)
 		}
 		if ri == 0 {
 			paint.FillShape(gtx.Ops, style.TableHeaderBackground, clip.Rect{
