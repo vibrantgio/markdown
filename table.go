@@ -190,7 +190,7 @@ func (d *Document) cell(gtx layout.Context, shaper *text.Shaper, style Style, sk
 		state := d.textState(cell)
 		m := op.Record(gtx.Ops)
 		dims := paragraph.Layout(gtx, state, shaper, d.hovered(d.filled(style.Text, fills)), spans)
-		d.hoverBox(gtx, state)
+		d.linkBox(gtx, state)
 		return m.Stop(), dims.Size
 	}
 	if linked(cell) {

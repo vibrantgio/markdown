@@ -192,7 +192,7 @@ func (d *Document) prose(gtx layout.Context, shaper *text.Shaper, style Style, p
 	}
 	state := d.textState(owner)
 	dims := paragraph.Layout(gtx, state, shaper, ps, spans)
-	d.hoverBox(gtx, state)
+	d.linkBox(gtx, state)
 	d.wordResolve(gtx, owner)
 	d.wordArea(gtx, owner, dims)
 	d.wordPointer(gtx, owner)

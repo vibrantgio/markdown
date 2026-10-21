@@ -36,9 +36,9 @@ func TestDocumentReportsOneAddressUnderThePointer(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	var got []string
-	style.Text.OnLinkHover = func(gtx layout.Context, url string) {
+	style.Text.OnLink = func(gtx layout.Context, url string) {
 		if gtx.Ops == nil {
-			t.Error("OnLinkHover received a layout.Context without Ops; callbacks must carry the live gtx")
+			t.Error("OnLink received a layout.Context without Ops; callbacks must carry the live gtx")
 		}
 		got = append(got, url)
 	}
@@ -259,7 +259,7 @@ func TestDocumentReportsTheLinkTheKeyboardReaches(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	var got []string
-	style.Text.OnLinkHover = func(_ layout.Context, url string) { got = append(got, url) }
+	style.Text.OnLink = func(_ layout.Context, url string) { got = append(got, url) }
 	d := markdown.NewDocument(markdown.Parse([]byte(hoverSource)))
 
 	r := new(gioinput.Router)

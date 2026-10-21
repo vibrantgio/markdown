@@ -78,8 +78,8 @@ type Document struct {
 	// pointer, and the marking a followed heading word left; see word.go.
 	word wordState
 	// hover is the address under the pointer and what the caller was last
-	// told about it; see hover.go.
-	hover hoverState
+	// told about it; see link.go.
+	hover linkState
 }
 
 // blockMark is a highlight over one top-level block: the block's index and
@@ -281,7 +281,7 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 		from := len(d.find.found)
 		seq := d.hover.seq
 		dims := layout.Inset{Top: top, Bottom: bottom}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			defer d.hoverInto(image.Pt(0, gtx.Dp(top)))()
+			defer d.linkInto(image.Pt(0, gtx.Dp(top)))()
 			return d.measured(gtx, style, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = image.Point{}
 				return d.markedBlock(gtx, shaper, style, b, marked, arrived)
@@ -315,7 +315,7 @@ func (d *Document) measured(gtx layout.Context, style Style, w layout.Widget) la
 		defer op.Offset(image.Pt(lead, 0)).Push(gtx.Ops).Pop()
 	}
 	from := len(d.find.found)
-	leave := d.hoverInto(image.Pt(lead, 0))
+	leave := d.linkInto(image.Pt(lead, 0))
 	dims := w(cgtx)
 	leave()
 	d.shift(from, image.Pt(lead, 0))
@@ -481,7 +481,7 @@ func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, 
 			size.Y += closing + gtx.Dp(top)
 		}
 		from := len(d.find.found)
-		leave := d.hoverInto(image.Pt(0, size.Y))
+		leave := d.linkInto(image.Pt(0, size.Y))
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
 		dims := d.markedBlock(cgtx, shaper, style, b, marked, arrived)
 		tr.Pop()
@@ -548,7 +548,7 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 	cgtx.Constraints.Min = image.Point{}
 	cgtx.Constraints.Max.X -= inset
 	from := len(d.find.found)
-	leave := d.hoverInto(image.Pt(inset, 0))
+	leave := d.linkInto(image.Pt(inset, 0))
 	macro := op.Record(gtx.Ops)
 	content := d.column(cgtx, shaper, qs, q.Blocks)
 	call := macro.Stop()
@@ -614,7 +614,7 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	cgtx.Constraints.Max.Y += 2 * gtx.Dp(pad)
 	state := d.codeState(cb)
 	from := len(d.find.found)
-	leave := d.hoverInto(image.Pt(gtx.Dp(pad), gtx.Dp(pad)))
+	leave := d.linkInto(image.Pt(gtx.Dp(pad), gtx.Dp(pad)))
 	macro := op.Record(gtx.Ops)
 	content := layout.Inset{Left: pad, Right: pad}.Layout(cgtx, func(gtx layout.Context) layout.Dimensions {
 		if style.CodeScrollbar.Width() > 0 {
@@ -1003,7 +1003,7 @@ func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	var size image.Point
 	for i, item := range l.Items {
 		from := len(d.find.found)
-		leave := d.hoverInto(image.Pt(0, size.Y))
+		leave := d.linkInto(image.Pt(0, size.Y))
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
 		dims := d.listItem(gtx, shaper, style, l, item, i, line, col)
 		tr.Pop()
@@ -1028,7 +1028,7 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 	cgtx.Constraints.Min = image.Point{}
 	cgtx.Constraints.Max.X = max(cgtx.Constraints.Max.X-col, 0)
 	from := len(d.find.found)
-	leave := d.hoverInto(image.Pt(col, 0))
+	leave := d.linkInto(image.Pt(col, 0))
 	macro := op.Record(gtx.Ops)
 	content := d.column(cgtx, shaper, style, item.Blocks)
 	call := macro.Stop()

@@ -1,4 +1,4 @@
-// hover.go reports the address the reader is on to the document's caller,
+// link.go reports the address the reader is on to the document's caller,
 // and where that address is: one address and one box for the whole document,
 // told no more than once a frame.
 //
@@ -18,7 +18,7 @@
 // instead of being handed it by a second callback this package cannot add to
 // that style. A paragraph reports the box in its own coordinates; carrying
 // it out to the plane the document was laid out into is
-// [Document.hoverInto]'s job, called by every layout path that offsets what
+// [Document.linkInto]'s job, called by every layout path that offsets what
 // it has drawn.
 
 package markdown
@@ -31,8 +31,8 @@ import (
 	"github.com/vibrantgio/components/paragraph"
 )
 
-// hoverState is the document's link-address state.
-type hoverState struct {
+// linkState is the document's link-address state.
+type linkState struct {
 	// url is the address the caller was last told.
 	url string
 	// frame is the address this frame's paragraphs reported, and seen
@@ -45,7 +45,7 @@ type hoverState struct {
 	// at is the offset from the plane the current top-level block is being
 	// laid out into to whatever is being drawn now. Every path that offsets
 	// what it has drawn adds its offset to it for as long as its subtree is
-	// laying out; see [Document.hoverInto].
+	// laying out; see [Document.linkInto].
 	at image.Point
 	// box is where this frame's layout drew the link the reader is on and
 	// boxed whether it drew one at all. The box is in the coordinates of the
@@ -75,22 +75,22 @@ func (d *Document) hoverFrame() {
 	d.hover.at = image.Point{}
 }
 
-// hoverInto enters a subtree drawn at off and returns the function that
+// linkInto enters a subtree drawn at off and returns the function that
 // leaves it again. It is [Document.shift]'s counterpart for the one box the
 // hover has: every layout path that offsets what it has drawn calls it, so a
 // box a paragraph reports in its own coordinates comes out in the plane the
 // document laid its blocks into.
-func (d *Document) hoverInto(off image.Point) func() {
+func (d *Document) linkInto(off image.Point) func() {
 	d.hover.at = d.hover.at.Add(off)
 	return func() { d.hover.at = d.hover.at.Sub(off) }
 }
 
-// hoverBox records where the link the reader is on landed, when the
+// linkBox records where the link the reader is on landed, when the
 // paragraph just laid out is the one holding it. One pointer is on one link
 // and one link holds the keyboard, so the last paragraph to answer is the
 // only one that answers — and a paragraph the pointer is on answers over one
 // that only holds the keyboard, whichever of them laid out first.
-func (d *Document) hoverBox(gtx layout.Context, state *paragraph.State) {
+func (d *Document) linkBox(gtx layout.Context, state *paragraph.State) {
 	if r, ok := state.HoveredLinkBox(); ok {
 		d.setBox(r, true)
 		return
@@ -116,7 +116,7 @@ func (d *Document) setBox(r image.Rectangle, pointed bool) {
 // [Document.LayoutColumn] — and false when the reader is on no link.
 //
 // It is the rectangle an annotation standing beside a link is placed
-// against: [Style].Text.OnLinkHover says which address the reader is on and
+// against: [Style].Text.OnLink says which address the reader is on and
 // this says where that link is. A link the pointer is on reports the run
 // under the pointer and a link holding the keyboard the block around all of
 // its runs, as [paragraph.State.HoveredLinkBox] and
@@ -146,7 +146,7 @@ func (d *Document) LinkBox() (image.Rectangle, bool) {
 // through it, so what a block reports reaches the document and not the
 // caller.
 func (d *Document) hovered(ps paragraph.Style) paragraph.Style {
-	ps.OnLinkHover = func(_ layout.Context, url string) {
+	ps.OnLink = func(_ layout.Context, url string) {
 		d.hover.seen = true
 		if url != "" || d.hover.frame == "" {
 			d.hover.frame = url
@@ -162,7 +162,7 @@ func (d *Document) hoverReport(gtx layout.Context, style Style) {
 		return
 	}
 	d.hover.url = d.hover.frame
-	if style.Text.OnLinkHover != nil {
-		style.Text.OnLinkHover(gtx, d.hover.url)
+	if style.Text.OnLink != nil {
+		style.Text.OnLink(gtx, d.hover.url)
 	}
 }

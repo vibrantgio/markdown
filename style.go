@@ -60,7 +60,7 @@ type WidgetImageProvider interface {
 
 // Style holds the themed rendering defaults for a document. Derive the
 // token-themed default with [FromTokens], then set Text.OnLinkClick, set
-// Text.OnLinkHover where the window says where a link goes, and, for a
+// Text.OnLink where the window says where a link goes, and, for a
 // reader that writes GFM task markers, OnTaskClick.
 //
 // # The content
@@ -102,10 +102,10 @@ type Style struct {
 	ContentSurface color.NRGBA
 	// Text is the paragraph default: body colour and size, link and focus
 	// colours, and the link callbacks (paragraph.Style.OnLinkClick and
-	// paragraph.Style.OnLinkHover). Its colours are the content's prose
+	// paragraph.Style.OnLink). Its colours are the content's prose
 	// foregrounds.
 	//
-	// OnLinkHover is the document's as a whole rather than any one block's:
+	// OnLink is the document's as a whole rather than any one block's:
 	// a document reports the one address under the pointer, however many
 	// paragraphs it is drawn from, and reports it once per change.
 	Text paragraph.Style
