@@ -279,16 +279,23 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 			bottom += end
 		}
 		from := len(d.find.found)
+		boxed := d.hover.boxed
 		dims := layout.Inset{Top: top, Bottom: bottom}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			defer d.hoverInto(image.Pt(0, gtx.Dp(top)))()
 			return d.measured(gtx, style, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = image.Point{}
 				return d.markedBlock(gtx, shaper, style, b, marked, arrived)
 			})
 		})
+		if !boxed && d.hover.boxed {
+			// The box came out of this row, and the list is what decides
+			// where the row sits; see [Document.HoveredLinkBox].
+			d.hover.row = b
+		}
 		if d.find.active() {
 			d.shift(from, image.Pt(0, gtx.Dp(top)))
-			d.recordRow(b, from, dims.Size.Y)
 		}
+		d.recordRow(b, from, dims.Size.Y)
 		return dims
 	}
 }
@@ -308,7 +315,9 @@ func (d *Document) measured(gtx layout.Context, style Style, w layout.Widget) la
 		defer op.Offset(image.Pt(lead, 0)).Push(gtx.Ops).Pop()
 	}
 	from := len(d.find.found)
+	leave := d.hoverInto(image.Pt(lead, 0))
 	dims := w(cgtx)
+	leave()
 	d.shift(from, image.Pt(lead, 0))
 	return layout.Dimensions{
 		Size:     image.Pt(dims.Size.X+lead+trail, dims.Size.Y),
@@ -472,9 +481,11 @@ func (d *Document) column(gtx layout.Context, shaper *text.Shaper, style Style, 
 			size.Y += closing + gtx.Dp(top)
 		}
 		from := len(d.find.found)
+		leave := d.hoverInto(image.Pt(0, size.Y))
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
 		dims := d.markedBlock(cgtx, shaper, style, b, marked, arrived)
 		tr.Pop()
+		leave()
 		d.shift(from, image.Pt(0, size.Y))
 		size.Y += dims.Size.Y
 		size.X = max(size.X, dims.Size.X)
@@ -537,9 +548,11 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 	cgtx.Constraints.Min = image.Point{}
 	cgtx.Constraints.Max.X -= inset
 	from := len(d.find.found)
+	leave := d.hoverInto(image.Pt(inset, 0))
 	macro := op.Record(gtx.Ops)
 	content := d.column(cgtx, shaper, qs, q.Blocks)
 	call := macro.Stop()
+	leave()
 	d.shift(from, image.Pt(inset, 0))
 
 	paint.FillShape(gtx.Ops, style.QuoteBar, clip.Rect{
@@ -601,6 +614,7 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	cgtx.Constraints.Max.Y += 2 * gtx.Dp(pad)
 	state := d.codeState(cb)
 	from := len(d.find.found)
+	leave := d.hoverInto(image.Pt(gtx.Dp(pad), gtx.Dp(pad)))
 	macro := op.Record(gtx.Ops)
 	content := layout.Inset{Left: pad, Right: pad}.Layout(cgtx, func(gtx layout.Context) layout.Dimensions {
 		if style.CodeScrollbar.Width() > 0 {
@@ -609,6 +623,7 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 		return area.Layout(gtx, state, code)
 	})
 	call := macro.Stop()
+	leave()
 	// The padding the code is drawn inside, both axes. What the scroll area
 	// has moved sideways is not in it: a mark in a fence scrolled off the
 	// viewport is reported where it sits in the code.
@@ -863,14 +878,22 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 		rowH := 0
 		cgtx := gtx
 		cgtx.Constraints.Min = image.Point{}
+		// The cells are laid out before the grid knows where they go, so
+		// the one holding the hover box is remembered and its box moved
+		// with its call below, the way its marks are.
+		hoverCell := -1
 		for ci, cell := range row {
 			if ci >= cols {
 				break
 			}
 			cgtx.Constraints.Max.X = widths[ci]
 			from := len(d.find.found)
+			boxed := d.hover.boxed
 			calls[ci], sizes[ci] = d.cell(cgtx, shaper, style, skey, cell, ri == 0)
 			marks[ci] = [2]int{from, len(d.find.found)}
+			if !boxed && d.hover.boxed {
+				hoverCell = ci
+			}
 			rowH = max(rowH, sizes[ci].Y)
 		}
 		if ri == 0 {
@@ -899,6 +922,9 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 			tr.Pop()
 			cl.Pop()
 			d.shiftRange(marks[ci][0], marks[ci][1], image.Pt(x+pad+dx, y+pad))
+			if ci == hoverCell {
+				d.hover.box = d.hover.box.Add(image.Pt(x+pad+dx, y+pad))
+			}
 			x += widths[ci] + 2*pad + border
 		}
 		y += rowH + 2*pad
@@ -976,9 +1002,11 @@ func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	col := listColumn(gtx, shaper, style, l)
 	var size image.Point
 	for i, item := range l.Items {
+		leave := d.hoverInto(image.Pt(0, size.Y))
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
 		dims := d.listItem(gtx, shaper, style, l, item, i, line, col)
 		tr.Pop()
+		leave()
 		size.Y += dims.Size.Y
 		if i < len(l.Items)-1 {
 			size.Y += gap
@@ -998,9 +1026,11 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 	cgtx.Constraints.Min = image.Point{}
 	cgtx.Constraints.Max.X = max(cgtx.Constraints.Max.X-col, 0)
 	from := len(d.find.found)
+	leave := d.hoverInto(image.Pt(col, 0))
 	macro := op.Record(gtx.Ops)
 	content := d.column(cgtx, shaper, style, item.Blocks)
 	call := macro.Stop()
+	leave()
 	d.shift(from, image.Pt(col, 0))
 
 	switch {

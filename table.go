@@ -187,8 +187,10 @@ func linked(cell *TableCell) bool {
 func (d *Document) cell(gtx layout.Context, shaper *text.Shaper, style Style, skey cellStyle, cell *TableCell, header bool) (op.CallOp, image.Point) {
 	live := func(gtx layout.Context) (op.CallOp, image.Point) {
 		spans, fills := d.fills(style, cell, cellSpans(style, cell, header))
+		state := d.textState(cell)
 		m := op.Record(gtx.Ops)
-		dims := paragraph.Layout(gtx, d.textState(cell), shaper, d.hovered(d.filled(style.Text, fills)), spans)
+		dims := paragraph.Layout(gtx, state, shaper, d.hovered(d.filled(style.Text, fills)), spans)
+		d.hoverBox(state)
 		return m.Stop(), dims.Size
 	}
 	if linked(cell) {

@@ -138,6 +138,9 @@ type findState struct {
 	// painted, and heights the row height a layout gave it. Both are
 	// filled only by the list paths, which is what rowbased reports: a
 	// column lays its blocks out itself and its entries need no carrying.
+	// The heights are recorded whether or not anything is marked, because
+	// they are also what places the hovered link's box; see
+	// [Document.rowTops].
 	//
 	// rows is one frame's; heights keeps every height ever measured, because
 	// a list measures only the rows it draws and [Document.MatchPlaces] has

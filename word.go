@@ -190,7 +190,9 @@ func (d *Document) prose(gtx layout.Context, shaper *text.Shaper, style Style, p
 	if d.looking(owner) {
 		d.word.placed = d.word.placed[:0]
 	}
-	dims := paragraph.Layout(gtx, d.textState(owner), shaper, ps, spans)
+	state := d.textState(owner)
+	dims := paragraph.Layout(gtx, state, shaper, ps, spans)
+	d.hoverBox(state)
 	d.wordResolve(gtx, owner)
 	d.wordArea(gtx, owner, dims)
 	d.wordPointer(gtx, owner)

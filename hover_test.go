@@ -124,3 +124,127 @@ func equalAddresses(a, b []string) bool {
 	}
 	return true
 }
+
+// boxNoteSource is the note the box tests read: a link in plain prose, one
+// inside a blockquote, one in each of two list items and one in a table
+// cell, so a box has to be carried out of every kind of nesting the document
+// draws a paragraph in.
+const boxNoteSource = "Read [the docs](https://docs.example/one) first.\n\n" +
+	"> Quoted [the note](https://quote.example/three) inside.\n\n" +
+	"- item one with [the first](https://list.example/four)\n" +
+	"- item two with [the second](https://list.example/five)\n\n" +
+	"| head | other |\n|---|---|\n| [the cell](https://cell.example/six) | plain |\n"
+
+// TestHoveredLinkBoxHoldsThePointerWhereverTheLinkIs walks the pointer over
+// the whole viewport and checks, at every position the document declares a
+// link under, that the box it reports holds that position. The pointing hand
+// is the document's own answer to "is the pointer on a link", so the two
+// cannot disagree without the box being in the wrong plane — which is what
+// carrying it out of a blockquote, a list item or a table cell can get
+// wrong.
+func TestHoveredLinkBoxHoldsThePointerWhereverTheLinkIs(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
+	d := markdown.NewDocument(markdown.Parse([]byte(boxNoteSource)))
+
+	size := image.Pt(360, 260)
+	r := new(gioinput.Router)
+	ops := new(op.Ops)
+	frame := func(evs ...event.Event) {
+		r.Queue(evs...)
+		ops.Reset()
+		gtx := layout.Context{
+			Metric:      unit.Metric{PxPerDp: 1, PxPerSp: 1},
+			Constraints: layout.Exact(size),
+			Ops:         ops,
+			Source:      r.Source(),
+		}
+		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		d.Layout(gtx, shaper, style)
+		r.Frame(ops)
+	}
+	frame()
+	frame()
+
+	on := 0
+	for y := 1; y < size.Y; y += 2 {
+		for x := 1; x < size.X; x += 5 {
+			p := image.Pt(x, y)
+			frame(pointer.Event{Kind: pointer.Move, Position: f32.Pt(float32(x), float32(y)), Source: pointer.Mouse})
+			if r.Cursor() != pointer.CursorPointer {
+				if box, ok := d.HoveredLinkBox(); ok && p.In(box) {
+					t.Fatalf("%v is on no link and the document reports a box %v holding it", p, box)
+				}
+				continue
+			}
+			on++
+			box, ok := d.HoveredLinkBox()
+			if !ok {
+				t.Fatalf("%v is on a link and the document reports no box", p)
+			}
+			if !p.In(box) {
+				t.Fatalf("%v is on a link and the document reports the box %v, which does not hold it", p, box)
+			}
+		}
+	}
+	// Five links in five kinds of nesting; a walk that found none of them
+	// would pass every check above without testing anything.
+	if on < 5 {
+		t.Fatalf("the walk stood on a link at %d positions, too few for the note's five links", on)
+	}
+}
+
+// TestHoveredLinkBoxMovesWithTheViewport scrolls the document under a
+// resting pointer and reads the box: it is where the link is on the screen
+// now, not where it was when the reader was at the top.
+func TestHoveredLinkBoxMovesWithTheViewport(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
+	d := markdown.NewDocument(markdown.Parse([]byte(boxNoteSource)))
+
+	size := image.Pt(360, 160)
+	r := new(gioinput.Router)
+	ops := new(op.Ops)
+	frame := func(evs ...event.Event) {
+		r.Queue(evs...)
+		ops.Reset()
+		gtx := layout.Context{
+			Metric:      unit.Metric{PxPerDp: 1, PxPerSp: 1},
+			Constraints: layout.Exact(size),
+			Ops:         ops,
+			Source:      r.Source(),
+		}
+		d.Layout(gtx, shaper, style)
+		r.Frame(ops)
+	}
+	move := func(p image.Point) {
+		frame(pointer.Event{Kind: pointer.Move, Position: f32.Pt(float32(p.X), float32(p.Y)), Source: pointer.Mouse})
+	}
+	frame()
+	frame()
+
+	// Stand on the first link, wherever the faces put it on the first line.
+	var at image.Point
+	for x := 1; x < size.X && at == (image.Point{}); x += 2 {
+		p := image.Pt(x, 8)
+		move(p)
+		if r.Cursor() == pointer.CursorPointer {
+			at = p
+		}
+	}
+	if at == (image.Point{}) {
+		t.Fatal("the first line declares no link")
+	}
+	before, ok := d.HoveredLinkBox()
+	if !ok {
+		t.Fatal("the pointer is on the first link and the document reports no box")
+	}
+
+	d.ScrollToEnd()
+	frame()
+	frame()
+	after, ok := d.HoveredLinkBox()
+	if ok && after == before {
+		t.Errorf("the document scrolled to the end and the link's box stayed at %v", before)
+	}
+}
