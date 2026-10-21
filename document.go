@@ -1002,11 +1002,13 @@ func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	col := listColumn(gtx, shaper, style, l)
 	var size image.Point
 	for i, item := range l.Items {
+		from := len(d.find.found)
 		leave := d.hoverInto(image.Pt(0, size.Y))
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
 		dims := d.listItem(gtx, shaper, style, l, item, i, line, col)
 		tr.Pop()
 		leave()
+		d.shift(from, image.Pt(0, size.Y))
 		size.Y += dims.Size.Y
 		if i < len(l.Items)-1 {
 			size.Y += gap
