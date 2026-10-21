@@ -279,7 +279,7 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 			bottom += end
 		}
 		from := len(d.find.found)
-		boxed := d.hover.boxed
+		seq := d.hover.seq
 		dims := layout.Inset{Top: top, Bottom: bottom}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			defer d.hoverInto(image.Pt(0, gtx.Dp(top)))()
 			return d.measured(gtx, style, func(gtx layout.Context) layout.Dimensions {
@@ -287,9 +287,9 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 				return d.markedBlock(gtx, shaper, style, b, marked, arrived)
 			})
 		})
-		if !boxed && d.hover.boxed {
+		if d.hover.seq != seq {
 			// The box came out of this row, and the list is what decides
-			// where the row sits; see [Document.HoveredLinkBox].
+			// where the row sits; see [Document.LinkBox].
 			d.hover.row = b
 		}
 		if d.find.active() {
@@ -888,10 +888,10 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 			}
 			cgtx.Constraints.Max.X = widths[ci]
 			from := len(d.find.found)
-			boxed := d.hover.boxed
+			seq := d.hover.seq
 			calls[ci], sizes[ci] = d.cell(cgtx, shaper, style, skey, cell, ri == 0)
 			marks[ci] = [2]int{from, len(d.find.found)}
-			if !boxed && d.hover.boxed {
+			if d.hover.seq != seq {
 				hoverCell = ci
 			}
 			rowH = max(rowH, sizes[ci].Y)

@@ -8,6 +8,7 @@ import (
 	"gioui.org/f32"
 	"gioui.org/io/event"
 	gioinput "gioui.org/io/input"
+	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -135,14 +136,14 @@ const boxNoteSource = "Read [the docs](https://docs.example/one) first.\n\n" +
 	"- item two with [the second](https://list.example/five)\n\n" +
 	"| head | other |\n|---|---|\n| [the cell](https://cell.example/six) | plain |\n"
 
-// TestHoveredLinkBoxHoldsThePointerWhereverTheLinkIs walks the pointer over
+// TestTheLinkBoxHoldsThePointerWhereverTheLinkIs walks the pointer over
 // the whole viewport and checks, at every position the document declares a
 // link under, that the box it reports holds that position. The pointing hand
 // is the document's own answer to "is the pointer on a link", so the two
 // cannot disagree without the box being in the wrong plane — which is what
 // carrying it out of a blockquote, a list item or a table cell can get
 // wrong.
-func TestHoveredLinkBoxHoldsThePointerWhereverTheLinkIs(t *testing.T) {
+func TestTheLinkBoxHoldsThePointerWhereverTheLinkIs(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(boxNoteSource)))
@@ -172,13 +173,13 @@ func TestHoveredLinkBoxHoldsThePointerWhereverTheLinkIs(t *testing.T) {
 			p := image.Pt(x, y)
 			frame(pointer.Event{Kind: pointer.Move, Position: f32.Pt(float32(x), float32(y)), Source: pointer.Mouse})
 			if r.Cursor() != pointer.CursorPointer {
-				if box, ok := d.HoveredLinkBox(); ok && p.In(box) {
+				if box, ok := d.LinkBox(); ok && p.In(box) {
 					t.Fatalf("%v is on no link and the document reports a box %v holding it", p, box)
 				}
 				continue
 			}
 			on++
-			box, ok := d.HoveredLinkBox()
+			box, ok := d.LinkBox()
 			if !ok {
 				t.Fatalf("%v is on a link and the document reports no box", p)
 			}
@@ -194,10 +195,10 @@ func TestHoveredLinkBoxHoldsThePointerWhereverTheLinkIs(t *testing.T) {
 	}
 }
 
-// TestHoveredLinkBoxMovesWithTheViewport scrolls the document under a
+// TestTheLinkBoxMovesWithTheViewport scrolls the document under a
 // resting pointer and reads the box: it is where the link is on the screen
 // now, not where it was when the reader was at the top.
-func TestHoveredLinkBoxMovesWithTheViewport(t *testing.T) {
+func TestTheLinkBoxMovesWithTheViewport(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(boxNoteSource)))
@@ -235,7 +236,7 @@ func TestHoveredLinkBoxMovesWithTheViewport(t *testing.T) {
 	if at == (image.Point{}) {
 		t.Fatal("the first line declares no link")
 	}
-	before, ok := d.HoveredLinkBox()
+	before, ok := d.LinkBox()
 	if !ok {
 		t.Fatal("the pointer is on the first link and the document reports no box")
 	}
@@ -243,8 +244,69 @@ func TestHoveredLinkBoxMovesWithTheViewport(t *testing.T) {
 	d.ScrollToEnd()
 	frame()
 	frame()
-	after, ok := d.HoveredLinkBox()
+	after, ok := d.LinkBox()
 	if ok && after == before {
 		t.Errorf("the document scrolled to the end and the link's box stayed at %v", before)
+	}
+}
+
+// TestDocumentReportsTheLinkTheKeyboardReaches moves the keyboard through
+// the note's links and reads back what the document told its caller and
+// where it says the link is: a link reached by the keyboard says its address
+// as one reached by the pointer does, and it has a box for an annotation to
+// stand against.
+func TestDocumentReportsTheLinkTheKeyboardReaches(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
+	var got []string
+	style.Text.OnLinkHover = func(_ layout.Context, url string) { got = append(got, url) }
+	d := markdown.NewDocument(markdown.Parse([]byte(hoverSource)))
+
+	r := new(gioinput.Router)
+	ops := new(op.Ops)
+	frame := func() {
+		ops.Reset()
+		gtx := layout.Context{
+			Metric:      unit.Metric{PxPerDp: 1, PxPerSp: 1},
+			Constraints: layout.Exact(hoverSize),
+			Ops:         ops,
+			Source:      r.Source(),
+		}
+		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		d.Layout(gtx, shaper, style)
+		r.Frame(ops)
+	}
+
+	frame()
+	frame()
+	if len(got) != 0 {
+		t.Fatalf("a document nothing has reached reported %v", got)
+	}
+	if _, ok := d.LinkBox(); ok {
+		t.Fatal("a document nothing has reached reports a box")
+	}
+
+	r.MoveFocus(key.FocusForward)
+	frame()
+	if want := []string{"https://docs.example/one"}; !equalAddresses(got, want) {
+		t.Fatalf("the keyboard reaching the first link reported %v, want %v", got, want)
+	}
+	first, ok := d.LinkBox()
+	if !ok || first.Empty() {
+		t.Fatalf("the first link holds the keyboard and the document reports the box %v (%v)", first, ok)
+	}
+
+	r.MoveFocus(key.FocusForward)
+	frame()
+	want := []string{"https://docs.example/one", "https://guide.example/two"}
+	if !equalAddresses(got, want) {
+		t.Fatalf("the keyboard reaching the second link reported %v, want %v", got, want)
+	}
+	second, ok := d.LinkBox()
+	if !ok || second.Empty() {
+		t.Fatalf("the second link holds the keyboard and the document reports the box %v (%v)", second, ok)
+	}
+	if second.Min.Y <= first.Min.Y {
+		t.Errorf("the second block's link reports the box %v, which does not stand under the first block's %v", second, first)
 	}
 }
