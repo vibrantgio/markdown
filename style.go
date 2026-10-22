@@ -191,6 +191,13 @@ type Style struct {
 	// fence's bottom padding, over no code, and it is absent — like every
 	// overlay bar on the desktop — while the block fits or rests.
 	//
+	// It is also where an application spends the platform's "Show scroll
+	// bars" setting on this bar: [scrollbar.Style.Always] for a reader who
+	// asked for the standing bar, which then stands for as long as the code
+	// overflows, and the style untouched for the other two settings. The
+	// setting is read through the platform bridge, which stands above this
+	// library, so the answer arrives here already spent.
+	//
 	// The zero value draws no bar. The dissolve at the cut edge is not the
 	// bar's and stays either way, so a document that turns the bar off still
 	// says that there is more; what it loses is the drag and the sense of how
