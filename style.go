@@ -187,16 +187,19 @@ type Style struct {
 	// chip stays on the theme's own fill and keeps the theme's own rim.
 	CodeChipBorder color.NRGBA
 	// CodeScrollbar styles the slim horizontal bar a code block whose widest
-	// line overflows the column shows while it scrolls. It sits in the
-	// fence's bottom padding, over no code, and it is absent — like every
-	// overlay bar on the desktop — while the block fits or rests.
+	// line overflows the column shows while it scrolls. It is drawn at the
+	// block's own bottom edge, inside the block and across its full width;
+	// the fading bar is drawn over the block's bottom padding and is absent —
+	// like every overlay bar on the desktop — while the block fits or rests.
 	//
-	// It is also where an application spends the platform's "Show scroll
-	// bars" setting on this bar: [scrollbar.Style.Always] for a reader who
+	// It is also where an application applies the platform's "Show scroll
+	// bars" setting to this bar: [scrollbar.Style.Always] for a reader who
 	// asked for the standing bar, which then stands for as long as the code
-	// overflows, and the style untouched for the other two settings. The
-	// setting is read through the platform bridge, which stands above this
-	// library, so the answer arrives here already spent.
+	// overflows in a lane of its own at the block's bottom edge, the code and
+	// its padding stopping short of the lane, and the style untouched for the
+	// other two settings. The setting is read through the platform bridge,
+	// which is above this library, so the answer arrives here already
+	// resolved.
 	//
 	// The zero value draws no bar. The dissolve at the cut edge is not the
 	// bar's and stays either way, so a document that turns the bar off still

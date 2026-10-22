@@ -29,8 +29,9 @@ renders it with components primitives:
   on `Style`, and horizontal scrolling for lines too wide for the column —
   the fence is a `components/scrollarea`, so an over-wide line is scrolled to
   rather than wrapped or cut, the cut edge dissolves into the fence while
-  there is more past it, a slim bar rides the fence's bottom padding while it
-  moves, and the fence claims the horizontal axis only so a wheel over it
+  there is more past it, a slim bar is drawn at the fence's own bottom edge
+  (over the bottom padding while it fades, in a lane of its own that the code
+  stops short of when it stands), and the fence claims the horizontal axis only so a wheel over it
   still scrolls the document
 - GFM tables as grids with an emphasised header row, token borders, and
   per-column alignment

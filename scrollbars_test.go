@@ -29,16 +29,20 @@ const overflowingFence = "```go\n" +
 
 // TestTheCodeBlockSpendsTheScrollBarSetting lays an overflowing fence out on
 // a frame nothing has scrolled and nothing is pointing at, at the bar the
-// tokens give, at that bar with the reader's "always" setting spent on it,
-// and with no bar style at all.
+// tokens give, at that bar with the reader's "always" setting applied, and
+// with no bar style at all.
 //
-// With "always" the thumb is there: the bar stands for as long as the code
-// overflows the column. With either of the other two settings it is the
-// platform's overlay bar, which a resting frame holds nothing of — so that
-// rendering is pixel-identical to the one with no bar style at all, which is
-// what "no pixel moves while the bar fades" means. The bar lands in the
-// fence's bottom padding, over no code, so the rows the standing bar does
-// move span no more than the bar's own width.
+// With either setting but "always" the bar is the platform's overlay bar,
+// which a resting frame holds nothing of, and it takes no lane: that
+// rendering is pixel-identical to the one with no bar style at all, the code's
+// padding reaching the block's bottom edge.
+//
+// With "always" the bar stands for as long as the code overflows. The block
+// is the region that scrolls, so the bar is drawn against the block's own
+// bottom edge, inside its rim, from the block's leading edge rather than
+// inset by the padding, and it takes a lane of its own: the block is the
+// bar's width taller, and every row above the lane is the row the barless
+// block draws, so the code and its padding stop short of the lane.
 func TestTheCodeBlockSpendsTheScrollBarSetting(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
@@ -66,23 +70,74 @@ func TestTheCodeBlockSpendsTheScrollBarSetting(t *testing.T) {
 	if n := golden.PixelDiff(fading, none); n != 0 {
 		t.Errorf("a resting code block drew %d pixels the same block without a bar style did not; want none", n)
 	}
-	if n := golden.PixelDiff(standing, none); n == 0 {
-		t.Fatal("with scroll bars always, a resting code block drew no thumb")
+
+	page := color.RGBAModel.Convert(tokens.PlatformLight.TextBackground).(color.RGBA)
+	// bottom is the last row of the block's box down the image's middle
+	// column, its rim included.
+	bottom := func(img *image.RGBA) int {
+		last := -1
+		for y := range size.Y {
+			if img.RGBAAt(size.X/2, y) != page {
+				last = y
+			}
+		}
+		return last
+	}
+	barW := int(always.CodeScrollbar.Width())
+	pad := int(always.CodeScrollbar.TrackPadding)
+	rim := 0
+	if style.CodeBorder.A > 0 {
+		rim = 1
 	}
 
-	first, last := -1, -1
+	if got, want := bottom(standing)-bottom(none), barW; got != want {
+		t.Fatalf("with scroll bars always the block grew by %d px; want the bar's lane, %d px", got, want)
+	}
+	laneTop := bottom(standing) - rim + 1 - barW
+	blockLead, blockTrail := size.X, -1
+	for x := range size.X {
+		if standing.RGBAAt(x, laneTop) != page {
+			blockLead = min(blockLead, x)
+			blockTrail = x
+		}
+	}
+	// The barless block's rounded bottom corners are drawn above the lane,
+	// where the standing block continues straight down, so the columns the
+	// corners take are left out of the comparison.
+	corner := int(tokens.Radius.Base)
+	for y := range laneTop {
+		for x := blockLead + corner; x <= blockTrail-corner; x++ {
+			if standing.RGBAAt(x, y) != none.RGBAAt(x, y) {
+				t.Fatalf("with scroll bars always the pixel at (%d,%d), above the lane at row %d, differs from the barless block's; the bar or the lane reached into the code", x, y, laneTop)
+			}
+		}
+	}
+
+	thumb := color.RGBAModel.Convert(always.CodeScrollbar.ThumbColor).(color.RGBA)
+	first, last, lead := -1, -1, size.X
 	for y := range size.Y {
 		for x := range size.X {
-			if standing.RGBAAt(x, y) != none.RGBAAt(x, y) {
+			if standing.RGBAAt(x, y) == thumb {
 				if first < 0 {
 					first = y
 				}
 				last = y
-				break
+				lead = min(lead, x)
 			}
 		}
 	}
-	if barPx := int(always.CodeScrollbar.Width()); last-first+1 > barPx {
-		t.Errorf("the standing bar moved rows %d..%d, %d rows, more than the bar's own %d px; it reached into the code", first, last, last-first+1, barPx)
+	if first < 0 {
+		t.Fatal("with scroll bars always, a resting code block drew no thumb")
+	}
+	if first < laneTop {
+		t.Errorf("the standing thumb starts at row %d, above the lane at row %d", first, laneTop)
+	}
+	if want := bottom(standing) - rim - pad; last != want {
+		t.Errorf("the standing thumb ends at row %d; want %d, the track's padding above the block's bottom edge inside its rim", last, want)
+	}
+	// The thumb's leading corners are rounded, so its first opaque column
+	// is a pixel or two past the track's start.
+	if from := lead - blockLead; from < rim+pad || from > rim+pad+int(always.CodeScrollbar.ThumbCornerRadius) {
+		t.Errorf("the standing thumb starts %d px from the block's leading edge; want the rim and the track's padding, %d px, so the bar is not inset by the block's padding", from, rim+pad)
 	}
 }
