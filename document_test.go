@@ -666,37 +666,6 @@ func TestMeasureBoundsTheScrollArea(t *testing.T) {
 	}
 }
 
-// TestMeasureKeepsTheGutterAtTheEdge asserts the one place the two rules meet.
-// A measure within a gutter's width of the region cannot be centred without
-// running the column under the bar, so the column is seated leading of centre
-// and the gutter is left whole — the strip a scrollbar needs is the
-// viewport's, not the measure's to spend.
-func TestMeasureKeepsTheGutterAtTheEdge(t *testing.T) {
-	shaper := defaultShaper(t)
-	c := tokens.PlatformLight
-	const gutter = 12
-	style := markdown.FromTokens(c, tokens.DefaultTypography, color.NRGBA{})
-	style.Gutter = gutter
-	style.Measure = unit.Dp(measureRegion - gutter - 2)
-	blocks := markdown.Parse([]byte(measureSource))
-
-	img := golden.Capture(t, measureWideSize,
-		themed(markdown.NewDocument(blocks), shaper, style, c))
-	lead, trail, ok := pageExtent(img, c.TextBackground)
-	if !ok {
-		t.Fatal("a document read at a near-region measure drew nothing")
-	}
-	if got, want := trail-lead+1, int(style.Measure); got != want {
-		t.Errorf("the column came out %d px wide, want the measure's %d", got, want)
-	}
-	if got := measurePage + measureRegion - 1 - trail; got != gutter {
-		t.Errorf("the column left %d px at the trailing edge, want the gutter's %d", got, gutter)
-	}
-	if got := lead - measurePage; got != 2 {
-		t.Errorf("the column sits %d px from the leading edge, want the 2 px the gutter leaves it", got)
-	}
-}
-
 // ---- Layout tests ----
 
 func measureDoc(shaper *text.Shaper, style markdown.Style, blocks []markdown.Block, size image.Point) layout.Dimensions {

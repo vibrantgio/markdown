@@ -229,9 +229,9 @@ func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) 
 // document and how much of it is showing. It draws nothing when the whole
 // document fits, and dragging it scrolls the document.
 //
-// anchor decides whether the bar reserves a gutter beside the prose
+// anchor decides whether the bar reserves a lane beside the prose
 // ([list.Occupy]) or floats over it ([list.Overlay]). A reading column wants
-// Occupy: the gutter costs a few dp of measure once, where an overlay bar
+// Occupy: the lane costs a few dp of measure once, where an overlay bar
 // lands on the ends of the lines it is drawn over.
 //
 // The bar is the design system's — build it with [scrollbar.FromTokens] from
@@ -301,13 +301,13 @@ func (d *Document) row(shaper *text.Shaper, style Style, start, end unit.Dp) fun
 }
 
 // measured lays one top-level block out between the horizontal insets
-// [blockInsets] gives it, and reports the width it was given back including
-// them, the way [layout.Inset] reports its own. It is the horizontal half of
-// the row's inset, spent here in pixels rather than in Dp because the two
-// margins that centre a block are a division of what is there and not
+// [Style.BlockInsets] gives it, and reports the width it was given back
+// including them, the way [layout.Inset] reports its own. It is the horizontal
+// half of the row's inset, spent here in pixels rather than in Dp because the
+// two margins that centre a block are a division of what is there and not
 // authored space.
 func (d *Document) measured(gtx layout.Context, style Style, w layout.Widget) layout.Dimensions {
-	lead, trail := blockInsets(gtx, style)
+	lead, trail := style.BlockInsets(gtx, gtx.Constraints.Max.X)
 	cgtx := gtx
 	cgtx.Constraints.Max.X = max(gtx.Constraints.Max.X-lead-trail, 0)
 	cgtx.Constraints.Min.X = min(gtx.Constraints.Min.X, cgtx.Constraints.Max.X)
@@ -325,32 +325,35 @@ func (d *Document) measured(gtx layout.Context, style Style, w layout.Widget) la
 	}
 }
 
-// blockInsets returns the leading and trailing insets one top-level block sits
-// between, in pixels.
+// BlockInsets returns the leading and trailing insets, in pixels, a top-level
+// block of a document laid out by [Document.Layout] or
+// [Document.LayoutScrollbar] is placed between in a viewport width pixels
+// wide. With [list.Occupy] the width is the viewport less the bar's lane,
+// which the list takes off before the document is laid out. A composition
+// that draws rows of its own beside the document's blocks calls this to place
+// them on the same edges.
 //
-// The gutter comes off the trailing edge first and is no part of the measure:
-// it is the strip a scrollbar sits in at the viewport's own edge, reserved
-// whether a measure is set or not. What is left is what the measure is tested
-// against, and a block no wider than it is then centred in the viewport rather
-// than in what the gutter leaves — the reading column sits at the middle of
-// the window the reader is looking at.
+// The padding, [Style.Gutter], is kept on both sides of a measured block at
+// every width, and the measure is capped at the width less both paddings. A
+// width with room for the measure and both paddings centres the measure in
+// it; a narrower width gives the block what is left once both paddings are
+// kept, so the text never runs against either edge and no minimum width is
+// needed.
 //
-// The two rules meet only where the measure comes within a gutter's width of
-// the viewport: centring would leave less than the gutter on the trailing side
-// and run the block under the bar, so the column is seated as close to centre
-// as the gutter allows and no closer. Wider still and the measure asks for
-// more than the viewport has, so every block simply takes what there is —
-// which is what a document with no measure at all does at every width.
-func blockInsets(gtx layout.Context, style Style) (lead, trail int) {
-	gutter := gtx.Dp(style.Gutter)
-	full := gtx.Constraints.Max.X
-	avail := max(full-gutter, 0)
-	m := gtx.Dp(style.Measure)
-	if m <= 0 || m >= avail {
-		return 0, gutter
+// With no measure the block takes the width less the trailing padding, which
+// is the strip a scrollbar is placed in at the viewport's own edge.
+func (s Style) BlockInsets(gtx layout.Context, width int) (lead, trail int) {
+	pad := gtx.Dp(s.Gutter)
+	m := gtx.Dp(s.Measure)
+	if m <= 0 {
+		return 0, pad
 	}
-	lead = min((full-m)/2, avail-m)
-	return lead, full - m - lead
+	if m < width-2*pad {
+		lead = (width - m) / 2
+		return lead, width - m - lead
+	}
+	trail = min(pad, max(width, 0))
+	return min(pad, max(width-trail, 0)), trail
 }
 
 // blockPlacement is where a block sits among its siblings, which is what damps
