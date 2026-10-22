@@ -134,8 +134,12 @@ func TestScrolledDocumentGolden(t *testing.T) {
 
 // scrolledWithBar is themed for LayoutScrollbar: the same document on the
 // same background, with the design system's bar in a reserved gutter.
+//
+// The bar is the one the platform's Always setting asks for. A still frame of
+// a resting overlay bar holds no thumb, and what this image is for is the
+// thumb's position and proportion.
 func scrolledWithBar(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.PlatformColors) layout.Widget {
-	bar := scrollbar.FromTokens(c, c.TextBackground)
+	bar := scrollbar.FromTokens(c, c.TextBackground).Always()
 	return func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, c.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -161,10 +165,14 @@ func TestScrollbarDocumentGolden(t *testing.T) {
 // a bar, and a two-line document in the same viewport draws none. The probe
 // is what is drawn outside the row area — with Occupy the gutter is reserved
 // either way, so dimensions cannot tell the two apart, but pixels can.
+//
+// The bar is asked for at the platform's Always setting, which is what makes
+// "the content overflows" the only thing the two renders differ by: an
+// overlay bar at rest draws no thumb whether it overflows or not.
 func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
-	bar := scrollbar.FromTokens(tokens.PlatformLight, tokens.PlatformLight.TextBackground)
+	bar := scrollbar.FromTokens(tokens.PlatformLight, tokens.PlatformLight.TextBackground).Always()
 	size := image.Pt(400, 300)
 
 	render := func(blocks []markdown.Block) *image.RGBA {
