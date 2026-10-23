@@ -489,7 +489,8 @@ func TestWearLeavesTheRegistryAlone(t *testing.T) {
 }
 
 // TestWearTouchesOnlyTheCodeFields: the fence is dressed and the rest of the
-// document is not, so a style reaches four fields and no others. The chip an
+// document is not, so a style reaches five fields and no others. Of the
+// code block's bar, only the colours flattened onto the fill move. The chip an
 // inline code span sits on is the one this is most about — a page of prose
 // spotted with somebody else's backgrounds is the thing not being built.
 func TestWearTouchesOnlyTheCodeFields(t *testing.T) {
@@ -506,14 +507,17 @@ func TestWearTouchesOnlyTheCodeFields(t *testing.T) {
 			if got.CodeBackground == plain.CodeBackground {
 				t.Error("the fence's background did not move at all, so this proves nothing")
 			}
-			// Every remaining field, compared by putting the four that are
+			// Every remaining field, compared by putting the fields that are
 			// allowed to move back and dropping the highlighter, a func being
 			// the one thing here that cannot be compared to anything.
 			a, b := got, plain
 			a.Highlight, b.Highlight = nil, nil
 			a.CodeColor, a.CodeBackground, a.CodeBorder = b.CodeColor, b.CodeBackground, b.CodeBorder
+			a.CodeScrollbar.ThumbColor = b.CodeScrollbar.ThumbColor
+			a.CodeScrollbar.MatchFill = b.CodeScrollbar.MatchFill
+			a.CodeScrollbar.CurrentMatchFill = b.CodeScrollbar.CurrentMatchFill
 			if !reflect.DeepEqual(a, b) {
-				t.Errorf("a field outside the four moved:\n got %+v\nwant %+v", a, b)
+				t.Errorf("a field outside the code fields moved:\n got %+v\nwant %+v", a, b)
 			}
 		})
 	}

@@ -21,6 +21,7 @@ import (
 
 	"github.com/alecthomas/chroma/v2"
 
+	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/color"
 	"github.com/vibrantgio/theme/tokens"
@@ -39,8 +40,9 @@ const (
 // Wear dresses st's fenced code blocks in the style named: its author's own
 // background under the fence, their own colours in the runs they coloured, and
 // their own body colour in the runs they left plain. Nothing else on the page
-// moves — the prose, the chip an inline code span sits on, and the bar a wide
-// block scrolls under all stay the theme's.
+// moves — the prose and the chip an inline code span sits on stay the theme's.
+// The bar of a wide block is the theme's bar, flattened onto the author's
+// background.
 //
 // One style names a pair, not a side. Which member is worn follows the tokens:
 // c's own appearance decides light or dark, and chroma's registered
@@ -51,8 +53,12 @@ const (
 // side however they are asked. A caller that has chosen a style for each
 // appearance hands both over instead: see [WearPair].
 //
-// It is st's four code fields that are written: Highlight, CodeColor,
-// CodeBackground and CodeBorder. Everything a Style says about anything else
+// It is st's five code fields that are written: Highlight, CodeColor,
+// CodeBackground, CodeBorder and the colours of CodeScrollbar. The bar keeps
+// its sizes, its fade and the caller's Show scroll bars answer; only its
+// thumb and its match fills are flattened onto the new background. A bar
+// worn before or after this call is the same bar. Everything a Style says
+// about anything else
 // is left exactly as the caller had it, so the ordinary shape of this is
 // [markdown.FromTokens] followed by one call. Nothing else is read: the
 // block's edge is decided against the background the style itself names, so a
@@ -104,6 +110,25 @@ func WearPair(st *markdown.Style, pair StylePair, p tokens.PlatformColors) {
 	}
 	st.CodeBackground = fenceBackground(member, fallback)
 	st.CodeBorder = fenceEdge(st.CodeBackground, p)
+	st.CodeScrollbar = fenceBar(st.CodeScrollbar, st.CodeBackground, p)
+}
+
+// fenceBar is the code block's bar flattened onto the fence's fill. The
+// platform's knob is a coverage of black or white, and [scrollbar.FromTokens]
+// flattens that coverage onto the fill the bar is drawn over. A thumb
+// flattened onto the theme's code fill is a neutral grey on the author's
+// tinted background. The bar takes its colours from the fill it is drawn
+// over, and keeps every other field the caller set. A zero bar draws
+// nothing and stays zero.
+func fenceBar(bar scrollbar.Style, fence stdcolor.NRGBA, p tokens.PlatformColors) scrollbar.Style {
+	if bar.Width() <= 0 {
+		return bar
+	}
+	over := scrollbar.FromTokens(p, fence)
+	bar.ThumbColor = over.ThumbColor
+	bar.MatchFill = over.MatchFill
+	bar.CurrentMatchFill = over.CurrentMatchFill
+	return bar
 }
 
 // fenceBackground is the fence's fill under one member: the background its
