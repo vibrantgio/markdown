@@ -48,7 +48,7 @@ type Document struct {
 	// identity of the heading, paragraph, table cell, or image it backs.
 	text map[any]*paragraph.State
 	// code holds per-code-block horizontal scroll state.
-	code map[*CodeBlock]*codeScroll
+	code map[*CodeBlock]*scrollarea.State
 	// tables holds per-table horizontal scroll state, used when even the
 	// min-content column widths overflow the constraint.
 	tables map[*Table]*scrollarea.State
@@ -105,7 +105,7 @@ func NewDocument(blocks []Block) *Document {
 		blocks:  blocks,
 		list:    list.NewState(),
 		text:    make(map[any]*paragraph.State),
-		code:    make(map[*CodeBlock]*codeScroll),
+		code:    make(map[*CodeBlock]*scrollarea.State),
 		tables:  make(map[*Table]*scrollarea.State),
 		columns: make(map[*Table]*tableMeasure),
 		cells:   make(map[*TableCell]*cellRecord),
@@ -508,26 +508,14 @@ func (d *Document) textState(b any) *paragraph.State {
 	return s
 }
 
-// codeScroll is one code block's sideways scrolling: the area's offset and
-// the bar drawn at the block's bottom edge.
-type codeScroll struct {
-	area *scrollarea.State
-	bar  *scrollbar.State
-}
-
-// codeScroller returns the persistent sideways scroll state for a code block.
-func (d *Document) codeScroller(b *CodeBlock) *codeScroll {
+// codeState returns the persistent sideways scroll state for a code block.
+func (d *Document) codeState(b *CodeBlock) *scrollarea.State {
 	s, ok := d.code[b]
 	if !ok {
-		s = &codeScroll{area: scrollarea.NewState(), bar: scrollbar.NewState()}
+		s = scrollarea.NewState()
 		d.code[b] = s
 	}
 	return s
-}
-
-// codeState returns the persistent horizontal scroll state for a code block.
-func (d *Document) codeState(b *CodeBlock) *scrollarea.State {
-	return d.codeScroller(b).area
 }
 
 // tableState returns the persistent sideways scroll state for a table.
@@ -586,114 +574,98 @@ func (d *Document) blockquote(gtx layout.Context, shaper *text.Shaper, style Sty
 // A code block's own line breaks are the code, so a line too wide for the
 // column is never reflowed and never cut away: the block is a horizontal
 // scroll area (components/scrollarea), and the part that does not fit is
-// scrolled to. The fence's padding straddles that area, and which half goes
-// where is what keeps the block padded at every scroll position. The vertical
-// padding is inside it, so a fence takes its content's height and pads it, and
-// the dissolve that marks a cut edge runs the full height of the code. The
-// horizontal padding is outside it, so it is a margin the code
-// scrolls under rather than a run of blank that scrolls away with the first
-// column: the viewport stops a padding short of the frame at both ends, the
-// two ends are padded alike, and a line long enough to be cut is cut over
-// clear fill instead of against the rim. A block that fits lays out exactly
-// as it would with no scroll area at all — same height, same clip, no bar, no
-// dissolve.
+// scrolled to. The area fills the block's box inside its rim. The fence's
+// padding is inside the area on all four sides and moves with the code, as a
+// platform text view's inset moves with the text. The first glyph reaches the
+// rim once the block is scrolled, and the code is clipped at the rim. A block
+// that fits lays out exactly as it would with no scroll area at all: same
+// height, same clip, no bar.
 //
-// The block is the region that scrolls, so the bar of an overflowing block is
-// drawn at the block's own bottom edge, inside it, across its full width and
-// never inset by the padding. A bar that stands (list.AnchorFor answers
-// Occupy) takes a lane of its own there: the block grows by the bar's width
-// and the code with its padding stops short of the lane. A bar that fades
-// takes no lane and is drawn over the bottom padding, which then reaches the
-// edge.
+// The block is the region that scrolls, so the area draws the bar of an
+// overflowing block at its own bottom edge, across the box inside the rim. A
+// bar that stands (list.AnchorFor answers Occupy) takes a lane of its own
+// there: the block grows by the bar's width and the code with its padding
+// stops short of the lane. A bar that fades takes no lane and is drawn over
+// the bottom padding.
 //
 // A Style.CodeBorder with any alpha in it edges the fence: the border colour
 // fills the block's whole rounded box and the block's own fill covers a box
 // one hairline smaller, concentric with it, so the rim is drawn without a
-// stroke and without a seam. That inner box is also what the content is
-// clipped to, which is what keeps the dissolve at a cut edge off the rim it would
-// otherwise paint over. The block's own size is the outer box either way, so
+// stroke and without a seam. The area fills that inner box, and the padding
+// inside the area is one hairline smaller, so the code sits where it sits in
+// an unedged fence. The block's own size is the outer box either way, so
 // edging one moves nothing below it.
 func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Style, cb *CodeBlock) layout.Dimensions {
-	pad := unit.Dp(tokens.Spacing.S3)
+	pad := gtx.Dp(unit.Dp(tokens.Spacing.S3))
 	radius := gtx.Dp(unit.Dp(tokens.Radius.Base))
 	codeStyle := paragraph.Style{Color: style.CodeColor, Size: style.CodeSize}
 	spans := style.codeSpans(cb)
 	area := scrollarea.Style{Fade: unit.Dp(tokens.Spacing.S4), FadeColor: style.CodeBackground}
 
+	edge := 0
+	if style.CodeBorder.A > 0 {
+		edge = max(gtx.Dp(codeEdge), 1)
+	}
+	// The padding inside the area, which starts one rim inside the box.
+	in := max(pad-edge, 0)
+
 	spans, key := d.fills(style, cb, spans)
 	codeStyle = d.filled(codeStyle, key)
 	code := func(gtx layout.Context) layout.Dimensions {
-		return layout.Inset{Top: pad, Bottom: pad}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return paragraph.Render(shaper, codeStyle, spans, paragraph.Idle())(gtx)
-		})
+		gtx.Constraints.Min = image.Point{}
+		gtx.Constraints.Max.X = max(gtx.Constraints.Max.X-2*in, 0)
+		gtx.Constraints.Max.Y = max(gtx.Constraints.Max.Y-2*in, 0)
+		tr := op.Offset(image.Pt(in, in)).Push(gtx.Ops)
+		dims := paragraph.Render(shaper, codeStyle, spans, paragraph.Idle())(gtx)
+		tr.Pop()
+		return layout.Dimensions{Size: dims.Size.Add(image.Pt(2*in, 2*in)), Baseline: dims.Baseline + in}
 	}
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
+	cgtx.Constraints.Max.X = max(gtx.Constraints.Max.X-2*edge, 0)
 	// The vertical padding is drawn inside the area but is not part of the
 	// height the code has to fit in: a fence takes its content's height and
 	// pads it, rather than making the content fit a viewport two paddings
 	// shorter.
-	cgtx.Constraints.Max.Y += 2 * gtx.Dp(pad)
-	scroller := d.codeScroller(cb)
-	state := scroller.area
+	cgtx.Constraints.Max.Y += 2 * in
+	state := d.codeState(cb)
+	bar := style.CodeScrollbar
 	from := len(d.find.found)
-	leave := d.linkInto(image.Pt(gtx.Dp(pad), gtx.Dp(pad)))
+	leave := d.linkInto(image.Pt(pad, pad))
 	macro := op.Record(gtx.Ops)
-	content := layout.Inset{Left: pad, Right: pad}.Layout(cgtx, func(gtx layout.Context) layout.Dimensions {
-		return area.Layout(gtx, state, code)
-	})
+	tr := op.Offset(image.Pt(edge, edge)).Push(gtx.Ops)
+	var content layout.Dimensions
+	if bar.Width() > 0 {
+		content = area.LayoutScrollbar(cgtx, state, bar, code)
+	} else {
+		content = area.Layout(cgtx, state, code)
+	}
+	tr.Pop()
 	call := macro.Stop()
 	leave()
 	// The padding the code is drawn inside, both axes. What the scroll area
 	// has moved sideways is not in it: a mark in a fence scrolled off the
 	// viewport is reported where it sits in the code.
-	d.shift(from, image.Pt(gtx.Dp(pad), gtx.Dp(pad)))
+	d.shift(from, image.Pt(pad, pad))
 
-	bar := style.CodeScrollbar
-	drawn := bar.Width() > 0 && state.Overflows()
-	lane := 0
-	if drawn && list.AnchorFor(bar) == list.Occupy {
-		lane = gtx.Dp(bar.Width())
-	}
-	total := image.Pt(gtx.Constraints.Max.X, content.Size.Y+lane)
+	total := image.Pt(gtx.Constraints.Max.X, content.Size.Y+2*edge)
 	box := image.Rectangle{Max: total}
-	inner := box
 	fence := clip.UniformRRect(box, radius)
-	if style.CodeBorder.A > 0 {
-		edge := max(gtx.Dp(codeEdge), 1)
+	if edge > 0 {
 		paint.FillShape(gtx.Ops, style.CodeBorder, fence.Op(gtx.Ops))
-		inner = box.Inset(edge)
-		fence = clip.UniformRRect(inner, max(radius-edge, 0))
+		fence = clip.UniformRRect(box.Inset(edge), max(radius-edge, 0))
 	}
 	paint.FillShape(gtx.Ops, style.CodeBackground, fence.Op(gtx.Ops))
 	if state.Overflows() {
-		// The dissolve at a cut edge is opaque where it meets that edge, so
-		// left unclipped it would square off the two corners it runs into.
-		// Only an overflowing fence draws one — a fence that fits reaches no
-		// corner, and clipping it would cost the corners' anti-aliasing a
-		// pixel for nothing.
+		// The code reaches the rim once scrolled, so an overflowing fence
+		// clips it to the rounded box inside the rim. A fence that fits
+		// reaches no corner, and clipping it would cost the corners'
+		// anti-aliasing a pixel for nothing.
 		defer fence.Push(gtx.Ops).Pop()
 	}
 	call.Add(gtx.Ops)
-	if drawn {
-		codeBar(gtx, scroller, bar, inner)
-	}
 
 	return layout.Dimensions{Size: total}
-}
-
-// codeBar draws an overflowing code block's sideways bar against the bottom
-// edge of inner, the block's box inside its rim, across inner's full width,
-// and folds this frame's drag on it back into the block's offset.
-func codeBar(gtx layout.Context, s *codeScroll, bar scrollbar.Style, inner image.Rectangle) {
-	h := gtx.Dp(bar.Width())
-	defer op.Offset(image.Pt(inner.Min.X, inner.Max.Y-h)).Push(gtx.Ops).Pop()
-	gtx.Constraints = layout.Exact(image.Pt(inner.Dx(), h))
-	start, end := s.area.Fractions()
-	bar.Layout(gtx, s.bar, layout.Horizontal, start, end)
-	if d := s.bar.ScrollDistance(); d != 0 {
-		s.area.ScrollBy(int(d * float32(s.area.Content())))
-	}
 }
 
 // rule renders a thematic break: a full-width 1 dp line, and nothing else. It
