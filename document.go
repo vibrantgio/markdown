@@ -51,7 +51,7 @@ type Document struct {
 	code map[*CodeBlock]*codeScroll
 	// tables holds per-table horizontal scroll state, used when even the
 	// min-content column widths overflow the constraint.
-	tables map[*Table]*layout.List
+	tables map[*Table]*scrollarea.State
 	// columns holds each table's measured column widths, and cells each
 	// table cell's drawn call, so a table is shaped once per width, styling
 	// and marking rather than three times a frame; see table.go.
@@ -106,7 +106,7 @@ func NewDocument(blocks []Block) *Document {
 		list:    list.NewState(),
 		text:    make(map[any]*paragraph.State),
 		code:    make(map[*CodeBlock]*codeScroll),
-		tables:  make(map[*Table]*layout.List),
+		tables:  make(map[*Table]*scrollarea.State),
 		columns: make(map[*Table]*tableMeasure),
 		cells:   make(map[*TableCell]*cellRecord),
 		images:  make(map[*Image]imageState),
@@ -530,14 +530,14 @@ func (d *Document) codeState(b *CodeBlock) *scrollarea.State {
 	return d.codeScroller(b).area
 }
 
-// tableState returns the persistent horizontal scroll state for a table.
-func (d *Document) tableState(b *Table) *layout.List {
-	l, ok := d.tables[b]
+// tableState returns the persistent sideways scroll state for a table.
+func (d *Document) tableState(b *Table) *scrollarea.State {
+	s, ok := d.tables[b]
 	if !ok {
-		l = &layout.List{Axis: layout.Horizontal}
-		d.tables[b] = l
+		s = scrollarea.NewState()
+		d.tables[b] = s
 	}
-	return l
+	return s
 }
 
 // quoteBarWidth is the width of the bar leading a blockquote.
@@ -724,8 +724,16 @@ func cellSpans(style Style, cell *TableCell, header bool) []paragraph.SpanStyle 
 // but never below — their min-content width (the widest single word), the
 // deficit removed from the columns' slack in proportion, so prose columns
 // wrap while narrow columns keep their longest word intact. When even the
-// min-content widths overflow, the grid scrolls horizontally like a code
+// min-content widths overflow, the grid scrolls sideways like a code
 // block. Cell content honours the column alignment.
+//
+// A table that scrolls is a scroll area, and a scroll area has its bar at its
+// own bottom edge. The table draws [Style].TableScrollbar there through
+// components/scrollarea, across the table's full width. A bar that stands
+// (list.AnchorFor answers Occupy) has a lane of its own below the grid, so
+// the table is taller by the bar's width. A bar that fades takes no lane. The
+// table draws no fade at its cut edge. A table that fits draws no bar and
+// takes no lane.
 //
 // The column widths and the cells' drawing are kept between frames rather
 // than measured again on each; see table.go.
@@ -753,11 +761,16 @@ func (d *Document) table(gtx layout.Context, shaper *text.Shaper, style Style, t
 	if tableW <= gtx.Constraints.Max.X {
 		return d.tableGrid(gtx, shaper, style, skey, t, rows, widths)
 	}
-	// Even the min-content widths overflow: scroll the grid horizontally,
-	// clipped to the viewport, like an over-wide code block.
-	return d.tableState(t).Layout(gtx, 1, func(gtx layout.Context, _ int) layout.Dimensions {
+	// Even the min-content widths overflow: the grid scrolls sideways,
+	// clipped to the column.
+	grid := func(gtx layout.Context) layout.Dimensions {
 		return d.tableGrid(gtx, shaper, style, skey, t, rows, widths)
-	})
+	}
+	area := scrollarea.Style{}
+	if style.TableScrollbar.Width() <= 0 {
+		return area.Layout(gtx, d.tableState(t), grid)
+	}
+	return area.LayoutScrollbar(gtx, d.tableState(t), style.TableScrollbar, grid)
 }
 
 // columnWidths returns the widths the table's columns are laid out at,

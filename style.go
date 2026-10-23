@@ -206,6 +206,15 @@ type Style struct {
 	// says that there is more; what it loses is the drag and the sense of how
 	// much more.
 	CodeScrollbar scrollbar.Style
+	// TableScrollbar styles the sideways bar of a table whose columns
+	// overflow the column even at their min-content widths. The table draws
+	// it at its own bottom edge, across its full width. A bar that stands has
+	// a lane of its own below the grid. A fading bar takes no lane and is
+	// drawn over the grid's bottom row.
+	//
+	// An application applies the platform's "Show scroll bars" setting here
+	// as it does to CodeScrollbar. The zero value draws no bar.
+	TableScrollbar scrollbar.Style
 	// QuoteBar is the colour of the bar leading a blockquote.
 	QuoteBar color.NRGBA
 	// QuoteColor is the text colour inside blockquotes.
@@ -491,6 +500,7 @@ func FromTokens(p tokens.PlatformColors, typo tokens.Typography, standsOn color.
 		CodeChip:              fence,             // one code surface, not two
 		CodeChipBorder:        codeRim(p, fence), // one code edge, not two
 		CodeScrollbar:         scrollbar.FromTokens(p, fence),
+		TableScrollbar:        scrollbar.FromTokens(p, surface),
 		QuoteBar:              themecolor.Flatten(p.TertiaryLabel, surface),  // see quoteBar
 		QuoteColor:            themecolor.Flatten(p.SecondaryLabel, surface), // quoted prose reads as an aside
 		RuleColor:             themecolor.Flatten(p.Separator, surface),
