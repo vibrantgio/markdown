@@ -216,8 +216,9 @@ func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 
 // codeOverflowSource is the note the overflow goldens render: a fence whose
 // first line is far wider than the column beside a fence that fits, so one
-// image carries both halves of the treatment — the wide block dissolving at
-// its cut edge with a bar in its bottom padding, the short block untouched.
+// image carries both halves of the treatment: the wide block is clipped at
+// its cut edge with a bar in its bottom padding, and the short block is
+// untouched.
 const codeOverflowSource = "## A sample\n\n" +
 	"```go\n" +
 	"// A wikilink inside code is a code sample, not navigation:\n" +
@@ -257,11 +258,10 @@ func driveDocument(w layout.Widget, size image.Point, evs ...event.Event) {
 }
 
 // TestCodeOverflowGolden records or diffs an over-wide fence, at rest in both
-// schemes and scrolled. At rest the long line dissolves into the fence at the
-// right edge — the affordance that says there is more while a desktop overlay
-// bar would already have faded out — and the short fence below it draws
-// neither dissolve nor bar. Scrolled, the far end of the line is on screen,
-// the dissolve has moved to the left edge, and the bar has moved with it.
+// schemes and scrolled. At rest the long line is clipped at the fence's
+// right edge, and the short fence below it draws no bar. Scrolled, the far
+// end of the line is on screen, the line is clipped at the left edge, and
+// the bar has moved with it.
 //
 // Both schemes are recorded because the fence's bar is the one part of the
 // treatment whose legibility is not scheme-symmetric: it rests on the tinted
@@ -532,11 +532,10 @@ func pageExtent(img *image.RGBA, page color.NRGBA) (lead, trail int, ok bool) {
 
 // TestMeasureGolden records or diffs a document read at a measure in a
 // viewport far wider than it: the column is centred with page showing on both
-// sides, and the fence inside it is cut at the measure — the long line
-// dissolving at the column's own trailing edge rather than running on to the
-// window's. Both schemes are recorded because the fence's fill and the
-// dissolve over it are what say where the column ends, and neither is
-// scheme-symmetric.
+// sides, and the fence inside it is cut at the measure: the long line is
+// clipped at the column's own trailing edge and does not run on to the
+// window's. Both schemes are recorded because the fence's fill says where the
+// column ends, and the fill is not scheme-symmetric.
 func TestMeasureGolden(t *testing.T) {
 	shaper := defaultShaper(t)
 	blocks := markdown.Parse([]byte(measureSource))
@@ -725,6 +724,58 @@ func TestCodeBlockOverflowScrolls(t *testing.T) {
 	}
 	if narrow.Size.Y != wide.Size.Y {
 		t.Errorf("narrow code block height %d != wide height %d; over-wide code must scroll, not wrap", narrow.Size.Y, wide.Size.Y)
+	}
+}
+
+// TestCodeCutEdgeKeepsFullContrast asserts that the code at a fence's cut
+// edge is drawn at full contrast. A line of marks runs far past the column.
+// The strongest mark in the last eight columns inside the fence's fill is at
+// least four fifths as far from the fill as the strongest mark anywhere in
+// the line: nothing is drawn over the cut edge. Antialiasing moves a mark's
+// strongest pixel by up to a fifth from one character to the next. A dissolve
+// over the edge leaves these columns at half or less. The bar is turned off
+// so that only code is drawn on the fill.
+func TestCodeCutEdgeKeepsFullContrast(t *testing.T) {
+	shaper := defaultShaper(t)
+	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, color.NRGBA{})
+	style.CodeScrollbar = scrollbar.Style{}
+	blocks := markdown.Parse([]byte("```\n" + strings.Repeat("#", 200) + "\n```\n"))
+	img := golden.Capture(t, codeOverflowSize, themed(markdown.NewDocument(blocks), shaper, style, tokens.PlatformLight))
+
+	fill := style.CodeBackground
+	isFill := func(p color.RGBA) bool { return p.R == fill.R && p.G == fill.G && p.B == fill.B }
+	b := img.Bounds()
+	left, right, top, bottom := b.Max.X, -1, b.Max.Y, -1
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			if isFill(img.RGBAAt(x, y)) {
+				left, right = min(left, x), max(right, x)
+				top, bottom = min(top, y), max(bottom, y)
+			}
+		}
+	}
+	if right < 0 {
+		t.Fatal("no fence in the capture")
+	}
+	dist := func(p color.RGBA) int {
+		d := func(a, b uint8) int { return max(int(a)-int(b), int(b)-int(a)) }
+		return d(p.R, fill.R) + d(p.G, fill.G) + d(p.B, fill.B)
+	}
+	edge, line := 0, 0
+	for y := top; y <= bottom; y++ {
+		for x := left; x <= right; x++ {
+			v := dist(img.RGBAAt(x, y))
+			line = max(line, v)
+			if x > right-8 {
+				edge = max(edge, v)
+			}
+		}
+	}
+	if line == 0 {
+		t.Fatal("the fence drew no code")
+	}
+	if edge*5 < line*4 {
+		t.Errorf("the strongest mark at the cut edge is %d from the fill, the strongest in the line %d: the cut edge lost contrast", edge, line)
 	}
 }
 

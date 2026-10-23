@@ -600,7 +600,7 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 	radius := gtx.Dp(unit.Dp(tokens.Radius.Base))
 	codeStyle := paragraph.Style{Color: style.CodeColor, Size: style.CodeSize}
 	spans := style.codeSpans(cb)
-	area := scrollarea.Style{Fade: unit.Dp(tokens.Spacing.S4), FadeColor: style.CodeBackground}
+	area := scrollarea.Style{}
 
 	edge := 0
 	if style.CodeBorder.A > 0 {
@@ -704,8 +704,8 @@ func cellSpans(style Style, cell *TableCell, header bool) []paragraph.SpanStyle 
 // components/scrollarea, across the table's full width. A bar that stands
 // (list.AnchorFor answers Occupy) has a lane of its own below the grid, so
 // the table is taller by the bar's width. A bar that fades takes no lane. The
-// table draws no fade at its cut edge. A table that fits draws no bar and
-// takes no lane.
+// grid is clipped at its cut edge. A table that fits draws no bar and takes
+// no lane.
 //
 // The column widths and the cells' drawing are kept between frames rather
 // than measured again on each; see table.go.

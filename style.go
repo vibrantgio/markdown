@@ -201,10 +201,8 @@ type Style struct {
 	// which is above this library, so the answer arrives here already
 	// resolved.
 	//
-	// The zero value draws no bar. The dissolve at the cut edge is not the
-	// bar's and stays either way, so a document that turns the bar off still
-	// says that there is more; what it loses is the drag and the sense of how
-	// much more.
+	// The zero value draws no bar. The code is clipped at the cut edge with
+	// the bar or without it.
 	CodeScrollbar scrollbar.Style
 	// TableScrollbar styles the sideways bar of a table whose columns
 	// overflow the column even at their min-content widths. The table draws
