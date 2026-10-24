@@ -29,7 +29,7 @@ renders it with components primitives:
   on `Style`, and horizontal scrolling for lines too wide for the column —
   the fence is a `components/scrollarea`, so an over-wide line is scrolled to
   rather than wrapped or cut, the fence's padding scrolls with the code so the
-  code reaches the fence's edge once scrolled, the code is clipped at the cut
+  code runs to the fence's edge once scrolled, the code is clipped at the cut
   edge, a slim bar is drawn at the fence's own bottom edge
   (over the bottom padding while it fades, in a lane of its own that the code
   stops short of when it stands), and the fence claims the horizontal axis only so a wheel over it
@@ -52,13 +52,14 @@ application decides what the target means.
 ## Where it sits
 
 Tier 4 of the stack — `mvu → theme → components → effects → patterns → markdown` —
-alongside [patterns](https://github.com/vibrantgio/patterns). It imports `list`
-and `paragraph` from [components](https://github.com/vibrantgio/components), `tokens` from
-[theme](https://github.com/vibrantgio/theme), and
-[svg](https://github.com/vibrantgio/svg) in the `svgimage` subpackage only. It
-imports neither mvu, effects nor patterns, and nothing in the design
-system imports it: it is consumed by applications, at the top of the stack,
-and `AGENTS.md` names them from the measured graph rather than from memory.
+alongside [patterns](https://github.com/vibrantgio/patterns). The root
+package imports `list`, `paragraph`, `pointershape`, `scrollarea` and
+`scrollbar` from [components](https://github.com/vibrantgio/components), and
+`color` and `tokens` from [theme](https://github.com/vibrantgio/theme);
+`markdown/highlight` imports `scrollbar` from components and `color` and
+`tokens` from theme; `markdown/svgimage` imports `parser` and `driver/gio`
+from [svg](https://github.com/vibrantgio/svg), and only that subpackage
+imports svg. It imports neither mvu, effects nor patterns.
 The [organization page](https://github.com/vibrantgio) has the full stack.
 
 ## Packages
@@ -112,30 +113,30 @@ block shows the artifact: the author's own background under it, their own
 colours in the runs they coloured, their own body colour in the runs they left
 plain, and nothing altered by anything here. Nothing else on the page moves.
 The prose, and the chip an inline code span sits on, stay the theme's — one
-call writes four fields of a `Style` (`Highlight`, `CodeColor`,
-`CodeBackground`, `CodeBorder`) and leaves the rest exactly as you had it.
+call writes the fence's fields of a `Style` (`Highlight`, `CodeColor`,
+`CodeBackground`, `CodeBorder`, `CodeScrollbar`) and leaves the rest exactly
+as you had it.
 
-The fourth of those is what keeps a block a block. A style fitted to a light
+`CodeBorder` is what keeps a block a block. A style fitted to a light
 page is drawn on a near-white and this page is a near-white too, so a fill alone
 can leave the reader guessing where the code begins: where a style's background
 stands less far off the page than your theme's own code fill does, `Wear`
 also sets `CodeBorder`, and the block takes a hairline in the theme's seam
 colour. Where the background stands off on its own, no line is drawn. A style
-that names no background at all — four of the embedded styles — is drawn on
-the fill an inline chip uses, which is what a fence had before any style was
-chosen.
+that names no background at all is drawn on the fill an inline chip uses,
+which is the fill a fence has when no style is worn.
 
 Contrast inside the block is surfaced, not enforced. A style shows as its
 author drew it, faint ones included; what the library does is measure —
-the package's own test sweep records what every style's colours reach on the
+the package's own test sweep records the contrast every style's colours measure on the
 background they were drawn on, and names the faintest.
 
 One style name covers both appearances: which member is worn follows the
-tokens, so the single line above replaces the pair of highlighters earlier,
-and it re-dresses with the theme rather than staying where it was built.
+tokens, so the single line above does the work of the pair of highlighters in
+the first example, and it re-dresses with the theme rather than staying where it was built.
 
 `DefaultStyle` is `catppuccin-latte`, whose registered counterpart
-`catppuccin-mocha` is the dark member that same name reaches. It is a
+`catppuccin-mocha` is the dark member that same name resolves to. It is a
 default, not a policy: pass any name chroma's registry holds. It is the
 default because its two members are one family drawn twice — the same token
 types on the same hues, fitted by their author to a light page and to a dark
@@ -146,17 +147,17 @@ Where somebody has chosen a style for each appearance rather than one for
 both, hand over the pair and each appearance wears its own member:
 
 ```go
-p := highlight.StylesOrDefault(lightName, darkName) // resolved and measured
-highlight.WearPair(&st, p, c)                       // c decides which member
+pair := highlight.StylesOrDefault(lightName, darkName) // resolved and measured
+highlight.WearPair(&st, pair, p)                       // p's appearance decides which member
 ```
 
 `DefaultStyles()` is the pair that stands in when nothing was chosen —
 `catppuccin-latte` and `catppuccin-mocha`. `StylesOrDefault` keeps a member
 only where it resolves and its own measured background suits the appearance
-it is being kept for, so a name that has left the styles folder, and one
+it is being kept for, so a name that resolves to no style, and one
 fitted to the other appearance, both fall back to that appearance's default.
-Passing one name as both members is therefore how a single stored choice
-migrates to a pair: it stays on the half it was fitted for. Each member is
+Passing one name as both members therefore turns a single stored choice
+into a pair: it stays on the half it was fitted for. Each member is
 drawn as its own author wrote it, italics and bold included.
 
 The choice is not limited to what ships embedded. A chroma style is a small
@@ -189,8 +190,7 @@ p := highlight.CompletePair(chosen)   // both members, whichever side was picked
 cols := highlight.StyleColors(chosen) // the colours it draws code with
 ```
 
-A counterpart the style's own author declared wins — twenty-two of the
-seventy-four embedded styles name one. For the rest the other member is
+A counterpart the style's own author declared wins. For the rest the other member is
 measured: of the styles fitted to the opposite background, the one whose
 colours fall nearest, class against class, on the OKLCh hue circle, weighted
 by how much colour each one actually carries. `StyleDistance` is that measure
@@ -248,10 +248,10 @@ doc.Layout(gtx, shaper, docsStyle(colors, typography))
 The surface a `Style` describes is the content, level 0 — the plain surface
 running text is read on. It is not chrome, chrome being the regions a window
 is framed with, the rails and bars and cards and controls that answer to the
-theme directly. The content answers to the theme too, but through roles of its
+theme directly. The content answers to the theme too, but through fields of its
 own:
 
-| content role | field |
+| what the content names | field |
 | --- | --- |
 | the surface the document is read on | `Style.ContentSurface` |
 | the prose foregrounds — body, link, focus ring | `Style.Text`'s colours |
@@ -262,15 +262,15 @@ The remaining fields dress the blocks standing on that surface — a fence, a
 quote, a rule, a table, a task box — and they are the content's as well. Every
 colour this library draws comes from a field of `Style` and from nowhere else:
 the layout code reads the theme for spacing and for radii and for no colour at
-all, so a document looks like what its `Style` says and nothing reaches around
+all, so a document looks like what its `Style` says and nothing bypasses
 it.
 
-The fields are the content's own even where the values are the chrome's
-today. `FromTokens` takes the surface from the platform's text background, the
-prose foreground from its text colour, the chip from the same step a fence is
-filled with — the names a card or a toolbar would reach for, held here in the
-content's own. Naming them apart costs nothing now and is what lets the
-reading surface move later without the chrome moving with it.
+The fields are the content's own even where the values are the chrome's.
+`FromTokens` takes the surface from the platform's text background, the
+prose foreground from its text colour, the chip from the fill a fence
+takes — the names a card or a toolbar would use, held here in the
+content's own. Naming them apart lets the
+reading surface move without the chrome moving with it.
 
 `Style.ContentSurface` is a record rather than a draw. Nothing here fills the
 page: a document is laid into a space its holder owns and the holder paints the
@@ -341,7 +341,7 @@ the default collection (`tokens.DefaultTypography.Faces`) carries in all four
 weight/style combinations code shapes in — regular, bold, italic, and bold
 italic. Out of the box, code blocks and inline code render monospaced.
 
-One caveat survives for applications building their own shaper: Gio matches
+One caveat applies to applications building their own shaper: Gio matches
 typeface names literally, with no CSS generic-family fallback and no error or
 warning on a miss — a collection without a `Roboto Mono` face silently shapes
 code in the proportional body face instead. Include
@@ -362,14 +362,13 @@ as a proportion of the line so a span inside a heading takes the heading's own
 size less that proportion. It is not a stylistic preference: at the body's own
 size the monospace face asks for more ascent than the body face does, and
 since every segment on a line shares one baseline, the taller ascent pushes
-the whole line's baseline down and out from under everything hung beside it —
-a list's markers first of all, which is how the defect showed itself.
+the whole line's baseline down and out from under everything hung beside it,
+a list's markers first of all.
 
 The span then sits on `Style.CodeChip`: a rounded fill one step off the
 page, padded horizontally, taking the code's own shaped height so it can
 never stretch the line it is quoted into. `FromTokens` sets it; a `Style`
-built by hand leaves it zero and inline code sits on the page, as it did
-before.
+built by hand leaves it zero and inline code sits on the page.
 
 `FromTokens` gives the chip and the fence the same fill, and they part company
 as soon as a fence wears a syntax highlighter style: the block takes that
@@ -414,12 +413,11 @@ excludes approximately nothing.
 
 ## Why not `gioui.org/x/markdown`?
 
-The existing community renderer was evaluated on 2026-07-20 and rejected as a
-dependency: it flattens the whole document into a single styled-text flow and
-drops blockquotes, thematic rules, images, tables, list nesting, and all of
-GFM; headings are distinguished by size only; tabs render as tofu; there is no
-text selection. It served as a span-model reference only — the span shape
-lives on in `components/paragraph`, and this module owns the block layer that
+The community renderer is not a dependency: it flattens the whole document
+into a single styled-text flow and drops blockquotes, thematic rules, images,
+tables, list nesting, and all of GFM; headings are distinguished by size only;
+tabs render as tofu; there is no text selection. `components/paragraph` has a
+span model of the same shape, and this module has the block layer that
 `x/markdown` lacks.
 
 ## For coding assistants
@@ -429,16 +427,15 @@ root's [`AGENTS.md`](https://github.com/vibrantgio/organisation/blob/master/AGEN
 
 ## Status
 
-Current tag `v0.2.0` — a pre-release number, like every tag in the
-organization. What renders, renders well; these are the honest gaps.
+What renders, renders well; these are the honest gaps.
 
 - **`FromTokens` takes the whole typography.**
-  `markdown.FromTokens(c, tokens.DefaultTypography)` — the Code role lives
-  on `Typography`, outside the type grid, so code follows the typography you
-  hand it rather than a size set afterwards.
-- **`doc.Layout` keeps its positional-shaper signature.** It takes a shaper
-  and a `Style`; that costs nothing today and no consumer has asked for
-  anything else.
+  `markdown.FromTokens(p, tokens.DefaultTypography, standsOn)` — the Code
+  role is on `Typography`, outside the type grid, so code follows the
+  typography you hand it rather than a size set afterwards; `standsOn` is
+  the fill the document is laid on, zero for the platform's text background.
+- **`doc.Layout` takes the shaper as a parameter.** It takes a shaper and a
+  `Style`.
 - **Highlight colours are the chroma style's, and are never re-fitted.** Runs
   a chroma style would render in its plain-text foreground — whitespace,
   punctuation, plain identifiers — are emitted colourless and take
