@@ -422,8 +422,7 @@ span model of the same shape, and this module has the block layer that
 
 ## For coding assistants
 
-Read the org guide before you write code against this module: the plan
-root's [`AGENTS.md`](https://github.com/vibrantgio/organisation/blob/master/AGENTS.md).
+Read this repository's [AGENTS.md](./AGENTS.md) before you write code against this module.
 
 ## Status
 
