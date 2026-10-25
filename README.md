@@ -245,7 +245,7 @@ doc.Layout(gtx, shaper, docsStyle(colors, typography))
 
 ## The document is the content
 
-The surface a `Style` describes is the content, level 0 — the plain surface
+The surface a `Style` describes is the content — the plain surface
 running text is read on. It is not chrome, chrome being the regions a window
 is framed with, the rails and bars and cards and controls that answer to the
 theme directly. The content answers to the theme too, but through fields of its
