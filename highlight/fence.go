@@ -125,6 +125,10 @@ func fenceBar(bar scrollbar.Style, fence stdcolor.NRGBA, p tokens.PlatformColors
 		return bar
 	}
 	over := scrollbar.FromTokens(p, fence)
+	if bar.FadeDelay == 0 {
+		over = over.Always()
+		bar.TrackColor = over.TrackColor
+	}
 	bar.ThumbColor = over.ThumbColor
 	bar.MatchFill = over.MatchFill
 	bar.CurrentMatchFill = over.CurrentMatchFill

@@ -1,7 +1,9 @@
 package markdown_test
 
 import (
+	"image"
 	"image/color"
+	"strings"
 	"testing"
 
 	"gioui.org/layout"
@@ -63,13 +65,16 @@ func TestAWideViewportKeepsItsPixels(t *testing.T) {
 // block is a code block — its fill spans the block's whole width — into
 // regions narrower than the measure plus the padding on both sides. The block
 // keeps the padding at its leading edge, and its width is the region less
-// twice the padding, less the bar's lane first when a bar occupies one. The
-// band just below the edge case, where the measure would fit beside one
-// padding but not two, is the one that used to give up the leading padding.
+// twice the padding, less the bar's lane first when a bar occupies one. A
+// bar occupies a lane only while it is drawn, so the document under a bar is
+// longer than the region. The band just below the edge case, where the
+// measure would fit beside one padding but not two, is the one that used to
+// give up the leading padding.
 func TestANarrowViewportKeepsThePaddingOnBothSides(t *testing.T) {
 	c := tokens.PlatformLight
 	blocks := markdown.Parse([]byte("```\ncode\n```\n"))
-	lane := int(scrollbar.FromTokens(c, c.TextBackground).Width())
+	long := markdown.Parse([]byte("```\ncode\n```\n" + strings.Repeat("A line.\n\n", 100)))
+	lane := int(scrollbar.FromTokens(c, c.TextBackground).Always().Width())
 	shaper := defaultShaper(t)
 	for _, tc := range []struct {
 		name    string
@@ -86,10 +91,16 @@ func TestANarrowViewportKeepsThePaddingOnBothSides(t *testing.T) {
 			w := themed(markdown.NewDocument(blocks), shaper, style, c)
 			want := measureRegion - 2*paddingDp
 			if tc.bar {
-				w = barred(markdown.NewDocument(blocks), style, c)
+				w = barred(markdown.NewDocument(long), style, c)
 				want -= lane
 			}
 			img := golden.Capture(t, measureWideSize, w)
+			if tc.bar {
+				// The lane holds the bar's track, which is no block's.
+				region := img.Bounds()
+				region.Max.X = measurePage + measureRegion - lane
+				img = img.SubImage(region).(*image.RGBA)
+			}
 			lead, trail, ok := pageExtent(img, c.TextBackground)
 			if !ok {
 				t.Fatal("the code block drew no fill")

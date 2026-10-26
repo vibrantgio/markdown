@@ -31,8 +31,8 @@ renders it with components primitives:
   rather than wrapped or cut, the fence's padding scrolls with the code so the
   code runs to the fence's edge once scrolled, the code is clipped at the cut
   edge, a slim bar is drawn at the fence's own bottom edge
-  (over the bottom padding while it fades, in a lane of its own that the code
-  stops short of when it stands), and the fence claims the horizontal axis only so a wheel over it
+  (over the bottom padding while it fades; when it stands, a thumb on a pill
+  track in a 17 dp lane of its own that the code stops short of), and the fence claims the horizontal axis only so a wheel over it
   still scrolls the document
 - GFM tables as grids with an emphasised header row, token borders, and
   per-column alignment
