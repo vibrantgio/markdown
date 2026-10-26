@@ -85,13 +85,13 @@ func TestALoadedStyleIsABaseLikeAnyOther(t *testing.T) {
 	if !slices.Contains(Styles(), "lantern-day") {
 		t.Error("the loaded style is not among the names a style can be chosen by")
 	}
-	// The proof it is a style and not just a name: wearing it colours code,
+	// The proof it is a style and not just a name: applying it colours code,
 	// and colours it differently from the default.
 	const snippet = "// hello\nfunc greet() {}\n"
-	mine := worn(t, "lantern-day", tokens.PlatformLight).Highlight("go", snippet)
-	theirs := worn(t, DefaultStyle, tokens.PlatformLight).Highlight("go", snippet)
+	mine := applied(t, "lantern-day", tokens.PlatformLight).Highlight("go", snippet)
+	theirs := applied(t, DefaultStyle, tokens.PlatformLight).Highlight("go", snippet)
 	if len(mine) == 0 {
-		t.Fatal("wearing the loaded style coloured nothing")
+		t.Fatal("applying the loaded style coloured nothing")
 	}
 	same := true
 	for i := range mine {
@@ -124,7 +124,7 @@ func TestALoadedPairHasTwoSides(t *testing.T) {
 		{"light", tokens.PlatformLight, stdcolor.NRGBA{R: 0xfd, G: 0xf6, B: 0xe3, A: 0xff}},
 		{"dark", tokens.PlatformDark, stdcolor.NRGBA{R: 0x00, G: 0x2b, B: 0x36, A: 0xff}},
 	} {
-		if got := worn(t, "lantern-day", tc.tok).CodeBackground; got != tc.want {
+		if got := applied(t, "lantern-day", tc.tok).CodeBackground; got != tc.want {
 			t.Errorf("%s theme put %v under the fence, want the pair's %s member's own background %v",
 				tc.name, got, tc.name, tc.want)
 		}

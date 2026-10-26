@@ -76,7 +76,7 @@ type WidgetImageProvider interface {
 //     scale a document is broken up by;
 //   - [Style.CodeChip], the fill under a word of code quoted into a sentence.
 //
-// The rest of the fields dress the blocks standing on the content — a fence, a
+// The rest of the fields apply to the blocks standing on the content — a fence, a
 // quote, a rule, a table, a task box.
 //
 // The invariant: every colour this package draws comes from a field of this
@@ -124,7 +124,7 @@ type Style struct {
 	CodeSize unit.Sp
 	// CodeColor is the code block text colour: what plain code is set in, and
 	// what a highlighted run with no colour of its own falls back to. A fence
-	// dressed in a syntax highlighter style takes that style's own body colour
+	// with a syntax highlighter style applied takes that style's own body colour
 	// here, so the runs its author left plain are the ones they drew plain.
 	CodeColor color.NRGBA
 	// CodeBackground is the fenced block's fill. [FromTokens] gives it the
@@ -132,8 +132,8 @@ type Style struct {
 	// the platform gives content off its own plane, darker than a light page
 	// and lighter than a dark one.
 	//
-	// It is a field rather than a constant because a fence may be dressed in a
-	// syntax highlighter style instead, and a style is a background and a set
+	// It is a field rather than a constant because a fence may have a
+	// syntax highlighter style applied instead, and a style is a background and a set
 	// of colours together: put the colours on a background their author never
 	// drew them against and the relations between them stop being the ones
 	// that were chosen.
@@ -163,8 +163,8 @@ type Style struct {
 	// it is set apart, which is how the reading surface this library is judged
 	// against draws it.
 	//
-	// The two part company as soon as a fence is dressed in a syntax
-	// highlighter style, and deliberately: a page of prose spotted with
+	// The two part company as soon as a fence has a syntax
+	// highlighter style applied, and deliberately: a page of prose spotted with
 	// somebody else's backgrounds would be a page arguing with itself, so a
 	// chip stays on the theme's own fill and in the body's own colour while
 	// the block down the page shows the style whole.
@@ -182,7 +182,7 @@ type Style struct {
 	// chip's own size: the same fill and the same seam.
 	//
 	// It is separate from CodeBorder for the same reason CodeChip is separate
-	// from CodeBackground: a fence dressed in a syntax highlighter style takes
+	// from CodeBackground: a fence with a syntax highlighter style applied takes
 	// that style's background and the edge that background calls for, while the
 	// chip stays on the theme's own fill and keeps the theme's own rim.
 	CodeChipBorder color.NRGBA
@@ -260,7 +260,7 @@ type Style struct {
 	// can tell it from the others while stepping through them.
 	//
 	// [FromTokens] takes the same yellow over the same surface at a higher
-	// coverage: the current match is the fill the rest wear laid on more
+	// coverage: the current match is the fill the rest are drawn in, laid on more
 	// strongly, not a second colour.
 	CurrentMatchFill color.NRGBA
 	// ArrivalFill marks the heading a followed heading word took the reader
@@ -270,7 +270,7 @@ type Style struct {
 	// document made the move.
 	//
 	// [FromTokens] takes the theme's highlight laid over
-	// [Style.ContentSurface], the same fill a match wears: one highlight,
+	// [Style.ContentSurface], the same fill a match is drawn in: one highlight,
 	// whatever brought the reader.
 	ArrivalFill color.NRGBA
 	// BlockGap is the vertical space between sibling blocks. It is authored

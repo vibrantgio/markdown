@@ -50,11 +50,11 @@ func schemes() []struct {
 	}
 }
 
-// worn is a token-themed Style with the named style on its fences.
-func worn(t *testing.T, style string, c tokens.PlatformColors) markdown.Style {
+// applied is a token-themed Style with the named style applied to its fences.
+func applied(t *testing.T, style string, c tokens.PlatformColors) markdown.Style {
 	t.Helper()
 	st := markdown.FromTokens(c, tokens.DefaultTypography, stdcolor.NRGBA{})
-	Wear(&st, style, c)
+	Apply(&st, style, c)
 	return st
 }
 
@@ -91,12 +91,12 @@ func authored(s *chroma.Style) (stdcolor.NRGBA, bool) {
 func TestTheFenceWearsTheStylesOwnBackgroundAndColors(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
-			st := worn(t, DefaultStyle, sc.tok)
+			st := applied(t, DefaultStyle, sc.tok)
 			m := member(t, DefaultStyle, sc.name == "dark")
 
 			bg, ok := authored(m)
 			if !ok {
-				t.Fatalf("%s names no background; this case cannot show one is worn", m.Name)
+				t.Fatalf("%s names no background; this case cannot show one is applied", m.Name)
 			}
 			if st.CodeBackground != bg {
 				t.Errorf("the fence's background is %v, %s was drawn on %v", st.CodeBackground, m.Name, bg)
@@ -140,7 +140,7 @@ func TestNoColorIsAltered(t *testing.T) {
 		t.Run(sc.name, func(t *testing.T) {
 			checked, runs := 0, 0
 			for _, name := range styles.Names() {
-				st := worn(t, name, sc.tok)
+				st := applied(t, name, sc.tok)
 				colors := colorsOf(member(t, name, sc.name == "dark"))
 				for _, sp := range st.Highlight("go", specimen) {
 					if sp.Color.A == 0 {
@@ -167,7 +167,7 @@ func TestTheBackgroundIsTheAuthorsOrTheChips(t *testing.T) {
 		t.Run(sc.name, func(t *testing.T) {
 			var noBackground []string
 			for _, name := range styles.Names() {
-				st := worn(t, name, sc.tok)
+				st := applied(t, name, sc.tok)
 				m := member(t, name, sc.name == "dark")
 				bg, ok := authored(m)
 				if !ok {
@@ -190,14 +190,14 @@ func TestTheBackgroundIsTheAuthorsOrTheChips(t *testing.T) {
 
 // TestAFenceIsBoundedOnItsPage: a block has to look like a block, and the fill
 // is not what says so. The fence's fill is a small step off the page whichever
-// style it wears, so the theme edges its own fence and every dressed one takes
+// style is applied to it, so the theme edges its own fence and every fence with a style applied takes
 // the same edge — the platform's separator laid over the background it
 // encloses. Every style, with no exceptions and no comparison.
 func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
 			for _, name := range styles.Names() {
-				st := worn(t, name, sc.tok)
+				st := applied(t, name, sc.tok)
 				if st.CodeBorder.A == 0 {
 					t.Errorf("%s is drawn on %v and takes no edge at all", name, st.CodeBackground)
 					continue
@@ -215,7 +215,7 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 					t.Errorf("%s: edge and background are both %v, so nothing says where the fence ends", name, st.CodeBackground)
 				}
 			}
-			st := worn(t, DefaultStyle, sc.tok)
+			st := applied(t, DefaultStyle, sc.tok)
 			t.Logf("%s: %d styles, every one edged. The default's background %v stands |Lc| %.3f off the page and its edge %v measures |Lc| %.3f against that background",
 				sc.name, len(styles.Names()), st.CodeBackground,
 				color.Magnitude(st.CodeBackground, sc.tok.TextBackground), st.CodeBorder,
@@ -226,7 +226,7 @@ func TestAFenceIsBoundedOnItsPage(t *testing.T) {
 
 // TestTheEdgeFollowsTheBackground: what the edge answers is where the block
 // ends, so the answer moves when the fill it is inset into moves and not when
-// anything else does. The two extremes of the registry worn on one theme — the
+// anything else does. The two extremes of the registry applied on one theme — the
 // palest background and the deepest — take two different lines, because the
 // separator carries a coverage and composites over whatever it lands on.
 //
@@ -241,7 +241,7 @@ func TestTheEdgeFollowsTheBackground(t *testing.T) {
 	var paleName, deepName string
 	lightest, darkest := -1.0, 999.0
 	for _, name := range styles.Names() {
-		st := worn(t, name, c)
+		st := applied(t, name, c)
 		// Black's |Lc| against the fill ranks it by lightness without a
 		// colour space of its own: the paler the fill, the further black
 		// stands from it.
@@ -262,10 +262,10 @@ func TestTheEdgeFollowsTheBackground(t *testing.T) {
 			pale.CodeBackground, deep.CodeBackground, pale.CodeBorder)
 	}
 
-	onPage := worn(t, DefaultStyle, c)
+	onPage := applied(t, DefaultStyle, c)
 	inset := markdown.FromTokens(c, tokens.DefaultTypography, stdcolor.NRGBA{})
 	inset.ContentSurface = tokens.PlatformDark.TextBackground
-	Wear(&inset, DefaultStyle, c)
+	Apply(&inset, DefaultStyle, c)
 	if inset.CodeBorder != onPage.CodeBorder {
 		t.Errorf("the same style inset onto a dark pane takes the edge %v where on the page it takes %v — the content surface is being read again",
 			inset.CodeBorder, onPage.CodeBorder)
@@ -279,11 +279,11 @@ func TestTheEdgeFollowsTheBackground(t *testing.T) {
 func TestAStyleNamingNoSurfaceTakesTheSameEdge(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
-			stated := worn(t, DefaultStyle, sc.tok)
+			stated := applied(t, DefaultStyle, sc.tok)
 
 			silent := markdown.FromTokens(sc.tok, tokens.DefaultTypography, stdcolor.NRGBA{})
 			silent.ContentSurface = stdcolor.NRGBA{}
-			Wear(&silent, DefaultStyle, sc.tok)
+			Apply(&silent, DefaultStyle, sc.tok)
 
 			if silent.CodeBorder != stated.CodeBorder {
 				t.Errorf("a Style naming no surface takes the edge %v where one on the theme's page takes %v",
@@ -296,12 +296,12 @@ func TestAStyleNamingNoSurfaceTakesTheSameEdge(t *testing.T) {
 // TestThreeFlavoursShowThreeBackgrounds is the case that says what a verbatim
 // fence is worth. Three dark flavours of one family differ from each other
 // mostly by the background they are drawn on: re-fitted onto one surface they
-// came out very nearly the same plate three times, and worn they are three.
+// came out very nearly the same plate three times, and applied they are three.
 func TestThreeFlavoursShowThreeBackgrounds(t *testing.T) {
 	flavours := []string{"catppuccin-frappe", "catppuccin-macchiato", "catppuccin-mocha"}
 	seen := map[stdcolor.NRGBA]string{}
 	for _, name := range flavours {
-		st := worn(t, name, tokens.PlatformDark)
+		st := applied(t, name, tokens.PlatformDark)
 		if first, dup := seen[st.CodeBackground]; dup {
 			t.Errorf("%s and %s are drawn on the same background %v", first, name, st.CodeBackground)
 		}
@@ -315,10 +315,10 @@ func TestThreeFlavoursShowThreeBackgrounds(t *testing.T) {
 	}
 }
 
-// TestWearTakesThePairMemberForTheScheme asserts one style name reaches both
-// members: the light tokens wear github, the dark ones github-dark, and naming
+// TestApplyTakesThePairMemberForTheScheme asserts one style name reaches both
+// members: github is applied for the light tokens, github-dark for the dark ones, and naming
 // either member gets the same pair. The background is what says which arrived.
-func TestWearTakesThePairMemberForTheScheme(t *testing.T) {
+func TestApplyTakesThePairMemberForTheScheme(t *testing.T) {
 	for _, pair := range []struct{ light, dark string }{
 		{"catppuccin-latte", "catppuccin-mocha"},
 		{"github", "github-dark"},
@@ -326,10 +326,10 @@ func TestWearTakesThePairMemberForTheScheme(t *testing.T) {
 		lightBackground, _ := authored(member(t, pair.light, false))
 		darkBackground, _ := authored(member(t, pair.dark, true))
 		for _, style := range []string{pair.light, pair.dark} {
-			if got := worn(t, style, tokens.PlatformLight).CodeBackground; got != lightBackground {
+			if got := applied(t, style, tokens.PlatformLight).CodeBackground; got != lightBackground {
 				t.Errorf("%s on light tokens drew on %v, want the light member's %v", style, got, lightBackground)
 			}
-			if got := worn(t, style, tokens.PlatformDark).CodeBackground; got != darkBackground {
+			if got := applied(t, style, tokens.PlatformDark).CodeBackground; got != darkBackground {
 				t.Errorf("%s on dark tokens drew on %v, want the dark member's %v", style, got, darkBackground)
 			}
 		}
@@ -337,7 +337,7 @@ func TestWearTakesThePairMemberForTheScheme(t *testing.T) {
 	if DefaultStyle != "catppuccin-latte" {
 		t.Errorf("the default style is %q; the pair checked above is no longer the default one", DefaultStyle)
 	}
-	// A style with no registered counterpart is worn on both sides.
+	// A style with no registered counterpart is applied on both sides.
 	unpaired := ""
 	for _, name := range styles.Names() {
 		if styles.Registry[name].Counterpart == "" {
@@ -348,8 +348,8 @@ func TestWearTakesThePairMemberForTheScheme(t *testing.T) {
 	if unpaired == "" {
 		t.Skip("every embedded style is paired")
 	}
-	l := worn(t, unpaired, tokens.PlatformLight)
-	d := worn(t, unpaired, tokens.PlatformDark)
+	l := applied(t, unpaired, tokens.PlatformLight)
+	d := applied(t, unpaired, tokens.PlatformDark)
 	if bg, ok := authored(member(t, unpaired, false)); ok && (l.CodeBackground != bg || d.CodeBackground != bg) {
 		t.Errorf("unpaired style %q drew on %v under light and %v under dark, want its own %v",
 			unpaired, l.CodeBackground, d.CodeBackground, bg)
@@ -373,8 +373,8 @@ func TestAPairWearsTheAppearancesOwnMember(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st := markdown.FromTokens(tc.tok, tokens.DefaultTypography, stdcolor.NRGBA{})
-			WearPair(&st, p, tc.tok)
-			alone := worn(t, tc.member, tc.tok)
+			ApplyPair(&st, p, tc.tok)
+			alone := applied(t, tc.member, tc.tok)
 			if st.CodeBackground != alone.CodeBackground || st.CodeColor != alone.CodeColor {
 				t.Errorf("the pair drew on %v in %v; %s alone gives %v in %v",
 					st.CodeBackground, st.CodeColor, tc.member, alone.CodeBackground, alone.CodeColor)
@@ -407,11 +407,11 @@ func TestAPairWearsTheAppearancesOwnMember(t *testing.T) {
 func TestAWornMemberKeepsItsOwnEmphasis(t *testing.T) {
 	p := StylePair{Light: "solarized-light", Dark: "github-dark"}
 	st := markdown.FromTokens(tokens.PlatformDark, tokens.DefaultTypography, stdcolor.NRGBA{})
-	WearPair(&st, p, tokens.PlatformDark)
+	ApplyPair(&st, p, tokens.PlatformDark)
 
 	got := st.Highlight("go", specimen)
-	mine := worn(t, p.Dark, tokens.PlatformDark).Highlight("go", specimen)
-	theirs := worn(t, p.Light, tokens.PlatformLight).Highlight("go", specimen)
+	mine := applied(t, p.Dark, tokens.PlatformDark).Highlight("go", specimen)
+	theirs := applied(t, p.Light, tokens.PlatformLight).Highlight("go", specimen)
 	if len(got) != len(mine) || len(got) != len(theirs) {
 		t.Fatalf("the specimen split into %d, %d and %d runs; the three have to line up to be compared",
 			len(got), len(mine), len(theirs))
@@ -445,7 +445,7 @@ func TestAWornMemberKeepsItsOwnEmphasis(t *testing.T) {
 func TestAPairWithANameThisBuildLacks(t *testing.T) {
 	p := StylePair{Light: "a-style-nobody-wrote", Dark: "dracula"}
 	st := markdown.FromTokens(tokens.PlatformDark, tokens.DefaultTypography, stdcolor.NRGBA{})
-	WearPair(&st, p, tokens.PlatformDark)
+	ApplyPair(&st, p, tokens.PlatformDark)
 	if want, _ := authored(member(t, p.Dark, true)); st.CodeBackground != want {
 		t.Errorf("the fence is filled with %v, want %s's own background %v", st.CodeBackground, p.Dark, want)
 	}
@@ -457,29 +457,29 @@ func TestWearUnknownBasePanics(t *testing.T) {
 	defer func() {
 		r := recover()
 		if r == nil {
-			t.Fatal("wearing an unknown style returned; want a panic naming it")
+			t.Fatal("applying an unknown style returned; want a panic naming it")
 		}
 		if msg := fmt.Sprint(r); !strings.Contains(msg, "no-such-style") {
 			t.Errorf("panic message %q does not name the unknown style", msg)
 		}
 	}()
 	st := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
-	Wear(&st, "no-such-style", tokens.PlatformLight)
+	Apply(&st, "no-such-style", tokens.PlatformLight)
 }
 
-// TestWearLeavesTheRegistryAlone: the styles chroma ships are a curated set
-// this package promises not to touch. Wearing one reads it and builds nothing,
+// TestApplyLeavesTheRegistryAlone: the styles chroma ships are a curated set
+// this package promises not to touch. Applying one reads it and builds nothing,
 // which is the easiest version of that promise to keep and still worth
 // holding: an entry changed here would change it for every later reader in the
 // process.
-func TestWearLeavesTheRegistryAlone(t *testing.T) {
+func TestApplyLeavesTheRegistryAlone(t *testing.T) {
 	before := map[chroma.TokenType]chroma.StyleEntry{}
 	s := styles.Registry[DefaultStyle]
 	for _, tt := range s.Types() {
 		before[tt] = s.Get(tt)
 	}
 	for _, sc := range schemes() {
-		worn(t, DefaultStyle, sc.tok)
+		applied(t, DefaultStyle, sc.tok)
 	}
 	for tt, want := range before {
 		if got := s.Get(tt); got != want {
@@ -488,21 +488,21 @@ func TestWearLeavesTheRegistryAlone(t *testing.T) {
 	}
 }
 
-// TestWearTouchesOnlyTheCodeFields: the fence is dressed and the rest of the
-// document is not, so a style reaches five fields and no others. Of the
+// TestApplyTouchesOnlyTheCodeFields: the style is applied to the fence and not to
+// the rest of the document, so a style reaches five fields and no others. Of the
 // code block's bar, only the colours flattened onto the fill move. The chip an
 // inline code span sits on is the one this is most about — a page of prose
 // spotted with somebody else's backgrounds is the thing not being built.
-func TestWearTouchesOnlyTheCodeFields(t *testing.T) {
+func TestApplyTouchesOnlyTheCodeFields(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
 			plain := markdown.FromTokens(sc.tok, tokens.DefaultTypography, stdcolor.NRGBA{})
-			got := worn(t, DefaultStyle, sc.tok)
+			got := applied(t, DefaultStyle, sc.tok)
 			if got.CodeChip != plain.CodeChip {
 				t.Errorf("the inline chip is filled with %v, the theme fills it with %v", got.CodeChip, plain.CodeChip)
 			}
 			if !reflect.DeepEqual(got.Text, plain.Text) {
-				t.Error("the prose style moved when a style was worn")
+				t.Error("the prose style moved when a style was applied")
 			}
 			if got.CodeBackground == plain.CodeBackground {
 				t.Error("the fence's background did not move at all, so this proves nothing")

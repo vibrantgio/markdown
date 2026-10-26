@@ -175,22 +175,22 @@ func TestGoSnippetGolden(t *testing.T) {
 // colours in the runs it colours, its own body colour in the runs it leaves
 // plain, and the edge that keeps a background this near the page a block.
 // Beside the two images above — a stock style's colours on the theme's own
-// fill — it is what wearing a style buys: a plate, rather than a set of hues
+// fill — it is what applying a style buys: a plate, rather than a set of hues
 // borrowed from one.
-func TestWornSnippetGolden(t *testing.T) {
+func TestAppliedSnippetGolden(t *testing.T) {
 	code := "// greet returns a greeting\n" + goSnippet
 	for _, tc := range []struct {
 		name   string
 		colors tokens.PlatformColors
 	}{
-		{"go-snippet-worn-light", tokens.PlatformLight},
-		{"go-snippet-worn-dark", tokens.PlatformDark},
+		{"go-snippet-applied-light", tokens.PlatformLight},
+		{"go-snippet-applied-dark", tokens.PlatformDark},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			shaper := tokens.DefaultTypography.DeterministicShaper()
 			blocks := markdown.Parse([]byte("```go\n" + code + "\n```\n"))
 			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
-			highlight.Wear(&style, highlight.DefaultStyle, tc.colors)
+			highlight.Apply(&style, highlight.DefaultStyle, tc.colors)
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, image.Pt(560, 140), func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
@@ -202,7 +202,7 @@ func TestWornSnippetGolden(t *testing.T) {
 	}
 }
 
-// TestInlineChipsStayOnTheThemesFill is the other half of a worn fence: the
+// TestInlineChipsStayOnTheThemesFill is the other half of a fence with a style applied: the
 // document around it does not change. A chip is a word of code inside a
 // sentence, and giving it a foreign background would spot a page of prose with
 // backgrounds that belong to a palette rather than to this theme — so the chip
@@ -225,7 +225,7 @@ func TestInlineChipsStayOnTheThemesFill(t *testing.T) {
 			blocks := markdown.Parse([]byte(source))
 			plain := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
 			style := plain
-			highlight.Wear(&style, highlight.DefaultStyle, tc.colors)
+			highlight.Apply(&style, highlight.DefaultStyle, tc.colors)
 			if style.CodeChip != plain.CodeChip {
 				t.Errorf("the chip's fill moved to %v; the theme fills it with %v", style.CodeChip, plain.CodeChip)
 			}

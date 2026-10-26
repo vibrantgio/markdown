@@ -25,8 +25,8 @@ const wideFence = "```go\n" +
 // the default highlighter style with the standing bar. The thumb is the
 // platform's knob flattened onto the background the block is drawn in, so
 // it is one step from that background. The thumb the theme's own code fill
-// gives is a neutral grey, and the drawn block holds none of it. A bar worn
-// before the style and a bar set after it are the same bar.
+// gives is a neutral grey, and the drawn block holds none of it. A bar set
+// before the style is applied and a bar set after it are the same bar.
 func TestTheThumbOverAStyledBlockIsAStepFromItsBackground(t *testing.T) {
 	shaper := tokens.DefaultTypography.DeterministicShaper()
 	size := image.Pt(420, 120)
@@ -35,10 +35,10 @@ func TestTheThumbOverAStyledBlockIsAStepFromItsBackground(t *testing.T) {
 			plain := markdown.FromTokens(sc.tok, tokens.DefaultTypography, stdcolor.NRGBA{})
 			st := plain
 			st.CodeScrollbar = st.CodeScrollbar.Always()
-			Wear(&st, DefaultStyle, sc.tok)
+			Apply(&st, DefaultStyle, sc.tok)
 
 			after := plain
-			Wear(&after, DefaultStyle, sc.tok)
+			Apply(&after, DefaultStyle, sc.tok)
 			after.CodeScrollbar = after.CodeScrollbar.Always()
 			if st.CodeScrollbar.ThumbColor != after.CodeScrollbar.ThumbColor || st.CodeScrollbar.FadeDelay != 0 {
 				t.Errorf("the bar set before the style is %+v; set after it, %+v", st.CodeScrollbar, after.CodeScrollbar)
@@ -81,12 +81,12 @@ func TestTheThumbOverAStyledBlockIsAStepFromItsBackground(t *testing.T) {
 }
 
 // TestAZeroBarStaysZero: a Style that turned the code block's bar off keeps
-// it off when a highlighter style is worn.
+// it off when a highlighter style is applied.
 func TestAZeroBarStaysZero(t *testing.T) {
 	st := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	st.CodeScrollbar = scrollbar.Style{}
-	Wear(&st, DefaultStyle, tokens.PlatformLight)
+	Apply(&st, DefaultStyle, tokens.PlatformLight)
 	if st.CodeScrollbar.Width() != 0 || st.CodeScrollbar.ThumbColor != (stdcolor.NRGBA{}) {
-		t.Errorf("a worn style gave the turned-off bar %+v", st.CodeScrollbar)
+		t.Errorf("an applied style gave the turned-off bar %+v", st.CodeScrollbar)
 	}
 }

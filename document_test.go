@@ -1248,7 +1248,7 @@ func TestFromTokensDefaults(t *testing.T) {
 
 			// The find marks are one measured colour at two strengths: the mark
 			// the reader is on is the platform's own pixel, the rest the same
-			// colour laid on less. An arrival is one mark and wears the strong end.
+			// colour laid on less. An arrival is one mark and is drawn in the strong end.
 			if st.CurrentMatchFill != p.FindHighlight {
 				t.Errorf("CurrentMatchFill = %v, want the platform's find highlight %v", st.CurrentMatchFill, p.FindHighlight)
 			}
@@ -1256,10 +1256,10 @@ func TestFromTokensDefaults(t *testing.T) {
 				t.Errorf("ArrivalFill = %v, CurrentMatchFill = %v; one highlight, whatever brought the reader", st.ArrivalFill, st.CurrentMatchFill)
 			}
 			if st.MatchFill == st.CurrentMatchFill {
-				t.Error("a match and the current match wear the same fill; the reader cannot tell which one they are on")
+				t.Error("a match and the current match are drawn in the same fill; the reader cannot tell which one they are on")
 			}
 			if st.MatchFill == st.ContentSurface {
-				t.Errorf("a match wears the page's own fill %v, so nothing is marked", st.MatchFill)
+				t.Errorf("a match is drawn in the page's own fill %v, so nothing is marked", st.MatchFill)
 			}
 			// Nothing this constructor hands the rasterizer is translucent.
 			for _, f := range []struct {

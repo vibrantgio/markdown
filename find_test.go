@@ -33,7 +33,7 @@ var findSource = strings.Join([]string{
 	"",
 }, "\n")
 
-// countExactly returns how many pixels of img wear c exactly, ignoring alpha:
+// countExactly returns how many pixels of img are drawn in c exactly, ignoring alpha:
 // glyphs drawn over a field are antialiased against it and do not answer, so
 // the count measures the field and not the text on it.
 func countExactly(img *image.RGBA, c color.NRGBA) int {
@@ -141,14 +141,14 @@ func TestFindMarksItsMatchesAndTheCurrentOneMoreStrongly(t *testing.T) {
 			}
 			_, plain := findShot(t, tc.colors, nil)
 			if n := countExactly(plain, style.MatchFill); n != 0 {
-				t.Fatalf("the unmarked page already wears the fill in %d pixels; the sampling cannot tell a mark from the page", n)
+				t.Fatalf("the fill is already drawn in %d pixels of the unmarked page; the sampling cannot tell a mark from the page", n)
 			}
 			_, marked := findShot(t, tc.colors, func(d *markdown.Document) { d.Find("needle", 1) })
 			if n := countExactly(marked, style.MatchFill); n == 0 {
-				t.Errorf("no pixel wears %v; the matches are not marked", style.MatchFill)
+				t.Errorf("no pixel is drawn in %v; the matches are not marked", style.MatchFill)
 			}
 			if n := countExactly(marked, style.CurrentMatchFill); n == 0 {
-				t.Errorf("no pixel wears %v; the current match is marked like the rest", style.CurrentMatchFill)
+				t.Errorf("no pixel is drawn in %v; the current match is marked like the rest", style.CurrentMatchFill)
 			}
 			page := countExactly(marked, tc.colors.TextBackground)
 			if page == 0 {
@@ -235,7 +235,7 @@ func TestFindRectanglesLandOnTheMarks(t *testing.T) {
 		}
 		r := m.Rect.Add(image.Pt(mount, mount)).Intersect(img.Bounds())
 		if !inside(img, r, want) {
-			t.Errorf("match %d in block %d reports %v, but nothing there wears %v", i, m.Block, m.Rect, want)
+			t.Errorf("match %d in block %d reports %v, but nothing there is drawn in %v", i, m.Block, m.Rect, want)
 			continue
 		}
 		seen++
@@ -245,7 +245,7 @@ func TestFindRectanglesLandOnTheMarks(t *testing.T) {
 	}
 }
 
-// inside reports whether any pixel of img within r wears c.
+// inside reports whether any pixel of img within r is drawn in c.
 func inside(img *image.RGBA, r image.Rectangle, c color.NRGBA) bool {
 	for y := r.Min.Y; y < r.Max.Y; y++ {
 		for x := r.Min.X; x < r.Max.X; x++ {
@@ -286,7 +286,7 @@ func TestFindRectanglesFollowTheScroll(t *testing.T) {
 			continue
 		}
 		if !inside(img, m.Rect.Add(image.Pt(mount, mount)).Intersect(img.Bounds()), style.MatchFill) {
-			t.Errorf("match %d in block %d reports %v, but nothing there wears the fill", i, m.Block, m.Rect)
+			t.Errorf("match %d in block %d reports %v, but nothing there is drawn in the fill", i, m.Block, m.Rect)
 		}
 		seen++
 	}

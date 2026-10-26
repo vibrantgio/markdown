@@ -67,7 +67,7 @@ The [organization page](https://github.com/vibrantgio) has the full stack.
 | package | what it does |
 | --- | --- |
 | `markdown` | `Parse` a source into a block model, `Document` to lay it out, `Style` to theme it. Carries goldmark, and nothing heavier. |
-| `markdown/highlight` | A chroma-backed `Highlighter` for fenced code — `New` for the highlighter alone, `Wear` to put a whole syntax highlighter style on the block, background and all. Importing this package is what pulls chroma into a build; no chroma type reaches its exported API. |
+| `markdown/highlight` | A chroma-backed `Highlighter` for fenced code — `New` for the highlighter alone, `Apply` to put a whole syntax highlighter style on the block, background and all. Importing this package is what pulls chroma into a build; no chroma type reaches its exported API. |
 | `markdown/svgimage` | An image provider serving `.svg` destinations as vector `layout.Widget`s through `svg/driver/gio`. Importing this package is what pulls svg in. |
 | `markdown/obsidian` | Recognition of the Obsidian dialect around `Parse`: `SplitFrontMatter` before it, `WikiSpans` and `BlockAnchors` after it. Pure Go, no dependency beyond the parent package. |
 
@@ -97,13 +97,13 @@ func docsStyle(p tokens.PlatformColors, typo tokens.Typography) markdown.Style {
 }
 ```
 
-`New` wears a stock style exactly as its author wrote it, which means its
+`New` applies a stock style exactly as its author wrote it, which means its
 colours were fitted to that author's background rather than to the fill your
-theme puts under a fence. `Wear` puts that background there too:
+theme puts under a fence. `Apply` puts that background there too:
 
 ```go
 st := markdown.FromTokens(p, typo, color.NRGBA{})
-highlight.Wear(&st, highlight.DefaultStyle, p)
+highlight.Apply(&st, highlight.DefaultStyle, p)
 ```
 
 A syntax highlighter style is a background, a body colour and a couple of
@@ -120,20 +120,20 @@ as you had it.
 `CodeBorder` is what keeps a block a block. A style fitted to a light
 page is drawn on a near-white and this page is a near-white too, so a fill alone
 can leave the reader guessing where the code begins: where a style's background
-stands less far off the page than your theme's own code fill does, `Wear`
+stands less far off the page than your theme's own code fill does, `Apply`
 also sets `CodeBorder`, and the block takes a hairline in the theme's seam
 colour. Where the background stands off on its own, no line is drawn. A style
 that names no background at all is drawn on the fill an inline chip uses,
-which is the fill a fence has when no style is worn.
+which is the fill a fence has when no style is applied.
 
 Contrast inside the block is surfaced, not enforced. A style shows as its
 author drew it, faint ones included; what the library does is measure —
 the package's own test sweep records the contrast every style's colours measure on the
 background they were drawn on, and names the faintest.
 
-One style name covers both appearances: which member is worn follows the
+One style name covers both appearances: which member is applied follows the
 tokens, so the single line above does the work of the pair of highlighters in
-the first example, and it re-dresses with the theme rather than staying where it was built.
+the first example, and the style is applied again with the theme rather than staying where it was built.
 
 `DefaultStyle` is `catppuccin-latte`, whose registered counterpart
 `catppuccin-mocha` is the dark member that same name resolves to. It is a
@@ -144,11 +144,11 @@ one — so a
 change of appearance changes the whole plate rather than the sheet it is on.
 
 Where somebody has chosen a style for each appearance rather than one for
-both, hand over the pair and each appearance wears its own member:
+both, hand over the pair and each appearance has its own member applied:
 
 ```go
 pair := highlight.StylesOrDefault(lightName, darkName) // resolved and measured
-highlight.WearPair(&st, pair, p)                       // p's appearance decides which member
+highlight.ApplyPair(&st, pair, p)                      // p's appearance decides which member
 ```
 
 `DefaultStyles()` is the pair that stands in when nothing was chosen —
@@ -202,7 +202,7 @@ declarations hidden and requires it to find them anyway.
 pulling a theme colour out of a scheme somebody already curated — a style is
 a better source for one than a photograph, being a couple of dozen
 deliberate colours rather than a cloud of pixels. Colours repeat once per
-token type wearing them, so a reader ranking the list sees how much of the
+token type drawn in them, so a reader ranking the list sees how much of the
 style each one is; the body colour, which a highlighter built here never
 emits, is left out.
 
@@ -228,7 +228,7 @@ authored contrast to report and comes back `false`, as does one that colours
 nothing.
 Nothing acts on the answer — no colour is moved and no style is refused.
 
-Dress the `Style` once per theme rather than once per frame: resolving a
+Apply the `Style` once per theme rather than once per frame: resolving a
 name is cheap but not free. Stock styles are untouched by any of this —
 nothing here writes to chroma's registry, so `New("github")` still yields
 exactly what chroma ships.
@@ -258,7 +258,7 @@ own:
 | the heading scale | `Style.HeadingSizes`, `Style.HeadingLineHeights` |
 | the fill under a word of code quoted into a sentence | `Style.CodeChip` |
 
-The remaining fields dress the blocks standing on that surface — a fence, a
+The remaining fields apply to the blocks standing on that surface — a fence, a
 quote, a rule, a table, a task box — and they are the content's as well. Every
 colour this library draws comes from a field of `Style` and from nowhere else:
 the layout code reads the theme for spacing and for radii and for no colour at
@@ -280,7 +280,7 @@ than the platform's text background says so, and the third argument is where:
 
 ```go
 st := markdown.FromTokens(p, typo, paneFill) // inset into a pane rather than laid on the page
-highlight.Wear(&st, highlight.DefaultStyle, p)
+highlight.Apply(&st, highlight.DefaultStyle, p)
 ```
 
 A `Style` built by hand names no surface, and the measure falls back to the
@@ -313,8 +313,8 @@ which of a theme's colours says it.
 
 A word of the prose that a heading of the same document equals or contains —
 whole word, case ignored — is a heading word. While the command key is held
-with the pointer over it, it is a link: it wears the link fill and the
-underline the document's own links wear, shows the pointing hand, and
+with the pointer over it, it is a link: it is drawn in the link fill and with the
+underline the document's own links are drawn with, shows the pointing hand, and
 operating it goes to that heading. Release the key or move off the word and
 the prose comes back; at rest the page keeps its own face.
 
@@ -371,7 +371,7 @@ never stretch the line it is quoted into. `FromTokens` sets it; a `Style`
 built by hand leaves it zero and inline code sits on the page.
 
 `FromTokens` gives the chip and the fence the same fill, and they part company
-as soon as a fence wears a syntax highlighter style: the block takes that
+as soon as a fence has a syntax highlighter style applied: the block takes that
 style's background
 and the chip stays on the theme's own fill, in the body's own foreground. A
 page of prose spotted with somebody else's backgrounds is a page arguing with
@@ -443,10 +443,10 @@ What renders, renders well; these are the honest gaps.
   puts under a fence, which is not the fill their author drew them on, and a
   style fitted to a near-white page can measure short of the text floor on a
   coloured one.
-  `highlight.Wear` answers that by moving the background rather than the
+  `highlight.Apply` answers that by moving the background rather than the
   colours — the author's own background under the author's own colours — and
   it takes one style name for both appearances where `New` needs one style
-  per appearance, or `highlight.WearPair` where a style was chosen per
+  per appearance, or `highlight.ApplyPair` where a style was chosen per
   appearance. Neither enforces a contrast floor on somebody else's colours. An unrecognised style
   name panics in both — chroma's silent fallback is a dark-background style
   that fails visibly on only one of the two themes, so a typo fails at

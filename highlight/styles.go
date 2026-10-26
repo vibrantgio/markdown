@@ -206,7 +206,7 @@ func StyleOrDefault(name string) string {
 
 // StylePair is a style per appearance: the style code is coloured from under a
 // light appearance, and the style it is coloured from under a dark one. It is what
-// a person has chosen when they have chosen twice, and what [WearPair]
+// a person has chosen when they have chosen twice, and what [ApplyPair]
 // draws through.
 type StylePair struct {
 	Light string

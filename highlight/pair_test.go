@@ -12,7 +12,7 @@ import (
 	"github.com/vibrantgio/theme/imagecolor"
 )
 
-// twinXML is a style whose keyword colour is worn by two token types and
+// twinXML is a style whose keyword colour two token types are drawn in and
 // whose comment colour is its own body colour. It is the smallest fixture
 // that can tell a palette reader from a list of entries: the first fact has
 // to survive into the list as a repeat, the second has to be dropped.
@@ -46,7 +46,7 @@ func TestBasePaletteReadsColors(t *testing.T) {
 		t.Fatalf("palette = %v, want three entries", got)
 	}
 	if counts[red] != 2 {
-		t.Errorf("the keyword red appears %d times, want 2 — one per token type wearing it", counts[red])
+		t.Errorf("the keyword red appears %d times, want 2 — one per token type drawn in it", counts[red])
 	}
 	if counts[blue] != 1 {
 		t.Errorf("the string blue appears %d times, want 1", counts[blue])

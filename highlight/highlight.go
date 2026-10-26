@@ -19,14 +19,14 @@
 // There are two constructors. [New] returns the highlighter alone, colouring
 // runs with a stock style's colours on whatever fill the caller's own Style
 // puts under a fence: pass the name that matches the theme, github against a
-// light one and github-dark against a dark one. [Wear] dresses the whole block
+// light one and github-dark against a dark one. [Apply] applies the style to the whole block
 // instead — the style's own background under it, its own colours in the runs it
 // colours, its own body colour in the runs it leaves plain, and an edge where
 // a background that close to the page needs one to still read as a block.
 // Neither alters a colour or a registry entry.
 //
-// Wear takes any name chroma's registry holds; the default is [DefaultStyle].
-// [WearPair] takes two names, one per appearance, since a style is fitted to a
+// Apply takes any name chroma's registry holds; the default is [DefaultStyle].
+// [ApplyPair] takes two names, one per appearance, since a style is fitted to a
 // background and most names have no registered counterpart to reach.
 // [StylesOrDefault] turns a pair that was kept somewhere into a pair that can
 // be drawn, and [DefaultStyles] is what stands in when nothing was chosen.
@@ -46,7 +46,7 @@
 // whose colours measure nearest by [StyleDistance]. [StyleColors] exposes a
 // style as plain colours.
 //
-// Dress the Style again when the theme changes. Both constructors resolve
+// Apply the Style again when the theme changes. Both constructors resolve
 // their style once and the highlighter closes over it, so neither can follow a
 // theme observable.
 //
@@ -68,7 +68,7 @@ import (
 )
 
 // New returns a Highlighter that colours code with the named chroma style
-// (e.g. "github" on light themes, "github-dark" on dark ones), worn exactly as
+// (e.g. "github" on light themes, "github-dark" on dark ones), applied exactly as
 // the style's author wrote it. A name that resolves to no style — neither an
 // embedded one nor one [LoadDir] read — panics: construction is the only place
 // the typo can fail on both themes at once (see the package comment). Runs the
@@ -79,7 +79,7 @@ import (
 // rendering the block plain. Assign the result to [markdown.Style].Highlight.
 //
 // A stock style's colours were fitted to the background its author drew them
-// on; [Wear] puts that background under them too.
+// on; [Apply] puts that background under them too.
 func New(styleName string) markdown.Highlighter {
 	style, ok := lookup(styleName)
 	if !ok {

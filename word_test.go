@@ -145,8 +145,8 @@ func headingWordFrames(t *testing.T, d *markdown.Document, block any, w layout.W
 }
 
 // TestHeadingWordGolden records the note with the command key held and the
-// pointer over a heading word, in both schemes: the word wears the link fill
-// and the underline the document's own links wear, and the prose around it is
+// pointer over a heading word, in both schemes: the word is drawn in the link fill
+// and with the underline the document's own links are drawn with, and the prose around it is
 // untouched.
 func TestHeadingWordGolden(t *testing.T) {
 	shaper := defaultShaper(t)
