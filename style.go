@@ -120,7 +120,7 @@ type Style struct {
 	HeadingLineHeights [6]unit.Sp
 	// Mono is the typeface for inline code and code blocks.
 	Mono font.Typeface
-	// CodeSize is the text size of code blocks.
+	// CodeSize is the text size of code blocks and inline code.
 	CodeSize unit.Sp
 	// CodeColor is the code block text colour: what plain code is set in, and
 	// what a highlighted run with no colour of its own falls back to. A fence
@@ -430,7 +430,7 @@ type Style struct {
 //
 // The mapping, name by name:
 //
-//   - the prose paragraph.FromTokens on the BodyLarge role, so body text is
+//   - the prose paragraph.FromTokens on the Body role, so body text is
 //     Text and a link is Link with the pointing hand;
 //   - code, block and chip alike, on AlternatingContentBackground — the
 //     platform's second content fill, a small step off the page, darker in
@@ -448,24 +448,19 @@ type Style struct {
 // Highlight and Images stay nil — both are opt-in. Pass
 // tokens.DefaultTypography for the default look.
 //
-// Mono and CodeSize come from typo's own Code role — the sixteenth style,
-// which sits outside the type grid.
+// Mono and CodeSize come from typo's Code role: monospaced text at the
+// body's size.
 //
-// The heading sizes come from tokens.DocumentHeadingScale and not from the
-// Headline and Title roles, which size the one big line at the top of a
-// screen: against a 16 dp body they run 32 down to 14, which sets a document's
-// title a quarter again taller than a typeset reading surface sets one —
-// enough to wrap a title that should fit a line — while crowding levels three
-// and four onto nearly the same size and then dropping a third of the scale
-// between levels four and five. The document scale is stepped off the body
-// role instead, evenly, so six levels are six levels.
+// The heading sizes come from the six document heading roles, which derive
+// from Body in even steps, so six levels are six levels. The title roles set
+// the name of a thing, not a document's sections.
 //
-// The block gap, the heading spaces and the announcing seam are set from the
-// reading rhythm rather than from the smallest stop that separates two controls:
-// prose read at length wants the openness a typeset page has, which is a good
-// deal more air between blocks than a form wants between its rows. See
-// blockRhythm, [headingSpacing] and listSeam for the proportions and where they
-// came from.
+// The block gap, the heading spaces and the announcing seam are proportions
+// of Body's line height, set from the reading rhythm rather than from the
+// smallest stop that separates two controls: prose read at length wants the
+// openness a typeset page has, which is a good deal more air between blocks
+// than a form wants between its rows. See blockRhythmShare, [headingSpacing]
+// and listSeam for the proportions and where they were measured.
 //
 // Of each role only Size lands in the Style: headings and paragraphs carry
 // their typeface, weight and slant per span (paragraph.SpanStyle), so those
@@ -479,13 +474,14 @@ func FromTokens(p tokens.PlatformColors, typo tokens.Typography, standsOn color.
 		sizes[i] = unit.Sp(style.Size)
 		boxes[i] = unit.Sp(style.LineHeight)
 	}
-	gap := blockRhythm - lineLeading
-	above, below := headingSpacing(gap, sizes)
+	r := rhythmFor(unit.Sp(typo.Body.LineHeight))
+	gap := r.block - r.lineLeading
+	above, below := headingSpacing(gap, sizes, r)
 	surface := standsOnOr(standsOn, p.TextBackground)
 	fence := codeFill(p, surface)
 	return Style{
 		ContentSurface:        surface,
-		Text:                  paragraph.FromTokens(p, typo.BodyLarge, surface),
+		Text:                  paragraph.FromTokens(p, typo.Body, surface),
 		HeadingSizes:          sizes,
 		HeadingLineHeights:    boxes,
 		HeadingSpaceAbove:     above,
@@ -511,7 +507,7 @@ func FromTokens(p tokens.PlatformColors, typo tokens.Typography, standsOn color.
 		ArrivalFill:           matchFill(p, surface, currentMatchCoverage),
 		CurrentMatchFill:      matchFill(p, surface, currentMatchCoverage),
 		BlockGap:              gap,
-		ListSpaceAbove:        listSeam(gap),
+		ListSpaceAbove:        listSeam(gap, r),
 		Indent:                unit.Dp(tokens.Spacing.S6),
 	}
 }
@@ -606,44 +602,53 @@ func codeRim(p tokens.PlatformColors, fence color.NRGBA) color.NRGBA {
 // The reading rhythm is measured in what the reader sees — the blank run
 // between one block's glyphs and the next's — while a [Style] is written in
 // authored space. The difference is the leading the shaped lines carry
-// between their glyphs and the edges of their line boxes, and these constants are
-// that difference, read off rendered blank runs at the document heading scale
-// against a 16 dp body.
+// between their glyphs and the edges of their line boxes. Every length of the
+// rhythm, the leadings included, is a proportion of the body's line height.
+// The proportions were read off rendered blank runs on a reference reading
+// surface with a 16 px body on a 24 px pitch, at the document heading scale.
 //
-// None of them is exact, because none can be. A line closing on a descender
-// and one opening on an ascender leave several pixels less blank than two that
-// do neither, so the same authored space measures anywhere across a range of
-// about five pixels depending on the words. Each constant is read where the
-// resulting runs centre on the measured reference across mixed prose, not
-// where any one pair of lines happens to fall.
-//
-// They are the size they are because a line box is the type role's, not the
-// glyphs'. A 16 dp body line sets 16 px inside a 24 px box, and the 8 px left
-// over is what a pair of ordinary blocks shows the reader on top of the space
-// between them.
+// None of the leadings is exact, because none can be. A line closing on a
+// descender and one opening on an ascender leave several pixels less blank
+// than two that do neither, so the same authored space measures anywhere
+// across a range of about five pixels depending on the words. Each proportion
+// is read where the resulting runs centre on the measured reference across
+// mixed prose, not where any one pair of lines happens to fall.
 const (
-	// lineLeading is what a pair of ordinary blocks contributes.
-	lineLeading = unit.Dp(8)
-	// headingLeadingAbove is the same for the transition into a heading: a
-	// body line's leading below its glyphs, then a heading line's above its own.
-	headingLeadingAbove = unit.Dp(6)
-	// headingLeadingBelow is the transition out of one, which is the other two
-	// halves — a heading's leading below its glyphs and a body line's above its
-	// own. It is the wider of the pair, a heading's box being the taller and
-	// the deeper of its two halves the one that faces this way.
-	headingLeadingBelow = unit.Dp(8)
+	// lineLeadingShare is what a pair of ordinary blocks contributes: 8 px
+	// on the reference's 24 px pitch.
+	lineLeadingShare = 1.0 / 3.0
+	// headingLeadingAboveShare is the same for the transition into a heading:
+	// a body line's leading below its glyphs, then a heading line's above its
+	// own. It is 6 px on the reference's pitch.
+	headingLeadingAboveShare = 0.25
+	// headingLeadingBelowShare is the transition out of one, which is the
+	// other two halves — a heading's leading below its glyphs and a body
+	// line's above its own. It is 8 px on the reference's pitch. It is the
+	// wider of the pair, because a heading's box is the taller and the deeper
+	// of its two halves faces this way.
+	headingLeadingBelowShare = 1.0 / 3.0
+	// blockRhythmShare is the blank an ordinary pair of blocks shows the
+	// reader: one and a half body lines, 36 px on the reference's pitch. The
+	// rendered run lands within a pixel of the reference's own 37 px across
+	// mixed prose. [FromTokens] authors it less the line leading.
+	blockRhythmShare = 1.5
 )
 
-// blockRhythm is the blank an ordinary pair of blocks shows the reader: the
-// spacing scale's S8 stop plus an S1, which is 2.25 body sizes at the default
-// 16 dp body. It is the reader-visible number rather than the authored one
-// precisely because that is the quantity a typeset reading surface is set in;
-// [FromTokens] authors it less lineLeading, which lands the rendered run
-// within a pixel of it across mixed prose — and that is where the reference's
-// own 37 px sits. The swing is small because a line occupies its role's box
-// rather than its glyphs': the box edges are fixed, so only where the glyphs sit
-// inside them varies with the words.
-var blockRhythm = unit.Dp(tokens.Spacing.S8 + tokens.Spacing.S1)
+// rhythm holds the reading rhythm's lengths for one body line height.
+type rhythm struct {
+	block, lineLeading, headingLeadingAbove, headingLeadingBelow unit.Dp
+}
+
+// rhythmFor scales the rhythm's proportions to the body line height line.
+func rhythmFor(line unit.Sp) rhythm {
+	l := float32(line)
+	return rhythm{
+		block:               unit.Dp(l * blockRhythmShare),
+		lineLeading:         unit.Dp(l * lineLeadingShare),
+		headingLeadingAbove: unit.Dp(l * headingLeadingAboveShare),
+		headingLeadingBelow: unit.Dp(l * headingLeadingBelowShare),
+	}
+}
 
 // The proportions a heading holds against that rhythm: the space above it is
 // a little over a block gap and the space below it about half of the space
@@ -657,7 +662,7 @@ const (
 // listSeamRhythm is the share of an ordinary block rhythm the seam between a
 // paragraph and the list it announces keeps: two thirds. It is read off the
 // same reference reading surface as the rest of the rhythm, where an ordinary
-// pair of blocks shows about 37 px of blank at a 16 dp body and a paragraph
+// pair of blocks shows about 37 px of blank on a 24 px pitch and a paragraph
 // with a list under it shows 25 — a seam a reader sees as a join rather than
 // as a break, without the list crowding the line that introduces it.
 const listSeamRhythm = 2.0 / 3.0
@@ -667,10 +672,9 @@ const listSeamRhythm = 2.0 / 3.0
 // listSeamRhythm of an ordinary block rhythm — and turns the visible number
 // into an authored one only at the end, by subtracting the leading the shaped
 // lines carry. Taking the proportion of the authored gap instead would land on
-// the measurement at this gap and nowhere else, the leading being a constant
-// few pixels while the rhythm is not.
-func listSeam(gap unit.Dp) unit.Dp {
-	return (gap+lineLeading)*listSeamRhythm - lineLeading
+// the measurement at one gap and nowhere else.
+func listSeam(gap unit.Dp, r rhythm) unit.Dp {
+	return (gap+r.lineLeading)*listSeamRhythm - r.lineLeading
 }
 
 // headingSpacing derives the space around every heading level from the block
@@ -678,9 +682,8 @@ func listSeam(gap unit.Dp) unit.Dp {
 // above a heading is headingAboveRhythm ordinary block rhythms, the space
 // below it headingBelowAbove of that — and subtracts the shaped lines'
 // leading only at the end, when the visible number becomes an authored one.
-// Deriving it the other way round is what would break at a different gap: the
-// leading is a constant few pixels and the rhythm is not, so a formula that
-// mixes them lands on the proportions at one gap and nowhere else.
+// A formula that mixes authored and visible space lands on the proportions
+// at one gap and nowhere else.
 //
 // The two sides subtract different leadings because they are different pairs
 // of halves. Above a heading the reader sees a body line's leading below its
@@ -692,22 +695,22 @@ func listSeam(gap unit.Dp) unit.Dp {
 // exactly on the proportions above and the other levels lean off it by their
 // own size — which is what makes a deep heading earn slightly less air than a
 // shallow one without any level leaving the measured range.
-func headingSpacing(gap unit.Dp, sizes [6]unit.Sp) (above, below [6]unit.Dp) {
+func headingSpacing(gap unit.Dp, sizes [6]unit.Sp, r rhythm) (above, below [6]unit.Dp) {
 	if sizes[1] == 0 {
 		// No scale to lean off: leave the spaces zero, which is a fall back to
 		// the plain block gap on both sides of every heading.
 		return above, below
 	}
-	rhythm := gap + lineLeading
+	visibleGap := gap + r.lineLeading
 	for i, size := range sizes {
 		// Only the part of the space that exceeds an ordinary block gap scales
 		// with the level. Scaling the whole of it would run the scale from
 		// half again the rhythm down to well under it, which is a level six
 		// that binds to the section above rather than to the one it opens.
 		level := float32(size) / float32(sizes[1])
-		visible := rhythm * unit.Dp(1+(headingAboveRhythm-1)*level)
-		above[i] = visible - headingLeadingAbove
-		below[i] = visible*headingBelowAbove - headingLeadingBelow
+		visible := visibleGap * unit.Dp(1+(headingAboveRhythm-1)*level)
+		above[i] = visible - r.headingLeadingAbove
+		below[i] = visible*headingBelowAbove - r.headingLeadingBelow
 	}
 	return above, below
 }
@@ -730,7 +733,7 @@ func headingSpacing(gap unit.Dp, sizes [6]unit.Sp) (above, below [6]unit.Dp) {
 func (s Style) compact(gap unit.Dp) Style {
 	s.BlockGap = gap
 	if s.HeadingSpaceAbove != ([6]unit.Dp{}) {
-		s.HeadingSpaceAbove, s.HeadingSpaceBelow = headingSpacing(gap, s.HeadingSizes)
+		s.HeadingSpaceAbove, s.HeadingSpaceBelow = headingSpacing(gap, s.HeadingSizes, rhythmFor(s.Text.LineHeight))
 	}
 	s.ListSpaceAbove = 0
 	return s
@@ -827,34 +830,14 @@ var (
 	codeChipRadius = unit.Dp(tokens.Radius.Base)
 )
 
-// codeSize is the size inline code takes in a line set at size.
-//
-// Code is set below the prose around it — the reference reading surface sets
-// an inline span at the same size as a fence, seven eighths of its body — and
-// that is what keeps a line holding code the height of a line without it: at
-// the body's own size the monospace face asks for more ascent than the body
-// face does, which drops the line's shared baseline out from under everything
-// hung beside it, a list's markers first of all.
-//
-// The proportion travels rather than the number: a code span in a heading
-// takes the same fraction of the heading's size. Setting it at the fence's 14
-// there would read as a footnote dropped into a title, and one line of a
-// document would be sized by another line's face.
-//
-// A style carrying no code size — built by hand rather than by [FromTokens] —
-// leaves the span at the line's own size.
-func (s Style) codeSize(size unit.Sp) unit.Sp {
-	if s.CodeSize == 0 || s.Text.Size == 0 {
-		return size
-	}
-	return size * s.CodeSize / s.Text.Size
-}
-
 // spanStyles maps model spans onto paragraph spans against the style's
 // typefaces. defWeight is the run weight for spans without their own bold
-// flag (font.Bold for headings), and size is the size the line is set at,
-// which inline code is sized against.
-func (s Style) spanStyles(spans []Span, defWeight font.Weight, size unit.Sp) []paragraph.SpanStyle {
+// flag (font.Bold for headings).
+//
+// Inline code takes the Code role's size, in a body line and in a heading
+// alike. A style with no code size, built by hand rather than by
+// [FromTokens], leaves the span at the size of its line.
+func (s Style) spanStyles(spans []Span, defWeight font.Weight) []paragraph.SpanStyle {
 	out := make([]paragraph.SpanStyle, 0, len(spans))
 	for _, sp := range spans {
 		rs := paragraph.SpanStyle{
@@ -871,7 +854,7 @@ func (s Style) spanStyles(spans []Span, defWeight font.Weight, size unit.Sp) []p
 		}
 		if sp.Code {
 			rs.Typeface = s.Mono
-			rs.Size = s.codeSize(size)
+			rs.Size = s.CodeSize
 			rs.Chip = paragraph.Chip{
 				Color:   s.CodeChip,
 				Border:  s.CodeChipBorder,

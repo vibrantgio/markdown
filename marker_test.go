@@ -124,33 +124,27 @@ func TestAListMarkerCentresOnItsFirstTextLine(t *testing.T) {
 	}
 }
 
-// TestInlineCodeLeavesTheLineTheBodysHeight is the guard on the seam this
-// package keeps having to repair: a line of prose is as tall as the body face
-// asks for, and a word quoted into it in another face does not get to say
-// otherwise.
-//
-// Set at the paragraph's own size the monospace face asks for more ascent
-// than the body face does, and since every segment on a line shares one
-// baseline, that ascent pushes the whole line's baseline down — out from
-// under every marker hung beside it from the body line's geometry. Sizing
-// inline code below the prose is what keeps the two agreeing, and this
-// measures the agreement rather than the size: any future change that lets a
-// code span reach past the body face's ascent fails here.
+// TestALineHoldingInlineCodeIsTheTallerDrawnLine pins how a line holding
+// inline code takes its height. Inline code is set in the Code role at the
+// Code role's size, and the two faces draw lines of their own heights. The
+// line takes the taller of the two drawn lines, so a code span never draws
+// outside its line.
 //
 // The one-word line is the control. Without it a probe that wrapped in one
 // case and not the other could report two equal heights that are equally
 // wrong.
-func TestInlineCodeLeavesTheLineTheBodysHeight(t *testing.T) {
+func TestALineHoldingInlineCodeIsTheTallerDrawnLine(t *testing.T) {
 	shaper := defaultShaper(t)
 	style := markdown.FromTokens(tokens.PlatformLight, tokens.DefaultTypography, stdcolor.NRGBA{})
 	oneWord := columnHeight(t, shaper, style, "moves\n")
 	plain := columnHeight(t, shaper, style, "moves the file contents over\n")
+	codeOnly := columnHeight(t, shaper, style, "`git mv`\n")
 	code := columnHeight(t, shaper, style, "`git mv` the file contents over\n")
 	if plain != oneWord {
 		t.Fatalf("the plain probe measures %d px against a single line's %d; it wrapped, so the comparison below says nothing", plain, oneWord)
 	}
-	if code != plain {
-		t.Errorf("a line holding inline code measures %d px against a plain line's %d; inline code is sized to sit inside the body line, not to stretch it", code, plain)
+	if want := max(plain, codeOnly); code != want {
+		t.Errorf("a line holding inline code measures %d px; want %d, the taller of a plain line's %d and a code line's %d", code, want, plain, codeOnly)
 	}
 }
 
@@ -162,17 +156,17 @@ func TestInlineCodeLeavesTheLineTheBodysHeight(t *testing.T) {
 //
 // Everything is capitals here for the same reason [markerProbe] is: the drawn
 // band a row measures is then exactly its cap band. The code span's capitals
-// are shorter than the body's and sit inside them, so both rows' bands are
-// the body cap band and the comparison is of marker positions alone.
+// stand on the row's one baseline beside the body's, so both rows' bands are
+// the cap band and the comparison is of marker positions alone.
 const codeMarkerProbe = "- [x] FLAT TEXT AT THE LINE\n" +
 	"- [x] `GIT MV` FLAT TEXT AT THE LINE\n"
 
 // TestAMarkerHangsLevelBesideACodeOpeningRow measures what the owner sees: a
 // task row opening with inline code carries its checkbox at the same height
 // as a row of plain prose. It is the pixel half of
-// [TestInlineCodeLeavesTheLineTheBodysHeight] — that one pins the line box,
-// this one pins where the marker lands beside it — and it fails if a code
-// span ever drags a row's baseline out from under the marker column again.
+// [TestALineHoldingInlineCodeIsTheTallerDrawnLine]: that one pins the line
+// box, this one pins where the marker lands beside it. The code face drops
+// the row's baseline, and the marker reads the drawn line, so it drops with it.
 func TestAMarkerHangsLevelBesideACodeOpeningRow(t *testing.T) {
 	shaper := defaultShaper(t)
 	for _, tc := range []struct {

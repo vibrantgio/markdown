@@ -107,17 +107,19 @@ func TestTheCodeBlockSpendsTheScrollBarSetting(t *testing.T) {
 	corner := int(tokens.Radius.Base)
 	for y := range laneTop {
 		for x := blockLead + corner; x <= blockTrail-corner; x++ {
-			if standing.RGBAAt(x, y) != none.RGBAAt(x, y) {
-				t.Fatalf("with scroll bars always the pixel at (%d,%d), above the lane at row %d, differs from the barless block's; the bar or the lane reached into the code", x, y, laneTop)
+			if a, b := standing.RGBAAt(x, y), none.RGBAAt(x, y); channelGap(a, b) > glyphGap {
+				t.Fatalf("with scroll bars always the pixel at (%d,%d), above the lane at row %d, is %v against the barless block's %v; the bar or the lane reached into the code", x, y, laneTop, a, b)
 			}
 		}
 	}
 
+	// A glyph's edge can take the thumb's colour, so a thumb pixel is one the
+	// barless block does not draw the same.
 	thumb := color.RGBAModel.Convert(always.CodeScrollbar.ThumbColor).(color.RGBA)
 	first, last, lead := -1, -1, size.X
 	for y := range size.Y {
 		for x := range size.X {
-			if standing.RGBAAt(x, y) == thumb {
+			if c := standing.RGBAAt(x, y); c == thumb && c != none.RGBAAt(x, y) {
 				if first < 0 {
 					first = y
 				}
@@ -140,4 +142,16 @@ func TestTheCodeBlockSpendsTheScrollBarSetting(t *testing.T) {
 	if from := lead - blockLead; from < rim+pad || from > rim+pad+int(always.CodeScrollbar.ThumbCornerRadius) {
 		t.Errorf("the standing thumb starts %d px from the block's leading edge; want the rim and the track's padding, %d px, so the bar is not inset by the block's padding", from, rim+pad)
 	}
+}
+
+// glyphGap is the channel gap the two renders may show on a glyph's edge
+// pixels. The two renders composite the same glyph one level apart in a
+// channel, measured on Roboto Mono at 13 px; a bar or a lane is a gap of
+// tens of levels.
+const glyphGap = 2
+
+// channelGap is the largest difference between a and b in one channel.
+func channelGap(a, b color.RGBA) int {
+	d := func(x, y uint8) int { return max(int(x)-int(y), int(y)-int(x)) }
+	return max(d(a.R, b.R), d(a.G, b.G), d(a.B, b.B), d(a.A, b.A))
 }

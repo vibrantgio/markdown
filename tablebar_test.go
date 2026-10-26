@@ -92,11 +92,13 @@ func TestTheWideTableDrawsItsSidewaysBar(t *testing.T) {
 		}
 	}
 
+	// A glyph's edge can take the thumb's colour, so a thumb pixel is one the
+	// barless table does not draw the same.
 	thumb := color.RGBAModel.Convert(always.TableScrollbar.ThumbColor).(color.RGBA)
 	first, last := -1, -1
 	for y := range size.Y {
 		for x := range size.X {
-			if standing.RGBAAt(x, y) == thumb {
+			if c := standing.RGBAAt(x, y); c == thumb && c != none.RGBAAt(x, y) {
 				if first < 0 {
 					first = y
 				}

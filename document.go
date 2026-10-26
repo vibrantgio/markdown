@@ -448,9 +448,9 @@ func (d *Document) block(gtx layout.Context, shaper *text.Shaper, style Style, b
 	switch b := b.(type) {
 	case *Heading:
 		h := style.heading(b.Level)
-		return d.prose(gtx, shaper, style, h, b, b.Spans, style.spanStyles(b.Spans, font.Bold, h.Size))
+		return d.prose(gtx, shaper, style, h, b, b.Spans, style.spanStyles(b.Spans, font.Bold))
 	case *Paragraph:
-		return d.prose(gtx, shaper, style, style.Text, b, b.Spans, style.spanStyles(b.Spans, font.Normal, style.Text.Size))
+		return d.prose(gtx, shaper, style, style.Text, b, b.Spans, style.spanStyles(b.Spans, font.Normal))
 	case *List:
 		return d.listBlock(gtx, shaper, style, b)
 	case *Blockquote:
@@ -686,7 +686,7 @@ func cellSpans(style Style, cell *TableCell, header bool) []paragraph.SpanStyle 
 	if header {
 		w = font.Bold
 	}
-	return style.spanStyles(cell.Spans, w, style.Text.Size)
+	return style.spanStyles(cell.Spans, w)
 }
 
 // table renders a GFM table as a grid: the emphasised header row on the
@@ -1025,17 +1025,28 @@ func (d *Document) image(gtx layout.Context, shaper *text.Shaper, style Style, n
 func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Style, l *List) layout.Dimensions {
 	gap := gtx.Dp(unit.Dp(tokens.Spacing.S1))
 	style = style.compact(unit.Dp(tokens.Spacing.S2))
-	// One reading of the shaped body line for the whole list: every item's
-	// first line is set in the same style, so every number and bullet hangs
-	// from the same anchor.
-	line := firstLine(gtx, shaper, style)
+	// Every item's first line is set in the same style, so two readings serve
+	// the whole list: the body line, and the line that holds inline code.
+	plain := firstLine(gtx, shaper, style, false)
+	var withCode *lineGeometry
 	col := listColumn(gtx, shaper, style, l)
+	cgtx := gtx
+	cgtx.Constraints.Min = image.Point{}
+	cgtx.Constraints.Max.X = max(cgtx.Constraints.Max.X-col, 0)
 	var size image.Point
 	for i, item := range l.Items {
 		from := len(d.find.found)
 		leave := d.linkInto(image.Pt(0, size.Y))
 		tr := op.Offset(image.Pt(0, size.Y)).Push(gtx.Ops)
-		dims := d.listItem(gtx, shaper, style, l, item, i, line, col)
+		line := plain
+		if firstLineHoldsCode(cgtx, shaper, style, item.Blocks) {
+			if withCode == nil {
+				g := firstLine(gtx, shaper, style, true)
+				withCode = &g
+			}
+			line = *withCode
+		}
+		dims := d.listItem(gtx, shaper, style, l, item, i, line, plain, col)
 		tr.Pop()
 		leave()
 		d.shift(from, image.Pt(0, size.Y))
@@ -1050,10 +1061,11 @@ func (d *Document) listBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 
 // listItem renders one item: its number, bullet, or task checkbox in a column
 // col wide, then the content blocks beside it. line is the geometry of the
-// item's first text line, which anchors the number, bullet, or checkbox; col
-// comes from the list, so every item of one list sets its content at the same
-// edge.
-func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style, l *List, item *ListItem, i int, line lineGeometry, col int) layout.Dimensions {
+// item's first text line, which anchors the number, bullet, or checkbox, and
+// plain is the geometry of a body line, which the number draws on by itself;
+// col comes from the list, so every item of one list sets its content at the
+// same edge.
+func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style, l *List, item *ListItem, i int, line, plain lineGeometry, col int) layout.Dimensions {
 	cgtx := gtx
 	cgtx.Constraints.Min = image.Point{}
 	cgtx.Constraints.Max.X = max(cgtx.Constraints.Max.X-col, 0)
@@ -1072,7 +1084,10 @@ func (d *Document) listItem(gtx layout.Context, shaper *text.Shaper, style Style
 		mgtx := gtx
 		mgtx.Constraints.Min = image.Point{}
 		mgtx.Constraints.Max.X = col
+		// The number shares the baseline of the line beside it.
+		nt := op.Offset(image.Pt(0, line.baseline-plain.baseline)).Push(gtx.Ops)
 		paragraph.Render(shaper, style.Text, []paragraph.SpanStyle{{Content: listNumber(l, i)}}, paragraph.Idle())(mgtx)
+		nt.Pop()
 	default:
 		drawBullet(gtx, style, line.center)
 	}
@@ -1136,6 +1151,8 @@ type lineGeometry struct {
 	// height is the whole line box: the paragraph's line height, or the
 	// shaped ascent plus descent where that is the taller of the two.
 	height int
+	// baseline is the line's baseline.
+	baseline int
 	// center is the middle of the cap band: the strip from the tops of the
 	// capitals down to the baseline.
 	center int
@@ -1147,21 +1164,22 @@ type lineGeometry struct {
 const capProbe = "H"
 
 // firstLine reports where an item's first text line sits, so a marker beside
-// it can be hung from the shaped line rather than from an approximation of
+// it can be hung from the drawn line rather than from an approximation of
 // it. Shaping is the only honest source: a line is taller than its text size
 // by the leading the face asks for, so anchoring to the size alone rides
 // every marker high — most visibly the checkbox, which is nearly as tall as
 // the text and so has the least room to hide the error.
 //
-// The anchor is the centre of the cap band, not of the line's whole extent.
-// Ascenders and descenders come and go with the words, which would make a
-// marker wander from line to line; the capitals' band is where a line's
-// weight sits whatever it says. A line that opens with taller glyphs — inline
-// code, say — stretches below this band, and the marker stays with the body
-// line it belongs to.
+// The anchor is the centre of the body face's cap band, not of the line's
+// whole extent. Ascenders and descenders come and go with the words, which
+// would make a marker wander from line to line; the capitals' band is where a
+// line's weight sits whatever it says.
 //
-// The probe is shaped in the paragraph's own face and size, matching what
-// the paragraph is laid out with, so the two agree at any scale.
+// The baseline is the one the paragraph draws. Every segment on a line shares
+// one baseline, set by the tallest ascent on the line. withCode reports that
+// the first line holds inline code, whose face asks for its own ascent and
+// descent at the Code role's size; firstLine then folds those in exactly as
+// the paragraph does.
 //
 // The line box the paragraph sets its lines in is part of that agreement. A
 // paragraph whose style names a line height taller than its shaped metrics
@@ -1170,9 +1188,51 @@ const capProbe = "H"
 // and a marker anchored to the metrics alone would ride exactly that far
 // high. The same split is applied here, on the same rounding, so the anchor
 // tracks the line whatever box it is set in.
-func firstLine(gtx layout.Context, shaper *text.Shaper, style Style) lineGeometry {
+func firstLine(gtx layout.Context, shaper *text.Shaper, style Style, withCode bool) lineGeometry {
 	px := gtx.Sp(style.Text.Size)
+	g, ok := shapeProbe(gtx, shaper, font.Font{}, px)
+	if !ok {
+		// No face could shape the probe: fall back to the text size, which is
+		// at least the right order of magnitude.
+		return lineGeometry{height: px, center: px / 2}
+	}
+	// Glyph bounds are relative to the dot, y down, so the cap band reaches
+	// -Bounds.Min.Y above the baseline. The paragraph takes a segment's
+	// ascent from its first glyph's document y and its height from the
+	// ascent and descent rounded outwards; the same two readings are made
+	// here.
+	capBand := -g.Bounds.Min.Y
+	ascent := int(g.Y)
+	descent := g.Ascent.Ceil() + g.Descent.Ceil() - ascent
+	if withCode && style.Mono != "" {
+		size := style.CodeSize
+		if size == 0 {
+			size = style.Text.Size
+		}
+		if c, ok := shapeProbe(gtx, shaper, font.Font{Typeface: style.Mono}, gtx.Sp(size)); ok {
+			ascent = max(ascent, int(c.Y))
+			descent = max(descent, c.Ascent.Ceil()+c.Descent.Ceil()-int(c.Y))
+		}
+	}
+	natural := ascent + descent
+	height := natural
+	above := 0
+	if box := gtx.Sp(style.Text.LineHeight); box > natural {
+		above = (box - natural) / 2
+		height = box
+	}
+	return lineGeometry{
+		height:   height,
+		baseline: above + ascent,
+		center:   (fixed.I(above+ascent) - capBand/2).Round(),
+	}
+}
+
+// shapeProbe shapes [capProbe] in face f at px pixels per em and returns its
+// one glyph.
+func shapeProbe(gtx layout.Context, shaper *text.Shaper, f font.Font, px int) (text.Glyph, bool) {
 	shaper.LayoutString(text.Parameters{
+		Font:    f,
 		PxPerEm: fixed.I(px),
 		Locale:  gtx.Locale,
 	}, capProbe)
@@ -1182,30 +1242,44 @@ func firstLine(gtx layout.Context, shaper *text.Shaper, style Style) lineGeometr
 	for more := ok; more; {
 		_, more = shaper.NextGlyph()
 	}
+	return g, ok
+}
+
+// firstLineHoldsCode reports whether the first line an item's content draws
+// holds inline code. Only a paragraph opening the item can put code there.
+// Where the code lands is a result of the wrapping, so the paragraph is laid
+// out at the content's width with an unpainted fill over each code span, and
+// a fill reported on the first line answers the question.
+func firstLineHoldsCode(gtx layout.Context, shaper *text.Shaper, style Style, blocks []Block) bool {
+	if len(blocks) == 0 {
+		return false
+	}
+	p, ok := blocks[0].(*Paragraph)
 	if !ok {
-		// No face could shape the probe: fall back to the text size, which is
-		// at least the right order of magnitude.
-		return lineGeometry{height: px, center: px / 2}
+		return false
 	}
-	// Glyph bounds are relative to the dot, y down, so the cap band reaches
-	// -Bounds.Min.Y above the baseline; the baseline itself is the glyph's
-	// document y, the same quantity a paragraph's first line is drawn at.
-	baseline := int(g.Y)
-	capBand := -g.Bounds.Min.Y
-	// The shaped line's own box, which is what the paragraph's leading is
-	// measured against: the line's ascent and descent, both rounded outwards,
-	// exactly as the paragraph measures them.
-	natural := g.Ascent.Ceil() + g.Descent.Ceil()
-	height := natural
-	above := 0
-	if box := gtx.Sp(style.Text.LineHeight); box > natural {
-		above = (box - natural) / 2
-		height = box
+	spans := style.spanStyles(p.Spans, font.Normal)
+	code := false
+	for i, sp := range p.Spans {
+		if sp.Code {
+			spans[i].Fills = []paragraph.Fill{{Start: 0, End: len(spans[i].Content)}}
+			code = true
+		}
 	}
-	return lineGeometry{
-		height: height,
-		center: (fixed.I(above+baseline) - capBand/2).Round(),
+	if !code {
+		return false
 	}
+	onFirst := false
+	ps := style.Text
+	ps.OnFill = func(_, _ int, r image.Rectangle) {
+		if r.Min.Y == 0 {
+			onFirst = true
+		}
+	}
+	macro := op.Record(gtx.Ops)
+	paragraph.Render(shaper, ps, spans, paragraph.Idle())(gtx)
+	macro.Stop()
+	return onFirst
 }
 
 // drawBullet paints an unordered item's bullet: a small filled disc centred

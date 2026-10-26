@@ -1020,11 +1020,17 @@ func TestTaskClickFiresOnTaskClick(t *testing.T) {
 	size := image.Pt(400, 80)
 	w := taskColumn(d, shaper, style)
 
+	// The two marks are aimed at where they are drawn.
+	marks := drawnBands(golden.Capture(t, size, w), 0, markerColumn)
+	if len(marks) != 2 {
+		t.Fatalf("scanned %d marker bands, want 2 (one per task): %v", len(marks), marks)
+	}
+
 	r := new(gioinput.Router)
 	ops := new(op.Ops)
 	driveTaskFrame(w, ops, r, size)
 
-	hit := f32.Pt(7, 13)
+	hit := f32.Pt(7, float32(center(marks[0])))
 	r.Queue(
 		pointer.Event{Kind: pointer.Press, Position: hit, Buttons: pointer.ButtonPrimary, Source: pointer.Mouse},
 		pointer.Event{Kind: pointer.Release, Position: hit, Source: pointer.Mouse},
@@ -1048,7 +1054,7 @@ func TestTaskClickFiresOnTaskClick(t *testing.T) {
 		t.Error("click on the item text fired OnTaskClick; the mark is the hit target, not the row")
 	}
 
-	hit2 := f32.Pt(7, 41)
+	hit2 := f32.Pt(7, float32(center(marks[1])))
 	r.Queue(
 		pointer.Event{Kind: pointer.Press, Position: hit2, Buttons: pointer.ButtonPrimary, Source: pointer.Mouse},
 		pointer.Event{Kind: pointer.Release, Position: hit2, Source: pointer.Mouse},
@@ -1191,13 +1197,11 @@ func TestFromTokensDefaults(t *testing.T) {
 			if st.HeadingSizes != wantSizes {
 				t.Errorf("HeadingSizes = %v, want the document scale's %v", st.HeadingSizes, wantSizes)
 			}
-			// The scale a document sets its headings in is not the one a screen
-			// sets its own headline in: borrowing the display roles back would
-			// put a document's title a quarter again taller than a reading
-			// surface sets one.
-			if st.HeadingSizes[0] >= unit.Sp(typo.HeadlineLarge.Size) {
-				t.Errorf("level 1 sets at %v, the HeadlineLarge display role at %v; the document scale must be the smaller of the two",
-					st.HeadingSizes[0], typo.HeadlineLarge.Size)
+			// A document's sections are not the name of a thing: level 1 sets
+			// under Title1, the largest title under the large title.
+			if st.HeadingSizes[0] >= unit.Sp(typo.Title1.Size) {
+				t.Errorf("level 1 sets at %v, the Title1 role at %v; the document scale must be the smaller of the two",
+					st.HeadingSizes[0], typo.Title1.Size)
 			}
 
 			if st.Text.Color != p.Text || st.Text.LinkColor != p.Link {

@@ -266,6 +266,68 @@ func TestTheEmbeddedColumnSpacesHeadingsLikeTheScrollingList(t *testing.T) {
 	}
 }
 
+// Reference body metrics: the reference reading surface sets its body at
+// 16 px on a 24 px pitch.
+const (
+	referenceBodySize  = 16
+	referenceBodyPitch = 24
+)
+
+// referenceTypography is the default typography scaled to the reference's
+// body size: every size and line height of the roles a document sets text in
+// scales by the reference's body size over Body's size. Body takes the
+// reference's own pitch as its line height, because the pitch is the one
+// line height the reference records. The absolute rhythm tests run on it,
+// because the reference numbers hold at that body and at no other.
+func referenceTypography() tokens.Typography {
+	typo := tokens.DefaultTypography
+	k := float32(referenceBodySize) / typo.Body.Size
+	scale := func(st tokens.TextStyle) tokens.TextStyle {
+		st.Size *= k
+		st.LineHeight *= k
+		return st
+	}
+	typo.Body = scale(typo.Body)
+	typo.Body.LineHeight = referenceBodyPitch
+	typo.Code = scale(typo.Code)
+	typo.Code.LineHeight = referenceBodyPitch
+	for i := range typo.DocumentHeadings {
+		typo.DocumentHeadings[i] = scale(typo.DocumentHeadings[i])
+	}
+	return typo
+}
+
+// TestTheRhythmIsAProportionOfTheBodyLine pins the authored rhythm as
+// proportions of Body's line height, on the default typography and on the
+// reference fixture alike. The proportions are the authored lengths on the
+// reference's 24 px pitch: a 28 px block gap, a 16 px announcing seam, and
+// 42.6 px above and 16.3 px below a level-2 heading.
+func TestTheRhythmIsAProportionOfTheBodyLine(t *testing.T) {
+	want := []struct {
+		name  string
+		share float32
+		got   func(markdown.Style) unit.Dp
+	}{
+		{"block gap", 28.0 / 24, func(s markdown.Style) unit.Dp { return s.BlockGap }},
+		{"announcing seam", 16.0 / 24, func(s markdown.Style) unit.Dp { return s.ListSpaceAbove }},
+		{"space above level 2", 42.6 / 24, func(s markdown.Style) unit.Dp { return s.HeadingSpaceAbove[1] }},
+		{"space below level 2", 16.3 / 24, func(s markdown.Style) unit.Dp { return s.HeadingSpaceBelow[1] }},
+	}
+	for _, typo := range []struct {
+		name string
+		typo tokens.Typography
+	}{{"default", tokens.DefaultTypography}, {"reference", referenceTypography()}} {
+		style := markdown.FromTokens(tokens.PlatformLight, typo.typo, stdcolor.NRGBA{})
+		line := typo.typo.Body.LineHeight
+		for _, w := range want {
+			got := float32(w.got(style)) / line
+			if d := got - w.share; d > 0.001 || d < -0.001 {
+				t.Errorf("%s typography: the %s is %.4f body lines, want %.4f", typo.name, w.name, got, w.share)
+			}
+		}
+	}
+}
+
 // The reading rhythm the renderer is set to, as the reader sees it: blank-run
 // heights in pixels at a 16 px body, read off the reference reading surface
 // the same way this test reads them off ours. The reference's own runs vary
@@ -301,7 +363,7 @@ const pitchProse = "Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg Hxg 
 // held exactly.
 func TestTheLinePitchInsideAParagraphMatchesTheReference(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.PlatformDark, tokens.DefaultTypography, stdcolor.NRGBA{})
+	style := markdown.FromTokens(tokens.PlatformDark, referenceTypography(), stdcolor.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(pitchProse)))
 	img := golden.Capture(t, image.Pt(120, 220), func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.PlatformDark.TextBackground,
@@ -394,7 +456,7 @@ func blankRuns(img *image.RGBA) []int {
 // last ordinary gap and the announcing seam.
 func TestTheRenderedRhythmMatchesTheReference(t *testing.T) {
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(tokens.PlatformDark, tokens.DefaultTypography, stdcolor.NRGBA{})
+	style := markdown.FromTokens(tokens.PlatformDark, referenceTypography(), stdcolor.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(rhythmProse)))
 	img := golden.Capture(t, image.Pt(560, 900), func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.PlatformDark.TextBackground,

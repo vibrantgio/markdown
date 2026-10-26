@@ -207,13 +207,15 @@ func TestHeadingWordFollowGoesToTheHeading(t *testing.T) {
 	frame()
 	var at image.Point
 	for _, m := range d.Matches() {
-		if !m.Rect.Empty() {
+		// The Setup heading holds the word too, and the viewport can show it
+		// above the paragraph.
+		if m.Block == 3 && !m.Rect.Empty() {
 			at = m.Rect.Min.Add(m.Rect.Max.Sub(m.Rect.Min).Div(2))
 			break
 		}
 	}
 	if at == (image.Point{}) {
-		t.Fatal("no match of the word was laid out to aim at")
+		t.Fatal("no match of the word in the paragraph was laid out to aim at")
 	}
 	d.ClearFind()
 	frame()
