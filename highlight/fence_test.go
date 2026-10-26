@@ -82,13 +82,13 @@ func authored(s *chroma.Style) (stdcolor.NRGBA, bool) {
 	return fromChroma(bg), true
 }
 
-// TestTheFenceWearsTheStylesOwnBackgroundAndColors is what the whole file is
+// TestTheFenceIsDrawnInTheStylesOwnBackgroundAndColors is what the whole file is
 // about: the plate on screen is the artifact its author made. The background
 // under the code is the background they fitted their colours against, byte
 // for byte; the runs they left plain are set in their own body colour; and
 // every coloured run carries a colour that is in their own palette and was
 // not derived from it.
-func TestTheFenceWearsTheStylesOwnBackgroundAndColors(t *testing.T) {
+func TestTheFenceIsDrawnInTheStylesOwnBackgroundAndColors(t *testing.T) {
 	for _, sc := range schemes() {
 		t.Run(sc.name, func(t *testing.T) {
 			st := applied(t, DefaultStyle, sc.tok)
@@ -356,12 +356,12 @@ func TestApplyTakesThePairMemberForTheScheme(t *testing.T) {
 	}
 }
 
-// TestAPairWearsTheAppearancesOwnMember: two names that are nothing to do with
+// TestAPairAppliesTheAppearancesOwnMember: two names that are nothing to do with
 // each other, and the appearance on screen decides which one is on the fence.
 // This is what a style per appearance buys — a scheme change is a palette
 // change — and it is asserted on two unrelated members precisely because
 // chroma's counterpart rule could never have reached either from the other.
-func TestAPairWearsTheAppearancesOwnMember(t *testing.T) {
+func TestAPairAppliesTheAppearancesOwnMember(t *testing.T) {
 	p := StylePair{Light: "solarized-light", Dark: "dracula"}
 	for _, tc := range []struct {
 		name   string
@@ -399,12 +399,12 @@ func TestAPairWearsTheAppearancesOwnMember(t *testing.T) {
 	}
 }
 
-// TestAWornMemberKeepsItsOwnEmphasis: the leaning and the weight are the
+// TestAnAppliedMemberKeepsItsOwnEmphasis: the leaning and the weight are the
 // author's too. github-dark is the fixture because it is where a pair's two
 // members part company — it italicises comments and bolds four token
 // categories where chroma's light github asks for neither — so a policy
 // imposed from the other member would show here and nowhere else.
-func TestAWornMemberKeepsItsOwnEmphasis(t *testing.T) {
+func TestAnAppliedMemberKeepsItsOwnEmphasis(t *testing.T) {
 	p := StylePair{Light: "solarized-light", Dark: "github-dark"}
 	st := markdown.FromTokens(tokens.PlatformDark, tokens.DefaultTypography, stdcolor.NRGBA{})
 	ApplyPair(&st, p, tokens.PlatformDark)
@@ -451,9 +451,9 @@ func TestAPairWithANameThisBuildLacks(t *testing.T) {
 	}
 }
 
-// TestWearUnknownBasePanics asserts a typo fails where it is made rather than
+// TestApplyUnknownBasePanics asserts a typo fails where it is made rather than
 // silently colouring with a style nobody asked for.
-func TestWearUnknownBasePanics(t *testing.T) {
+func TestApplyUnknownBasePanics(t *testing.T) {
 	defer func() {
 		r := recover()
 		if r == nil {

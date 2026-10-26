@@ -170,7 +170,7 @@ func TestGoSnippetGolden(t *testing.T) {
 	}
 }
 
-// TestWornSnippetGolden records or diffs the same fenced snippet with the
+// TestAppliedSnippetGolden records or diffs the same fenced snippet with the
 // default style on it: the palette's own background under the block, its own
 // colours in the runs it colours, its own body colour in the runs it leaves
 // plain, and the edge that keeps a background this near the page a block.
