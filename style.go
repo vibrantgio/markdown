@@ -442,7 +442,7 @@ type Style struct {
 //   - a completed task's box ControlAccent under
 //     AlternateSelectedControlText, which is what the platform fills a set
 //     checkbox with and what it draws the mark on it in;
-//   - the find marks and the arrival flash the platform's find highlight, at
+//   - the find marks and the arrival flash the theme's highlight fill, at
 //     the two coverages [matchCoverage] and [currentMatchCoverage] name.
 //
 // Highlight and Images stay nil — both are opt-in. Pass
@@ -522,7 +522,7 @@ func standsOnOr(stated, plane color.NRGBA) color.NRGBA {
 	return stated
 }
 
-// The coverages the platform's find highlight is laid on at: one match among
+// The coverages the theme's highlight fill is laid on at: one match among
 // many, and the mark the reader is standing on. The two are one measured
 // colour at two strengths rather than two colours, so a reader tells the
 // current match from the rest without learning a second mark.
@@ -544,12 +544,12 @@ const (
 	currentMatchCoverage = 0xff
 )
 
-// matchFill is the platform's find highlight over the surface the marked
+// matchFill is the theme's highlight fill over the surface the marked
 // content stands on, at coverage. The text the fill covers keeps its colour,
 // which is why the coverage is not tuned against a text floor: what the
 // composite costs the marked words is measured rather than corrected for.
 func matchFill(p tokens.PlatformColors, surface color.NRGBA, coverage uint8) color.NRGBA {
-	fill := p.FindHighlight
+	fill := p.HighlightFill
 	fill.A = coverage
 	return themecolor.Flatten(fill, surface)
 }

@@ -23,7 +23,7 @@ A third paragraph, also wide, so the marked one is not the widest.
 // markFill is the colour the marking is probed by: the platform's find
 // highlight for the light scheme, which is what the arrival marking is drawn
 // in and is not any other fill this style paints.
-var markFill = tokens.PlatformLight.FindHighlight
+var markFill = tokens.PlatformLight.HighlightFill
 
 // `fillBounds` returns the bounding box of the pixels painted exactly in
 // `markFill`, and how many there are. Glyphs drawn over the fill are

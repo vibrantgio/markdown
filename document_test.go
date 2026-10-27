@@ -1249,8 +1249,8 @@ func TestFromTokensDefaults(t *testing.T) {
 			// The find marks are one measured colour at two strengths: the mark
 			// the reader is on is the platform's own pixel, the rest the same
 			// colour laid on less. An arrival is one mark and is drawn in the strong end.
-			if st.CurrentMatchFill != p.FindHighlight {
-				t.Errorf("CurrentMatchFill = %v, want the platform's find highlight %v", st.CurrentMatchFill, p.FindHighlight)
+			if st.CurrentMatchFill != p.HighlightFill {
+				t.Errorf("CurrentMatchFill = %v, want the theme's highlight fill %v", st.CurrentMatchFill, p.HighlightFill)
 			}
 			if st.ArrivalFill != st.CurrentMatchFill {
 				t.Errorf("ArrivalFill = %v, CurrentMatchFill = %v; one highlight, whatever brought the reader", st.ArrivalFill, st.CurrentMatchFill)
