@@ -286,6 +286,16 @@ func TestDocumentReportsTheLinkTheKeyboardReaches(t *testing.T) {
 		t.Fatal("a document nothing has reached reports a box")
 	}
 
+	// The document itself is the first Tab stop, before its links.
+	r.MoveFocus(key.FocusForward)
+	frame()
+	if !r.Source().Focused(d.Focus()) {
+		t.Fatal("the first forward move did not put the keyboard on the document")
+	}
+	if len(got) != 0 {
+		t.Fatalf("the keyboard on the document itself reported %v", got)
+	}
+
 	r.MoveFocus(key.FocusForward)
 	frame()
 	if want := []string{"https://docs.example/one"}; !equalAddresses(got, want) {

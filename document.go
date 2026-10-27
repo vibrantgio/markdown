@@ -80,6 +80,8 @@ type Document struct {
 	// hover is the address under the pointer and what the caller was last
 	// told about it; see link.go.
 	hover linkState
+	// focus is the document's keyboard focus tag; see focus.go.
+	focus focusTag
 }
 
 // blockMark is a highlight over one top-level block: the block's index and
@@ -219,6 +221,7 @@ func (d *Document) Layout(gtx layout.Context, shaper *text.Shaper, style Style) 
 	d.hoverFrame()
 	d.seekMatch(gtx)
 	d.findFrame(true)
+	d.focusArea(gtx)
 	dims := list.Layout(gtx, d.list, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
 	d.hoverReport(gtx, style)
 	return dims
@@ -245,6 +248,7 @@ func (d *Document) LayoutScrollbar(gtx layout.Context, shaper *text.Shaper, styl
 	d.hoverFrame()
 	d.seekMatch(gtx)
 	d.findFrame(true)
+	d.focusArea(gtx)
 	dims := list.LayoutScrollbar(gtx, d.list, bar, anchor, d.blocks, d.row(shaper, style, style.StartSpace, style.EndSpace))
 	d.hoverReport(gtx, style)
 	return dims
