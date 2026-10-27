@@ -37,17 +37,7 @@ var findSource = strings.Join([]string{
 // glyphs drawn over a field are antialiased against it and do not answer, so
 // the count measures the field and not the text on it.
 func countExactly(img *image.RGBA, c color.NRGBA) int {
-	n := 0
-	b := img.Bounds()
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			p := img.RGBAAt(x, y)
-			if p.R == c.R && p.G == c.G && p.B == c.B {
-				n++
-			}
-		}
-	}
-	return n
+	return countExactlyIn(img, img.Bounds(), c)
 }
 
 // findShot lays the find source out at the given query and current index and
@@ -55,8 +45,13 @@ func countExactly(img *image.RGBA, c color.NRGBA) int {
 // unmarked.
 func findShot(t *testing.T, colors tokens.PlatformColors, set func(*markdown.Document)) (*markdown.Document, *image.RGBA) {
 	t.Helper()
+	return findShotIn(t, colors, markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{}), set)
+}
+
+// findShotIn is findShot with the caller's style.
+func findShotIn(t *testing.T, colors tokens.PlatformColors, style markdown.Style, set func(*markdown.Document)) (*markdown.Document, *image.RGBA) {
+	t.Helper()
 	shaper := defaultShaper(t)
-	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
 	d := markdown.NewDocument(markdown.Parse([]byte(findSource)))
 	if set != nil {
 		set(d)
@@ -126,54 +121,104 @@ func TestFindWithAnEmptyQueryMarksNothing(t *testing.T) {
 	}
 }
 
-// TestFindMarksItsMatchesAndTheCurrentOneMoreStrongly samples the two fields
-// off the render: every match is marked with the plain fill, the current one
-// with the stronger, and the page between them is untouched.
-func TestFindMarksItsMatchesAndTheCurrentOneMoreStrongly(t *testing.T) {
+// findMount is the uniform inset themed mounts the document at: it separates
+// the document's plane, which a match's rectangle is read in, from the
+// capture's.
+const findMount = 8
+
+// TestFindMarksEveryMatchAndTheCurrentOneInTheHighlightFill reads the marks
+// off the render: every match, the current one included, is marked in the
+// theme's highlight fill at full coverage, and the page between them is
+// untouched.
+func TestFindMarksEveryMatchAndTheCurrentOneInTheHighlightFill(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		colors tokens.PlatformColors
 	}{{"light", tokens.PlatformLight}, {"dark", tokens.PlatformDark}} {
 		t.Run(tc.name, func(t *testing.T) {
+			fill := tc.colors.HighlightFill
 			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
-			if style.MatchFill == style.CurrentMatchFill {
-				t.Fatalf("both fills are %v; the current match cannot be told from the others", style.MatchFill)
+			if style.MatchFill != fill || style.CurrentMatchFill != fill {
+				t.Fatalf("MatchFill = %v and CurrentMatchFill = %v, want both the highlight fill %v",
+					style.MatchFill, style.CurrentMatchFill, fill)
 			}
 			_, plain := findShot(t, tc.colors, nil)
-			if n := countExactly(plain, style.MatchFill); n != 0 {
+			if n := countExactly(plain, fill); n != 0 {
 				t.Fatalf("the fill is already drawn in %d pixels of the unmarked page; the sampling cannot tell a mark from the page", n)
 			}
-			_, marked := findShot(t, tc.colors, func(d *markdown.Document) { d.Find("needle", 1) })
-			if n := countExactly(marked, style.MatchFill); n == 0 {
-				t.Errorf("no pixel is drawn in %v; the matches are not marked", style.MatchFill)
+			d, marked := findShot(t, tc.colors, func(d *markdown.Document) { d.Find("needle", 1) })
+			seen := 0
+			for i, m := range d.Matches() {
+				if m.Rect.Empty() {
+					continue
+				}
+				r := m.Rect.Add(image.Pt(findMount, findMount)).Intersect(marked.Bounds())
+				if !inside(marked, r, fill) {
+					t.Errorf("match %d at %v holds no pixel of the highlight fill %v", i, r, fill)
+				}
+				seen++
 			}
-			if n := countExactly(marked, style.CurrentMatchFill); n == 0 {
-				t.Errorf("no pixel is drawn in %v; the current match is marked like the rest", style.CurrentMatchFill)
+			if seen < 2 {
+				t.Fatalf("only %d matches could be read off the render, want the current one and the rest", seen)
 			}
-			page := countExactly(marked, tc.colors.TextBackground)
-			if page == 0 {
+			if countExactly(marked, tc.colors.TextBackground) == 0 {
 				t.Error("nothing is left of the page; the marking covered the document")
 			}
 		})
 	}
 }
 
-// TestFindMovesTheStrongerFillWithTheCurrentIndex is the stepping the caller
-// owns: the same query at a different index marks the same matches and moves
-// only which of them is the current one.
-func TestFindMovesTheStrongerFillWithTheCurrentIndex(t *testing.T) {
-	colors := tokens.PlatformLight
-	style := markdown.FromTokens(colors, tokens.DefaultTypography, color.NRGBA{})
-	_, first := findShot(t, colors, func(d *markdown.Document) { d.Find("needle", 0) })
-	_, third := findShot(t, colors, func(d *markdown.Document) { d.Find("needle", 2) })
-	if golden.PixelDiff(first, third) == 0 {
-		t.Fatal("stepping to another match changed nothing")
+// TestACurrentMatchFillOfItsOwnMarksTheCurrentMatchAlone is the caller's
+// choice the style keeps open: a current match fill set to another colour
+// lands on the current match and on no other, and the rest keep the match
+// fill. Stepping the current index moves the colour with it.
+func TestACurrentMatchFillOfItsOwnMarksTheCurrentMatchAlone(t *testing.T) {
+	own := color.NRGBA{R: 0x30, G: 0x90, B: 0xe0, A: 0xff}
+	for _, tc := range []struct {
+		name   string
+		colors tokens.PlatformColors
+	}{{"light", tokens.PlatformLight}, {"dark", tokens.PlatformDark}} {
+		t.Run(tc.name, func(t *testing.T) {
+			style := markdown.FromTokens(tc.colors, tokens.DefaultTypography, color.NRGBA{})
+			style.CurrentMatchFill = own
+			for _, current := range []int{1, 2} {
+				d, img := findShotIn(t, tc.colors, style, func(d *markdown.Document) { d.Find("needle", current) })
+				total := countExactly(img, own)
+				if total == 0 {
+					t.Fatalf("current %d: no pixel is drawn in %v", current, own)
+				}
+				for i, m := range d.Matches() {
+					if m.Rect.Empty() {
+						continue
+					}
+					r := m.Rect.Add(image.Pt(findMount, findMount)).Intersect(img.Bounds())
+					n := countExactlyIn(img, r, own)
+					switch {
+					case i == current && n != total:
+						t.Errorf("current %d: %d of the %d pixels in %v lie outside the current match at %v", current, total-n, total, own, r)
+					case i != current && n != 0:
+						t.Errorf("current %d: match %d at %v holds %d pixels of the current match's fill", current, i, r, n)
+					case i != current && !inside(img, r, style.MatchFill):
+						t.Errorf("current %d: match %d at %v holds no pixel of the match fill %v", current, i, r, style.MatchFill)
+					}
+				}
+			}
+		})
 	}
-	for _, img := range []*image.RGBA{first, third} {
-		if n := countExactly(img, style.CurrentMatchFill); n == 0 {
-			t.Fatal("one of the two steps marks no current match")
+}
+
+// countExactlyIn is countExactly within r.
+func countExactlyIn(img *image.RGBA, r image.Rectangle, c color.NRGBA) int {
+	n := 0
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		for x := r.Min.X; x < r.Max.X; x++ {
+			p := img.RGBAAt(x, y)
+			if p.R == c.R && p.G == c.G && p.B == c.B {
+				n++
+			}
 		}
 	}
+	return n
 }
 
 // TestFindReportsWhereTheMatchesLanded is what a caller scrolls by: a match

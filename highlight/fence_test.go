@@ -514,8 +514,6 @@ func TestApplyTouchesOnlyTheCodeFields(t *testing.T) {
 			a.Highlight, b.Highlight = nil, nil
 			a.CodeColor, a.CodeBackground, a.CodeBorder = b.CodeColor, b.CodeBackground, b.CodeBorder
 			a.CodeScrollbar.ThumbColor = b.CodeScrollbar.ThumbColor
-			a.CodeScrollbar.MatchFill = b.CodeScrollbar.MatchFill
-			a.CodeScrollbar.CurrentMatchFill = b.CodeScrollbar.CurrentMatchFill
 			if !reflect.DeepEqual(a, b) {
 				t.Errorf("a field outside the code fields moved:\n got %+v\nwant %+v", a, b)
 			}

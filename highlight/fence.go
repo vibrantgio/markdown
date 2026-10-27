@@ -114,11 +114,11 @@ func ApplyPair(st *markdown.Style, pair StylePair, p tokens.PlatformColors) {
 }
 
 // fenceBar is the code block's bar flattened onto the fence's fill. The
-// platform's knob is a coverage of black or white, and [scrollbar.FromTokens]
+// platform's thumb is a coverage of black or white, and [scrollbar.FromTokens]
 // flattens that coverage onto the fill the bar is drawn over. A thumb
 // flattened onto the theme's code fill is a neutral grey on the author's
-// tinted background. The bar takes its colours from the fill it is drawn
-// over, and keeps every other field the caller set. A zero bar draws
+// tinted background. The bar takes its thumb and track colours from the fill
+// it is drawn over, and keeps every other field the caller set. A zero bar draws
 // nothing and stays zero.
 func fenceBar(bar scrollbar.Style, fence stdcolor.NRGBA, p tokens.PlatformColors) scrollbar.Style {
 	if bar.Width() <= 0 {
@@ -130,8 +130,6 @@ func fenceBar(bar scrollbar.Style, fence stdcolor.NRGBA, p tokens.PlatformColors
 		bar.TrackColor = over.TrackColor
 	}
 	bar.ThumbColor = over.ThumbColor
-	bar.MatchFill = over.MatchFill
-	bar.CurrentMatchFill = over.CurrentMatchFill
 	return bar
 }
 

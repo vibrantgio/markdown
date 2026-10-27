@@ -252,16 +252,14 @@ type Style struct {
 	// of block the query is searched in. Nothing is marked until a query is
 	// set; see [Document.Find].
 	//
-	// [FromTokens] takes the theme's highlight laid over
-	// [Style.ContentSurface], so a Style that moves that surface has to move
-	// this with it.
+	// [FromTokens] sets the theme's highlight fill, which is opaque. Mail
+	// paints every match in this one measured fill, and the text on it keeps
+	// its colour.
 	MatchFill color.NRGBA
-	// CurrentMatchFill marks the one match the caller is on, so the reader
-	// can tell it from the others while stepping through them.
+	// CurrentMatchFill marks the one match the caller is on.
 	//
-	// [FromTokens] takes the same yellow over the same surface at a higher
-	// coverage: the current match is the fill the rest are drawn in, laid on more
-	// strongly, not a second colour.
+	// [FromTokens] sets the same highlight fill as [Style.MatchFill]. A caller
+	// sets another colour here to show the current match apart from the rest.
 	CurrentMatchFill color.NRGBA
 	// ArrivalFill marks the heading a followed heading word took the reader
 	// to: the block's own box filled under its content, showing at once and
@@ -269,9 +267,8 @@ type Style struct {
 	// the caller's — see [Document.Highlight] for that one — because the
 	// document made the move.
 	//
-	// [FromTokens] takes the theme's highlight laid over
-	// [Style.ContentSurface], the same fill a match is drawn in: one highlight,
-	// whatever brought the reader.
+	// [FromTokens] sets the theme's highlight fill, the same fill a match is
+	// drawn in: one highlight, whatever brought the reader.
 	ArrivalFill color.NRGBA
 	// BlockGap is the vertical space between sibling blocks. It is authored
 	// space, not what the reader sees: the shaped lines put their own leading
@@ -442,8 +439,8 @@ type Style struct {
 //   - a completed task's box ControlAccent under
 //     AlternateSelectedControlText, which is what the platform fills a set
 //     checkbox with and what it draws the mark on it in;
-//   - the find marks and the arrival flash the theme's highlight fill, at
-//     the two coverages [matchCoverage] and [currentMatchCoverage] name.
+//   - every find match, the current match and the arrival flash the
+//     theme's highlight fill.
 //
 // Highlight and Images stay nil — both are opt-in. Pass
 // tokens.DefaultTypography for the default look.
@@ -503,9 +500,9 @@ func FromTokens(p tokens.PlatformColors, typo tokens.Typography, standsOn color.
 		CheckboxBorder:        themecolor.Flatten(p.TertiaryLabel, surface), // see checkboxBorder
 		CheckboxFill:          p.ControlAccent,
 		CheckmarkColor:        p.AlternateSelectedControlText,
-		MatchFill:             matchFill(p, surface, matchCoverage),
-		ArrivalFill:           matchFill(p, surface, currentMatchCoverage),
-		CurrentMatchFill:      matchFill(p, surface, currentMatchCoverage),
+		MatchFill:             p.HighlightFill,
+		ArrivalFill:           p.HighlightFill,
+		CurrentMatchFill:      p.HighlightFill,
 		BlockGap:              gap,
 		ListSpaceAbove:        listSeam(gap, r),
 		Indent:                unit.Dp(tokens.Spacing.S6),
@@ -520,38 +517,6 @@ func standsOnOr(stated, plane color.NRGBA) color.NRGBA {
 		return plane
 	}
 	return stated
-}
-
-// The coverages the theme's highlight fill is laid on at: one match among
-// many, and the mark the reader is standing on. The two are one measured
-// colour at two strengths rather than two colours, so a reader tells the
-// current match from the rest without learning a second mark.
-//
-// Mail paints every match in one fill and marks no current one — all three
-// runs in mail-find-light.png and mail-find-dark.png carry the identical
-// pixel — so the platform measures the mark and not the pair, and the second
-// strength is this library's. It is placed this way round rather than the
-// other because the coverage is the only currency there is: the measured
-// value IS the fill at full coverage, so the only mark that can differ from
-// it is a weaker one, and the strong end belongs to the mark the reader is on
-// so that mark is the platform's own pixel with the platform's own text
-// pairing on it. Laying the fill's step off the page on twice instead was
-// measured and rejected: it puts the dark scheme's current match on #bebe7c,
-// where the text the highlight is required to leave alone falls from Lc 81 to
-// Lc 41.
-const (
-	matchCoverage        = 0x80
-	currentMatchCoverage = 0xff
-)
-
-// matchFill is the theme's highlight fill over the surface the marked
-// content stands on, at coverage. The text the fill covers keeps its colour,
-// which is why the coverage is not tuned against a text floor: what the
-// composite costs the marked words is measured rather than corrected for.
-func matchFill(p tokens.PlatformColors, surface color.NRGBA, coverage uint8) color.NRGBA {
-	fill := p.HighlightFill
-	fill.A = coverage
-	return themecolor.Flatten(fill, surface)
 }
 
 // codeFill is the surface quoted code sits on, block and chip alike: the

@@ -1185,9 +1185,9 @@ func TestFromTokensDefaults(t *testing.T) {
 			if onCard.ContentSurface != card {
 				t.Errorf("stated ContentSurface = %v, want %v", onCard.ContentSurface, card)
 			}
-			if onCard.MatchFill == st.MatchFill {
-				t.Errorf("a document on %v marks a match in %v, the same fill as one on %v; the marks are not following the surface",
-					card, onCard.MatchFill, st.ContentSurface)
+			if onCard.MatchFill != p.HighlightFill {
+				t.Errorf("a document on %v marks a match in %v, want the theme's highlight fill %v on every surface",
+					card, onCard.MatchFill, p.HighlightFill)
 			}
 
 			var wantSizes [6]unit.Sp
@@ -1246,17 +1246,16 @@ func TestFromTokensDefaults(t *testing.T) {
 				t.Errorf("a set task's box = %v under %v, want ControlAccent under AlternateSelectedControlText", st.CheckboxFill, st.CheckmarkColor)
 			}
 
-			// The find marks are one measured colour at two strengths: the mark
-			// the reader is on is the platform's own pixel, the rest the same
-			// colour laid on less. An arrival is one mark and is drawn in the strong end.
+			// Every find mark is the platform's measured highlight fill at full
+			// coverage: a match, the current match and an arrival alike.
+			if st.MatchFill != p.HighlightFill {
+				t.Errorf("MatchFill = %v, want the theme's highlight fill %v", st.MatchFill, p.HighlightFill)
+			}
 			if st.CurrentMatchFill != p.HighlightFill {
 				t.Errorf("CurrentMatchFill = %v, want the theme's highlight fill %v", st.CurrentMatchFill, p.HighlightFill)
 			}
 			if st.ArrivalFill != st.CurrentMatchFill {
 				t.Errorf("ArrivalFill = %v, CurrentMatchFill = %v; one highlight, whatever brought the reader", st.ArrivalFill, st.CurrentMatchFill)
-			}
-			if st.MatchFill == st.CurrentMatchFill {
-				t.Error("a match and the current match are drawn in the same fill; the reader cannot tell which one they are on")
 			}
 			if st.MatchFill == st.ContentSurface {
 				t.Errorf("a match is drawn in the page's own fill %v, so nothing is marked", st.MatchFill)
