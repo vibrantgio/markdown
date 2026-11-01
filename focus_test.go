@@ -15,6 +15,7 @@ import (
 	"github.com/vibrantgio/components/golden"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // TestDocumentTakesTheKeyboard gives the keyboard to a document laid out
@@ -43,6 +44,7 @@ func TestDocumentTakesTheKeyboard(t *testing.T) {
 			give = false
 		}
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		dims := d.Layout(gtx, shaper, style)
 		focused = d.Focused(gtx)
 		return dims
@@ -107,6 +109,7 @@ func TestFocusedDocumentPixelsUnchanged(t *testing.T) {
 				gtx.Execute(key.FocusCmd{Tag: d.Focus()})
 			}
 			paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+			gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 			return d.Layout(gtx, shaper, style)
 		}
 		r := new(gioinput.Router)

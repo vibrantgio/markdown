@@ -20,6 +20,7 @@ import (
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/markdown/highlight"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 const goSnippet = "func greet(name string) string {\n" +
@@ -131,6 +132,7 @@ func themedSnippetWidget(t *testing.T, colors tokens.PlatformColors, restyle fun
 	d := markdown.NewDocument(blocks)
 	return func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, colors.TextBackground)
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.Layout(gtx, shaper, style)
 		})
@@ -194,6 +196,7 @@ func TestAppliedSnippetGolden(t *testing.T) {
 			d := markdown.NewDocument(blocks)
 			golden.Render(t, tc.name, image.Pt(560, 140), func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+				gtx = typeset.WithFill(gtx, tc.colors.TextBackground)
 				return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return d.Layout(gtx, shaper, style)
 				})
@@ -235,6 +238,7 @@ func TestInlineChipsStayOnTheThemesFill(t *testing.T) {
 			d := markdown.NewDocument(blocks)
 			img := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+				gtx = typeset.WithFill(gtx, tc.colors.TextBackground)
 				return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return d.Layout(gtx, shaper, style)
 				})

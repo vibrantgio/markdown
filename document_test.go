@@ -26,6 +26,7 @@ import (
 	"github.com/vibrantgio/markdown"
 	themecolor "github.com/vibrantgio/theme/color"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // defaultShaper returns the shaper every golden here draws with: the default
@@ -43,6 +44,7 @@ func defaultShaper(t *testing.T) *text.Shaper {
 func themed(d *markdown.Document, shaper *text.Shaper, style markdown.Style, c tokens.PlatformColors) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, c.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, c.TextBackground)
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.Layout(gtx, shaper, style)
 		})
@@ -142,6 +144,7 @@ func scrolledWithBar(d *markdown.Document, shaper *text.Shaper, style markdown.S
 	bar := scrollbar.FromTokens(c, c.TextBackground).Always()
 	return func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, c.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, c.TextBackground)
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.LayoutScrollbar(gtx, shaper, style, bar, list.Occupy)
 		})
@@ -180,6 +183,7 @@ func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 		return golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
 			paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground,
 				clip.Rect{Max: gtx.Constraints.Max}.Op())
+			gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 			return d.LayoutScrollbar(gtx, shaper, style, bar, list.Occupy)
 		})
 	}
@@ -188,6 +192,7 @@ func TestScrollbarOnlyWhenTheDocumentOverflows(t *testing.T) {
 	blank := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground,
 			clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	})
 	gutter := func(img *image.RGBA) int {
@@ -510,24 +515,28 @@ func measuredStyle(c tokens.PlatformColors) markdown.Style {
 	return style
 }
 
-// pageExtent returns the first and last column of img holding anything other
-// than the page colour, and reports whether it found any. With a measure set
-// that pair is the reading column's own edges, which is what says where the
-// column was seated and how wide it came out.
+// pageExtent returns the first and last column of img that is covered on the
+// page colour, and reports whether it found any. A column counts from
+// [golden.ColumnCoverageFloor], [golden.FirstTextColumn] read from each side,
+// so the fringe that Roboto at the darker text's stem weight draws before its
+// first glyph is not a column. With a measure set that pair is the reading
+// column's own edges, which is what says where the column was seated and how
+// wide it came out.
 func pageExtent(img *image.RGBA, page color.NRGBA) (lead, trail int, ok bool) {
 	b := img.Bounds()
-	lead, trail = b.Max.X, b.Min.X-1
+	fill := color.RGBA{R: page.R, G: page.G, B: page.B, A: page.A}
+	lead, ok = golden.FirstTextColumn(img, fill, b.Min.X, b.Max.X, b.Min.Y, b.Max.Y-1)
+	if !ok {
+		return 0, 0, false
+	}
+	mirror := image.NewRGBA(b)
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
-			p := img.RGBAAt(x, y)
-			if p.R == page.R && p.G == page.G && p.B == page.B && p.A == page.A {
-				continue
-			}
-			lead = min(lead, x)
-			trail = max(trail, x)
+			mirror.SetRGBA(b.Min.X+b.Max.X-1-x, y, img.RGBAAt(x, y))
 		}
 	}
-	return lead, trail, lead <= trail
+	last, _ := golden.FirstTextColumn(mirror, fill, b.Min.X, b.Max.X, b.Min.Y, b.Max.Y-1)
+	return lead, b.Min.X + b.Max.X - 1 - last, true
 }
 
 // TestMeasureGolden records or diffs a document read at a measure in a
@@ -988,6 +997,7 @@ func driveTaskFrame(w layout.Widget, ops *op.Ops, r *gioinput.Router, size image
 func taskColumn(d *markdown.Document, shaper *text.Shaper, style markdown.Style) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		return d.LayoutColumn(gtx, shaper, style)
 	}
 }

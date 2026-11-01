@@ -48,13 +48,13 @@ func TestTheWideTableDrawsItsSidewaysBar(t *testing.T) {
 	resting := func(src string, st markdown.Style) (*image.RGBA, int) {
 		doc := markdown.NewDocument(markdown.Parse([]byte(src)))
 		var h int
-		img := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
+		img := golden.Capture(t, size, golden.OnWindow(tokens.PlatformLight, func(gtx layout.Context) layout.Dimensions {
 			gtx.Now = time.Unix(1700000000, 0)
 			gtx.Constraints.Min = image.Point{}
 			dims := doc.Layout(gtx, shaper, st)
 			h = dims.Size.Y
 			return dims
-		})
+		}))
 		return img, h
 	}
 

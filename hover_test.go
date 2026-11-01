@@ -18,6 +18,7 @@ import (
 
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // hoverSource is the note the hover tests read: two paragraphs, each with one
@@ -56,6 +57,7 @@ func TestDocumentReportsOneAddressUnderThePointer(t *testing.T) {
 			Source:      r.Source(),
 		}
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		d.Layout(gtx, shaper, style)
 		r.Frame(ops)
 	}
@@ -161,6 +163,7 @@ func TestTheLinkBoxHoldsThePointerWhereverTheLinkIs(t *testing.T) {
 			Source:      r.Source(),
 		}
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		d.Layout(gtx, shaper, style)
 		r.Frame(ops)
 	}
@@ -273,6 +276,7 @@ func TestDocumentReportsTheLinkTheKeyboardReaches(t *testing.T) {
 			Source:      r.Source(),
 		}
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		d.Layout(gtx, shaper, style)
 		r.Frame(ops)
 	}

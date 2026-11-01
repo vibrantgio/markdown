@@ -16,6 +16,7 @@ import (
 	"github.com/vibrantgio/components/golden"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // Most of the spacing tests are transitions, not pictures: each measures what
@@ -368,6 +369,7 @@ func TestTheLinePitchInsideAParagraphMatchesTheReference(t *testing.T) {
 	img := golden.Capture(t, image.Pt(120, 220), func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.PlatformDark.TextBackground,
 			clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformDark.TextBackground)
 		return d.LayoutColumn(gtx, shaper, style)
 	})
 	bands := drawnBands(img, 0, img.Bounds().Max.X)
@@ -461,6 +463,7 @@ func TestTheRenderedRhythmMatchesTheReference(t *testing.T) {
 	img := golden.Capture(t, image.Pt(560, 900), func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.PlatformDark.TextBackground,
 			clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformDark.TextBackground)
 		return d.LayoutColumn(gtx, shaper, style)
 	})
 	runs := blankRuns(img)

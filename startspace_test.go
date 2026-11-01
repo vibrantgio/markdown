@@ -14,6 +14,7 @@ import (
 	"github.com/vibrantgio/components/golden"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // The space a scrolling document keeps above its first block.
@@ -55,6 +56,7 @@ func startShot(t *testing.T, src string, size image.Point, start unit.Dp, move f
 
 	img := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		return doc.Layout(gtx, shaper, style)
 	})
 	return blankAbove(img)

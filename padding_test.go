@@ -16,6 +16,7 @@ import (
 	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // paddingDp is the padding the padding tests keep on both sides of the text,
@@ -37,6 +38,7 @@ func barred(d *markdown.Document, style markdown.Style, c tokens.PlatformColors)
 	bar := scrollbar.FromTokens(c, c.TextBackground).Always()
 	return func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, c.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, c.TextBackground)
 		return layout.UniformInset(measurePage).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.LayoutScrollbar(gtx, shaper, style, bar, list.Occupy)
 		})

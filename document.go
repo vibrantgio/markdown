@@ -32,6 +32,7 @@ import (
 	"github.com/vibrantgio/components/scrollarea"
 	"github.com/vibrantgio/components/scrollbar"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // Document lays out a parsed block tree. Allocate once per document instance
@@ -178,8 +179,17 @@ func (d *Document) markedBlock(gtx layout.Context, shaper *text.Shaper, style St
 	if b != marked && b != arrived {
 		return d.block(gtx, shaper, style, b)
 	}
+	// The text stands on the fills painted under it, the caller's below the
+	// arrival's, so each fill is told to it in the order it is painted.
+	bgtx := gtx
+	if b == marked {
+		bgtx = typeset.WithFill(bgtx, d.mark.fill)
+	}
+	if b == arrived {
+		bgtx = typeset.WithFill(bgtx, d.arrivalFill(style))
+	}
 	macro := op.Record(gtx.Ops)
-	dims := d.block(gtx, shaper, style, b)
+	dims := d.block(bgtx, shaper, style, b)
 	drawn := macro.Stop()
 	box := clip.Rect{Max: dims.Size}.Op()
 	if b == marked {
@@ -624,7 +634,7 @@ func (d *Document) codeBlock(gtx layout.Context, shaper *text.Shaper, style Styl
 		tr.Pop()
 		return layout.Dimensions{Size: dims.Size.Add(image.Pt(2*in, 2*in)), Baseline: dims.Baseline + in}
 	}
-	cgtx := gtx
+	cgtx := typeset.WithFill(gtx, style.CodeBackground)
 	cgtx.Constraints.Min = image.Point{}
 	cgtx.Constraints.Max.X = max(gtx.Constraints.Max.X-2*edge, 0)
 	// The vertical padding is drawn inside the area but is not part of the
@@ -911,6 +921,9 @@ func (d *Document) tableGrid(gtx layout.Context, shaper *text.Shaper, style Styl
 		hline()
 		rowH := 0
 		cgtx := gtx
+		if ri == 0 {
+			cgtx = typeset.WithFill(cgtx, style.TableHeaderBackground)
+		}
 		cgtx.Constraints.Min = image.Point{}
 		// The cells are laid out before the grid knows where they go, so
 		// the one holding the hover box is remembered and its box moved

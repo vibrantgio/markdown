@@ -13,6 +13,7 @@ import (
 	"github.com/vibrantgio/components/paragraph"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // numberProbeText is what every item in this file's probes says. One word, in
@@ -79,6 +80,7 @@ func renderList(t *testing.T, size image.Point, colors tokens.PlatformColors, st
 	d := markdown.NewDocument(markdown.Parse([]byte(src)))
 	return golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, colors.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, colors.TextBackground)
 		return d.LayoutColumn(gtx, shaper, style)
 	})
 }
@@ -107,6 +109,7 @@ func TestALongNumberPaintsWholeBesideItsItem(t *testing.T) {
 			alone := golden.Capture(t, size, func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.TextBackground,
 					clip.Rect{Max: gtx.Constraints.Max}.Op())
+				gtx = typeset.WithFill(gtx, tc.colors.TextBackground)
 				return paragraph.Render(shaper, style.Text,
 					[]paragraph.SpanStyle{{Content: "291."}}, paragraph.Idle())(gtx)
 			})

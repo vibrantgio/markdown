@@ -14,6 +14,7 @@ import (
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/markdown/svgimage"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // iconSVG is a viewBox-sized disc with an inset square: enough geometry to
@@ -40,6 +41,7 @@ func TestDocumentRendersSVGGolden(t *testing.T) {
 	// image included.
 	golden.Render(t, "svg-icon-light", image.Pt(200, 200), func(gtx layout.Context) layout.Dimensions {
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		return layout.UniformInset(8).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return d.Layout(gtx, shaper, style)
 		})

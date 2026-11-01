@@ -12,6 +12,7 @@ import (
 	"github.com/vibrantgio/components/golden"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // A marker beside a list item is centred on the first text line, and the
@@ -106,6 +107,7 @@ func TestAListMarkerCentresOnItsFirstTextLine(t *testing.T) {
 			img := golden.Capture(t, image.Pt(320, 120), func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.TextBackground,
 					clip.Rect{Max: gtx.Constraints.Max}.Op())
+				gtx = typeset.WithFill(gtx, tc.colors.TextBackground)
 				return d.LayoutColumn(gtx, shaper, style)
 			})
 
@@ -182,6 +184,7 @@ func TestAMarkerHangsLevelBesideACodeOpeningRow(t *testing.T) {
 			img := golden.Capture(t, image.Pt(360, 80), func(gtx layout.Context) layout.Dimensions {
 				paint.FillShape(gtx.Ops, tc.colors.TextBackground,
 					clip.Rect{Max: gtx.Constraints.Max}.Op())
+				gtx = typeset.WithFill(gtx, tc.colors.TextBackground)
 				return d.LayoutColumn(gtx, shaper, style)
 			})
 

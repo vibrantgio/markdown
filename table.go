@@ -25,6 +25,7 @@ import (
 	"gioui.org/unit"
 
 	"github.com/vibrantgio/components/paragraph"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // cellStyle is everything a table cell's shaping and colours are read from:
@@ -123,6 +124,10 @@ type cellKey struct {
 	width   int
 	header  bool
 	current int
+	// fill is the fill the cell's text stands on, which picks its stem
+	// weight; filled says a surface told it one.
+	fill   color.NRGBA
+	filled bool
 }
 
 // tableMeasured returns the persistent column measurement for a table.
@@ -199,6 +204,7 @@ func (d *Document) cell(gtx layout.Context, shaper *text.Shaper, style Style, sk
 
 	marks := d.find.marks[cell]
 	key := cellKey{style: skey, width: gtx.Constraints.Max.X, header: header}
+	key.fill, key.filled = typeset.Fill(gtx)
 	if len(marks) > 0 {
 		// Which match is the current one decides the fill it is drawn in,
 		// and that is all it decides: an unmarked cell is drawn the same at

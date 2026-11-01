@@ -20,6 +20,7 @@ import (
 	"github.com/vibrantgio/components/golden"
 	"github.com/vibrantgio/markdown"
 	"github.com/vibrantgio/theme/tokens"
+	"github.com/vibrantgio/theme/typeset"
 )
 
 // wordSource is the note the heading-word tests read: headings a word of the
@@ -194,6 +195,7 @@ func TestHeadingWordFollowGoesToTheHeading(t *testing.T) {
 			Source:      r.Source(),
 		}
 		paint.FillShape(gtx.Ops, tokens.PlatformLight.TextBackground, clip.Rect{Max: gtx.Constraints.Max}.Op())
+		gtx = typeset.WithFill(gtx, tokens.PlatformLight.TextBackground)
 		d.Layout(gtx, shaper, style)
 		r.Frame(ops)
 	}
