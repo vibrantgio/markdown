@@ -5,10 +5,10 @@ go 1.25.1
 require (
 	gioui.org v0.10.2
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/vibrantgio/components v1.7.1-0.20261101222657-a5cc8c531b8b
+	github.com/vibrantgio/components v1.7.1
 	github.com/vibrantgio/svg v0.1.3
 	github.com/vibrantgio/svg/driver/gio v0.1.3
-	github.com/vibrantgio/theme v1.6.1-0.20261101224235-79942a278c64
+	github.com/vibrantgio/theme v1.6.1
 	github.com/yuin/goldmark v1.8.5
 	golang.org/x/image v0.44.0
 )
@@ -19,8 +19,8 @@ require (
 	github.com/go-text/typesetting v0.3.4 // indirect
 	github.com/reactivego/rx v0.3.0 // indirect
 	github.com/reactivego/scheduler v0.2.0 // indirect
-	github.com/vibrantgio/font v0.4.6-0.20261101212858-5bdcd87e1a22 // indirect
-	github.com/vibrantgio/mvu v1.1.5 // indirect
+	github.com/vibrantgio/font v0.4.6 // indirect
+	github.com/vibrantgio/mvu v1.1.6 // indirect
 	github.com/vibrantgio/mvu/desktop v1.1.5 // indirect
 	golang.org/x/exp/shiny v0.0.0-20260727155853-b88d891fe743 // indirect
 	golang.org/x/net v0.57.0 // indirect
